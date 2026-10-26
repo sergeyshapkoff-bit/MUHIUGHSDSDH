@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Стройка</title>
+    <!-- Официальный скрипт Telegram Mini App -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { background-color: #1c1c1c; color: white; font-family: Arial; text-align: center; padding: 20px;}
+        .card { background: #2c2c2c; padding: 20px; border-radius: 10px; margin-bottom: 20px;}
+        button { padding: 10px 20px; background: #ffaa00; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;}
+    </style>
+</head>
+<body>
+
+    <h2>🏘 Мои квартиры</h2>
+    
+    <div class="card">
+        <p>Баланс: <span id="balance">Загрузка...</span> €</p>
+    </div>
+
+    <button onclick="buyApartment()">Купить квартиру (65 000 €)</button>
+
+    <script>
+        // Инициализируем Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Разворачиваем на весь экран
+
+        const userId = tg.initDataUnsafe.user.id; // Получаем ID игрока из Telegram
+
+        // Функция запроса баланса с сервера
+        async function loadBalance() {
+            const response = await fetch(`https://твой-сайт.com/api/balance/${userId}`);
+            const data = await response.json();
+            document.getElementById("balance").innerText = data.balance;
+        }
+
+        // Функция покупки
+        async function buyApartment() {
+            // Тут будет запрос к серверу на покупку
+            alert("Логика покупки в разработке!");
+            // После покупки перезагружаем баланс
+            // loadBalance(); 
+        }
+
+        // При запуске сайта сразу грузим баланс
+        loadBalance();
+    </script>
+</body>
+</html>
