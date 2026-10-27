@@ -2,49 +2,345 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Стройка</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Игра Стройка</title>
     <!-- Официальный скрипт Telegram Mini App -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { background-color: #1c1c1c; color: white; font-family: Arial; text-align: center; padding: 20px;}
-        .card { background: #2c2c2c; padding: 20px; border-radius: 10px; margin-bottom: 20px;}
-        button { padding: 10px 20px; background: #ffaa00; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;}
+        /* Сине-фиолетовый градиент на фоне */
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #6a11cb 100%);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Верхняя панель (Шапка) */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .avatar {
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+        }
+        .icons {
+            font-size: 20px;
+            display: flex;
+            gap: 15px;
+        }
+
+        /* Основной контент */
+        main {
+            flex: 1;
+            padding: 0 20px;
+            overflow-y: auto;
+            display: none; /* Скрыто по умолчанию */
+        }
+        main.active {
+            display: block; /* Показываем активную вкладку */
+        }
+
+        /* Банковская карта */
+        .bank-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05));
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+        }
+        .card-balance {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .card-balance span {
+            font-size: 16px;
+            font-weight: normal;
+            opacity: 0.8;
+        }
+        .visa-logo {
+            font-size: 24px;
+            font-weight: 900;
+            font-style: italic;
+            letter-spacing: 2px;
+        }
+        .card-number {
+            font-size: 20px;
+            letter-spacing: 3px;
+            margin-bottom: 15px;
+            font-family: monospace;
+        }
+        .card-bottom {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* Списки (Переводы и Лидеры) */
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #a3c2ff;
+        }
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        /* Кнопка "+" по центру */
+        .fab-container {
+            position: relative;
+            margin-bottom: -25px; /* Накладываем на панель навигации */
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+        }
+        .fab {
+            width: 60px;
+            height: 60px;
+            background: #6a11cb;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            font-weight: 300;
+            box-shadow: 0 4px 15px rgba(106, 17, 203, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Нижнее меню навигации */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.9); /* Темная панель */
+            padding: 15px 20px 25px 20px; /* Отступ снизу для iPhone */
+            border-top-left-radius: 25px;
+            border-top-right-radius: 25px;
+            backdrop-filter: blur(10px);
+        }
+        .nav-btn {
+            background: none;
+            border: none;
+            color: #8892b0;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            flex: 1;
+        }
+        .nav-btn span {
+            font-size: 20px;
+        }
+        .nav-btn.active {
+            color: #ffffff;
+        }
+
+        /* Заглушки для вкладок */
+        .empty-tab {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 50vh;
+            color: #8892b0;
+            text-align: center;
+        }
+        .empty-tab span { font-size: 50px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
-    <h2>🏘 Мои квартиры</h2>
-    
-    <div class="card">
-        <p>Баланс: <span id="balance">Загрузка...</span> €</p>
+    <!-- Шапка -->
+    <header>
+        <div class="user-info">
+            <div class="avatar" id="user-avatar">👤</div>
+            <span id="user-name">Загрузка...</span>
+        </div>
+        <div class="icons">
+            <span>🔒</span>
+            <span>⚙️</span>
+        </div>
+    </header>
+
+    <!-- Вкладка: Баланс -->
+    <main id="tab-balance" class="active">
+        <div class="bank-card">
+            <div class="card-top">
+                <div class="card-balance" id="user-balance">0 <span>€</span></div>
+                <div class="visa-logo">VISA</div>
+            </div>
+            <div class="card-number" id="card-number">**** **** **** ****</div>
+            <div class="card-bottom">
+                <div id="card-holder">NAME SURNAME</div>
+                <div id="card-cvc">CVC: ***</div>
+            </div>
+        </div>
+
+        <div class="section-title">Недавние переводы</div>
+        <div class="list-item">
+            <span>От: Игрок 123</span>
+            <span style="color: #4ade80;">+ 5 000 €</span>
+        </div>
+        <div class="list-item">
+            <span>Покупка: «Строй дом»</span>
+            <span style="color: #f87171;">- 65 000 €</span>
+        </div>
+
+        <div class="section-title" style="margin-top: 20px;">Лидеры по тратам</div>
+        <div class="list-item">
+            <span>🥇 Matvei</span>
+            <span>8 692 765 079 €</span>
+        </div>
+        <div class="list-item">
+            <span>🥈 Миша</span>
+            <span>2 243 001 €</span>
+        </div>
+        <div class="list-item">
+            <span>🥉 Бананчик</span>
+            <span>8 000 000 €</span>
+        </div>
+    </main>
+
+    <!-- Вкладка: Квартиры -->
+    <main id="tab-apartments">
+        <div class="empty-tab">
+            <span>🏢</span>
+            <h2>Твои квартиры</h2>
+            <p>Здесь будет список твоей недвижимости. Скоро добавим!</p>
+        </div>
+    </main>
+
+    <!-- Вкладка: Трейды -->
+    <main id="tab-trades">
+        <div class="empty-tab">
+            <span>📈</span>
+            <h2>Трейды</h2>
+            <p>Биржа, акции и криптовалюта. В разработке...</p>
+        </div>
+    </main>
+
+    <!-- Кнопка "+" -->
+    <div class="fab-container">
+        <div class="fab">+</div>
     </div>
 
-    <button onclick="buyApartment()">Купить квартиру (65 000 €)</button>
+    <!-- Нижнее меню -->
+    <nav>
+        <button class="nav-btn" onclick="switchTab('apartments', this)">
+            <span>🏢</span>
+            Квартиры
+        </button>
+        <button class="nav-btn active" onclick="switchTab('balance', this)">
+            <span>💰</span>
+            Баланс
+        </button>
+        <button class="nav-btn" onclick="switchTab('trades', this)">
+            <span>📈</span>
+            Трейды
+        </button>
+    </nav>
 
+    <!-- Логика приложения -->
     <script>
-        // Инициализируем Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.expand(); // Разворачиваем на весь экран
 
-        const userId = tg.initDataUnsafe.user.id; // Получаем ID игрока из Telegram
+        // 1. ПОЛУЧАЕМ ДАННЫЕ ИГРОКА ИЗ ТЕЛЕГРАМА
+        const user = tg.initDataUnsafe?.user;
+        let userId = user ? user.id : 123456789; // Если тестируем в браузере, используем фейковый ID
+        let userName = user ? (user.first_name + (user.last_name ? " " + user.last_name : "")) : "Гость";
 
-        // Функция запроса баланса с сервера
+        document.getElementById("user-name").innerText = userName;
+        document.getElementById("card-holder").innerText = userName.toUpperCase();
+
+        // 2. ГЕНЕРАЦИЯ БАНКОВСКОЙ КАРТЫ (Сохраняется в браузере, чтобы не менялась)
+        function getCardDetails() {
+            let savedCard = localStorage.getItem('card_' + userId);
+            if (!savedCard) {
+                // Генерируем номер (начинается с 4, 16 цифр)
+                let num = "4" + Array.from({length: 15}, () => Math.floor(Math.random() * 10)).join('');
+                let formattedNum = num.match(/.{1,4}/g).join(' ');
+                let cvc = Math.floor(100 + Math.random() * 900); // Случайный CVC
+                
+                let cardInfo = { number: formattedNum, cvc: cvc };
+                localStorage.setItem('card_' + userId, JSON.stringify(cardInfo));
+                return cardInfo;
+            }
+            return JSON.parse(savedCard);
+        }
+
+        let card = getCardDetails();
+        document.getElementById("card-number").innerText = card.number;
+        document.getElementById("card-cvc").innerText = "CVC: " + card.cvc;
+
+        // 3. ПОЛУЧЕНИЕ БАЛАНСА С ТВОЕГО СЕРВЕРА (Netrun)
         async function loadBalance() {
-            const response = await fetch(`https://https://got.de1.netrun.io/api/balance/${userId}`);
-            const data = await response.json();
-            document.getElementById("balance").innerText = data.balance;
+            try {
+                // ВСТАВЬ СЮДА СВОЮ ССЫЛКУ С NETRUN (вместо got.de1.netrun.io)
+                const response = await fetch(`https://got.de1.netrun.io/api/balance/${userId}`);
+                const data = await response.json();
+                
+                // Форматируем число (например, 1000 -> 1 000)
+                let formattedBalance = data.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                document.getElementById("user-balance").innerHTML = `${formattedBalance} <span>€</span>`;
+            } catch (error) {
+                console.error("Ошибка загрузки баланса:", error);
+                document.getElementById("user-balance").innerHTML = `Ошибка <span>⚠️</span>`;
+            }
         }
 
-        // Функция покупки
-        async function buyApartment() {
-            // Тут будет запрос к серверу на покупку
-            alert("Логика покупки в разработке!");
-            // После покупки перезагружаем баланс
-            // loadBalance(); 
+        // 4. ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК
+        function switchTab(tabId, btnElement) {
+            // Прячем все вкладки
+            document.querySelectorAll('main').forEach(m => m.classList.remove('active'));
+            // Убираем активный класс у всех кнопок
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            
+            // Показываем нужную вкладку и делаем кнопку активной
+            document.getElementById('tab-' + tabId).classList.add('active');
+            btnElement.classList.add('active');
         }
 
-        // При запуске сайта сразу грузим баланс
+        // Запускаем загрузку баланса при открытии
         loadBalance();
     </script>
 </body>
