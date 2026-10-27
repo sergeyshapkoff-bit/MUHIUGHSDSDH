@@ -1,0 +1,35 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import sqlite3
+
+app = FastAPI()
+
+# Разрешаем сайту с GitHub Pages делать запросы к серверу
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+def get_db():
+    conn = sqlite3.connect("game.db")
+    return conn
+
+# Проверка баланса (пока просто заглушка с 1000 евро)
+@app.get("/api/balance/{user_id}")
+def get_balance(user_id: int):
+    conn = get_db()
+    cursor = conn.cursor()
+    # Создаем таблицу, если её нет
+    cursor.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, amount INTEGER)")
+    cursor.execute("SELECT amount FROM users WHERE id = ?", (user_id,))
+    row = cursor.fetchone()
+    
+    if not row:
+        # Если игрок зашел впервые, даем ему 1000 евро
+        cursor.execute("INSERT INTO users (id, amount) VALUES (?, ?)", (user_id, 1000))
+        conn.commit()
+        return {"balance": 1000}
+        
+    return {"balance": row[0]}
