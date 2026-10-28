@@ -16,7 +16,7 @@ app.add_middleware(
 )
 
 # Вставь свою ссылку с Pooler (пример: postgresql://postgres.xxx:pass@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require)
-DATABASE_URL = "postgresql://postgres.zmfepxqnxcvkvdjonzhp:[7bwdzJgjEfureY1w ]@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require"
+DATABASE_URL = "postgresql://postgres.zmfepxqnxcvkvdjonzhp:p0LwFeRg9NJ7Cusj@aws-0-eu-west-1.pooler.supabase.com:5432/postgres.zmfepxqnxcvkvdjonzhp"
 
 
 MAIN_ADMIN_ID = 5634302903 
