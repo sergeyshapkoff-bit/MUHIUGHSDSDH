@@ -11,7 +11,8 @@
         header { display: flex; justify-content: space-between; align-items: center; padding: 20px; flex-shrink: 0; }
         .user-info { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
         .avatar { width: 36px; height: 36px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 16px; }
-        .icons { font-size: 20px; display: flex; gap: 15px; opacity: 0.8; }
+        .icons { font-size: 22px; display: flex; gap: 15px; opacity: 0.8; cursor: pointer; }
+        
         main { flex: 1; padding: 0 20px; overflow-y: auto; display: none; padding-bottom: 100px; }
         main.active { display: block; }
         
@@ -25,15 +26,7 @@
         .card-bottom { display: flex; justify-content: space-between; font-size: 13px; opacity: 0.9; }
         .cvc-block { display: flex; align-items: center; cursor: pointer; }
 
-        /* Плашка с доходом */
-        .income-badge {
-            position: absolute; top: -15px; right: 20px;
-            background: #4ade80; color: #000; padding: 6px 15px;
-            border-radius: 20px; font-weight: bold; font-size: 14px;
-            box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4);
-            animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            display: none;
-        }
+        .income-badge { position: absolute; top: -15px; right: 20px; background: #4ade80; color: #000; padding: 6px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4); animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: none; }
         @keyframes pop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
         
         .section-title { font-size: 15px; font-weight: bold; margin-bottom: 10px; color: #a3c2ff; }
@@ -52,21 +45,28 @@
         .nav-btn span { font-size: 22px; margin-bottom: 2px; }
         .nav-btn.active { color: #ffffff; }
         
-        #shop-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a24; z-index: 100; display: none; flex-direction: column; }
-        .shop-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #232333; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .shop-header h2 { margin: 0; font-size: 20px; }
+        /* Модальные окна */
+        #shop-modal, #settings-modal, #admin-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a24; z-index: 100; display: none; flex-direction: column; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #232333; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .modal-header h2 { margin: 0; font-size: 20px; }
         .close-btn { background: rgba(255,255,255,0.1); border: none; color: white; font-size: 20px; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; }
-        .shop-content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 50px; }
+        .modal-content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 50px; }
+
+        /* Магазин */
         .class-group { margin-bottom: 25px; }
         .class-title { font-size: 16px; font-weight: bold; color: #a3c2ff; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
         .apt-shop-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.06); padding: 15px; border-radius: 15px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); }
         .apt-shop-info { display: flex; flex-direction: column; gap: 4px; flex: 1; padding-right: 10px; }
-        .apt-shop-name { font-weight: bold; font-size: 15px; display: flex; align-items: center; gap: 5px; }
+        .apt-shop-name { font-weight: bold; font-size: 15px; }
         .apt-shop-desc { font-size: 12px; color: #8892b0; }
         .apt-shop-income { font-size: 12px; color: #4ade80; font-weight: bold; margin-top: 4px; }
-        .buy-btn { background: #4ade80; color: #000; border: none; padding: 10px 15px; border-radius: 12px; font-weight: bold; font-size: 13px; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
-        .buy-btn:active { background: #22c55e; }
-        
+        .buy-btn { background: #4ade80; color: #000; border: none; padding: 10px 15px; border-radius: 12px; font-weight: bold; font-size: 13px; cursor: pointer; white-space: nowrap; }
+
+        /* Админ панель */
+        .admin-btn { width: 100%; background: #ffaa00; color: #000; padding: 15px; border-radius: 15px; border: none; font-weight: bold; font-size: 16px; margin-top: 20px; cursor: pointer; }
+        .user-row { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 15px; margin-bottom: 10px; }
+        .add-money-btn { background: #4ade80; color: #000; border: none; padding: 8px 12px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+
         #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #4ade80; color: #000; padding: 10px 20px; border-radius: 30px; font-weight: bold; font-size: 14px; transition: transform 0.3s; z-index: 200; }
         #toast.show { transform: translateX(-50%) translateY(0); }
     </style>
@@ -78,14 +78,15 @@
             <div class="avatar">👤</div>
             <span id="user-name">Загрузка...</span>
         </div>
-        <div class="icons"><span>🔒</span><span>⚙️</span></div>
+        <!-- Кнопка настроек (шестеренка) -->
+        <div class="icons" onclick="openSettings()">
+            <span>⚙️</span>
+        </div>
     </header>
 
     <main id="tab-balance" class="active">
         <div class="bank-card">
-            <!-- Плашка с накопленным доходом -->
             <div id="income-badge" class="income-badge">+ 0 €</div>
-            
             <div class="card-top">
                 <div class="card-balance" id="user-balance">0 <span>€</span></div>
                 <div class="visa-logo">VISA</div>
@@ -104,9 +105,7 @@
         </div>
 
         <div class="section-title">Топ по балансу</div>
-        <div id="leaderboard-list">
-            <div style="color:#8892b0; text-align:center; padding: 20px;">Загрузка топа...</div>
-        </div>
+        <div id="leaderboard-list"></div>
     </main>
 
     <main id="tab-apartments">
@@ -131,12 +130,48 @@
         <button class="nav-btn" onclick="switchTab('trades', this)"><span>📈</span> Трейды</button>
     </nav>
 
+    <!-- Модалка: Магазин -->
     <div id="shop-modal">
-        <div class="shop-header">
+        <div class="modal-header">
             <h2>🏢 Магазин</h2>
-            <button class="close-btn" onclick="closeShop()">✕</button>
+            <button class="close-btn" onclick="closeModal('shop-modal')">✕</button>
         </div>
-        <div class="shop-content" id="shop-list"></div>
+        <div class="modal-content" id="shop-list"></div>
+    </div>
+
+    <!-- Модалка: Настройки -->
+    <div id="settings-modal">
+        <div class="modal-header">
+            <h2>⚙️ Настройки</h2>
+            <button class="close-btn" onclick="closeModal('settings-modal')">✕</button>
+        </div>
+        <div class="modal-content">
+            <div class="list-item">
+                <span>Твой ID:</span>
+                <span id="settings-user-id" style="color:#4ade80; font-family:monospace;"></span>
+            </div>
+            <div class="list-item">
+                <span>Твое имя:</span>
+                <span id="settings-user-name"></span>
+            </div>
+            
+            <!-- Секретная кнопка для админа -->
+            <button id="admin-btn" class="admin-btn" style="display:none;" onclick="openAdminPanel()">
+                👑 Панель Админа
+            </button>
+        </div>
+    </div>
+
+    <!-- Модалка: Панель Админа -->
+    <div id="admin-modal">
+        <div class="modal-header">
+            <h2>👑 Админ-панель</h2>
+            <button class="close-btn" onclick="closeModal('admin-modal')">✕</button>
+        </div>
+        <div class="modal-content">
+            <p style="font-size: 12px; color: #8892b0; margin-bottom: 15px;">Список всех игроков в базе данных.</p>
+            <div id="admin-users-list"></div>
+        </div>
     </div>
 
     <script>
@@ -146,8 +181,18 @@
         let userId = user ? user.id : 123456789; 
         let userName = user ? (user.first_name + (user.last_name ? " " + user.last_name : "")) : "Гость";
 
+        // ТВОЙ ID АДМИНА (должен совпадать с main.py)
+        const MAIN_ADMIN_ID = 5634302903;
+
         document.getElementById("user-name").innerText = userName;
         document.getElementById("card-holder").innerText = userName.toUpperCase();
+        document.getElementById("settings-user-id").innerText = userId;
+        document.getElementById("settings-user-name").innerText = userName;
+
+        // Если это админ, показываем кнопку
+        if (userId === MAIN_ADMIN_ID) {
+            document.getElementById("admin-btn").style.display = "block";
+        }
 
         function getCardDetails() {
             let savedCard = localStorage.getItem('card_' + userId);
@@ -171,11 +216,9 @@
                 const response = await fetch(url);
                 const data = await response.json();
                 
-                // Обновляем баланс
                 let formattedBalance = data.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
                 document.getElementById("user-balance").innerHTML = `${formattedBalance} <span>€</span>`;
                 
-                // Показываем, сколько накапало
                 if (data.earned && data.earned > 0) {
                     let badge = document.getElementById("income-badge");
                     let fEarned = data.earned.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
@@ -187,7 +230,6 @@
                 renderMyApartments(data.apartments || []);
             } catch (error) {
                 console.error("Ошибка:", error);
-                document.getElementById("user-balance").innerHTML = `Ошибка <span>⚠️</span>`; 
             }
         }
 
@@ -198,11 +240,8 @@
                 const list = document.getElementById('leaderboard-list');
                 list.innerHTML = '';
                 
-                if (!data.leaders || data.leaders.length === 0) {
-                    list.innerHTML = `<div style="color:#8892b0; text-align:center; padding: 20px;">Пока нет игроков</div>`;
-                    return;
-                }
-
+                if (!data.leaders || data.leaders.length === 0) return;
+                
                 const medals = ["🥇", "🥈", "🥉", "🏅", "🏅"];
                 data.leaders.forEach((player, index) => {
                     let fBalance = player.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
@@ -218,13 +257,11 @@
         function renderMyApartments(apts) {
             const list = document.getElementById('my-apartments-list');
             list.innerHTML = '';
-            
             if (apts.length === 0) {
                 list.innerHTML = `<div style="text-align:center; color:#8892b0; margin-top:20px; font-size:13px;">У тебя пока нет квартир. Нажми «+», чтобы купить!</div>`;
                 document.getElementById("total-income").innerText = `0 €/ч`;
                 return;
             }
-
             let totalInc = 0;
             apts.forEach((apt) => {
                 totalInc += apt.income;
@@ -238,26 +275,98 @@
                     <div style="font-size: 24px;">🏢</div>
                 </div>`;
             });
-            
             let formattedTotal = totalInc.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
             document.getElementById("total-income").innerText = `${formattedTotal} €/ч`;
         }
 
-        function switchTab(tabId, btnElement) {
-            document.querySelectorAll('main').forEach(m => m.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('tab-' + tabId).classList.add('active');
-            btnElement.classList.add('active');
+        // --- ЛОГИКА МОДАЛЬНЫХ ОКОН ---
+        function openModal(id) {
+            document.getElementById(id).style.display = 'flex';
+            if (tg.BackButton) tg.BackButton.show();
         }
-
-        function copyText(text) {
-            navigator.clipboard.writeText(text.trim()).then(() => {
-                const toast = document.getElementById("toast");
-                toast.classList.add("show");
-                setTimeout(() => toast.classList.remove("show"), 2000);
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+            if (tg.BackButton) tg.BackButton.hide();
+        }
+        if (tg.BackButton) {
+            tg.BackButton.onClick(() => {
+                closeModal('shop-modal');
+                closeModal('settings-modal');
+                closeModal('admin-modal');
             });
         }
 
+        function openSettings() { openModal('settings-modal'); }
+
+        // --- АДМИН ПАНЕЛЬ ---
+        async function openAdminPanel() {
+            openModal('admin-modal');
+            const list = document.getElementById('admin-users-list');
+            list.innerHTML = '<div style="text-align:center; padding:20px;">Загрузка игроков...</div>';
+            
+            try {
+                const response = await fetch(`https://got.de1.netrun.io/api/admin/users`);
+                const data = await response.json();
+                list.innerHTML = '';
+                
+                if (!data.users || data.users.length === 0) {
+                    list.innerHTML = '<div style="text-align:center; padding:20px;">В базе пока нет игроков</div>';
+                    return;
+                }
+
+                data.users.forEach(u => {
+                    let fBal = u.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    list.innerHTML += `
+                    <div class="user-row">
+                        <div>
+                            <div style="font-weight:bold; font-size:14px;">${u.name}</div>
+                            <div style="font-size:11px; color:#8892b0;">ID: ${u.id}</div>
+                            <div style="font-size:12px; color:#4ade80;">${fBal} €</div>
+                        </div>
+                        <button class="add-money-btn" onclick="addMoney(${u.id}, '${u.name}')">+ Выдать</button>
+                    </div>`;
+                });
+            } catch (e) {
+                list.innerHTML = '<div style="color:red; text-align:center;">Ошибка загрузки</div>';
+            }
+        }
+
+        async function addMoney(targetId, targetName) {
+            // Запрашиваем сумму через стандартный prompt браузера (работает в Telegram)
+            const amountStr = prompt(`Сколько € выдать игроку ${targetName}?`);
+            if (!amountStr) return;
+            
+            const amount = parseInt(amountStr);
+            if (isNaN(amount) || amount <= 0) {
+                tg.showAlert('❌ Введите корректное число');
+                return;
+            }
+
+            try {
+                const response = await fetch('https://got.de1.netrun.io/api/admin/add_money', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        admin_id: userId,
+                        target_id: targetId,
+                        amount: amount
+                    })
+                });
+                
+                const res = await response.json();
+                if (res.status === 'ok') {
+                    tg.showAlert(`✅ Успешно выдано ${amount} € игроку ${targetName}`);
+                    openAdminPanel(); // Обновляем список
+                    loadLeaderboard(); // Обновляем топ
+                } else {
+                    tg.showAlert(`❌ ${res.message}`);
+                }
+            } catch (e) {
+                tg.showAlert('⚠️ Ошибка соединения');
+            }
+        }
+
+        // --- МАГАЗИН ---
         const shopData = [
             { class: "🏚 Эконом-класс", items: [
                 { name: "Студия «Муравейник»", price: 15000, income: 100, desc: "15 кв.м, окна во двор." },
@@ -279,10 +388,8 @@
         ];
 
         function openShop() {
-            const modal = document.getElementById('shop-modal');
             const list = document.getElementById('shop-list');
             list.innerHTML = '';
-            
             shopData.forEach(group => {
                 let html = `<div class="class-group"><div class="class-title">${group.class}</div>`;
                 group.items.forEach((item, index) => {
@@ -303,18 +410,7 @@
                 html += `</div>`;
                 list.innerHTML += html;
             });
-
-            modal.style.display = 'flex';
-            if (tg.BackButton) tg.BackButton.show();
-        }
-
-        function closeShop() {
-            document.getElementById('shop-modal').style.display = 'none';
-            if (tg.BackButton) tg.BackButton.hide();
-        }
-
-        if (tg.BackButton) {
-            tg.BackButton.onClick(() => closeShop());
+            openModal('shop-modal');
         }
 
         async function tryBuyApartment(groupName, itemIndex) {
@@ -336,20 +432,33 @@
                         income: item.income
                     })
                 });
-                
                 const res = await response.json();
-                
                 if (res.status === 'ok') {
                     tg.showAlert('✅ Успешно куплено!');
-                    closeShop();
+                    closeModal('shop-modal');
                     loadData();
                     loadLeaderboard();
                 } else {
                     tg.showAlert(`❌ ${res.message}`);
                 }
             } catch (e) {
-                tg.showAlert('⚠️ Ошибка соединения с сервером');
+                tg.showAlert('⚠️ Ошибка соединения');
             }
+        }
+
+        // Вспомогательные функции
+        function switchTab(tabId, btnElement) {
+            document.querySelectorAll('main').forEach(m => m.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            btnElement.classList.add('active');
+        }
+        function copyText(text) {
+            navigator.clipboard.writeText(text.trim()).then(() => {
+                const toast = document.getElementById("toast");
+                toast.classList.add("show");
+                setTimeout(() => toast.classList.remove("show"), 2000);
+            });
         }
 
         loadData();
