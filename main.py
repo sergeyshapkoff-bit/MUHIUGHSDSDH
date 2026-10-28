@@ -63,7 +63,8 @@ class SellRequest(BaseModel):
 
 class TransferRequest(BaseModel):
     sender_id: int
-    receiver_id: int
+    card_number: str
+    card_cvc: str
     amount: int
 
 class AddMoneyRequest(BaseModel):
@@ -182,36 +183,40 @@ def sell_apartment(req: SellRequest):
 @app.post("/api/transfer")
 def transfer_money(req: TransferRequest):
     try:
-        if req.sender_id == req.receiver_id:
-            return {"status": "error", "message": "Нельзя перевести самому себе"}
         if req.amount <= 0:
             return {"status": "error", "message": "Сумма должна быть больше 0"}
+            
+        # Очищаем номер карты от пробелов (если игрок ввел с пробелами)
+        clean_card = req.card_number.replace(" ", "")
             
         conn = get_db()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Проверяем отправителя
+        # Проверяем отправителя (того, кто нажал кнопку)
         cursor.execute("SELECT amount FROM users WHERE id = %s", (req.sender_id,))
         sender = cursor.fetchone()
         if not sender or int(sender['amount']) < req.amount:
-            return {"status": "error", "message": "Недостаточно средств или отправитель не найден"}
+            return {"status": "error", "message": "Недостаточно средств!"}
             
-        # Проверяем получателя
-        cursor.execute("SELECT id FROM users WHERE id = %s", (req.receiver_id,))
+        # Ищем получателя по НОМЕРУ КАРТЫ и CVC
+        cursor.execute("SELECT id, name FROM users WHERE card_number = %s AND card_cvc = %s", (clean_card, req.card_cvc))
         receiver = cursor.fetchone()
+        
         if not receiver:
-            return {"status": "error", "message": "Получатель не найден. Пусть он зайдет в игру."}
+            return {"status": "error", "message": "Игрок с такой картой и CVC не найден!"}
+            
+        if receiver['id'] == req.sender_id:
+            return {"status": "error", "message": "Нельзя перевести деньги на свою же карту!"}
             
         # Переводим
         cursor.execute("UPDATE users SET amount = amount - %s WHERE id = %s", (req.amount, req.sender_id))
-        cursor.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, req.receiver_id))
+        cursor.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, receiver['id']))
         conn.commit()
         cursor.close(); conn.close()
         
-        return {"status": "ok", "message": f"Успешно переведено {req.amount} €"}
+        return {"status": "ok", "message": f"Успешно переведено {req.amount} € игроку {receiver['name']}"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
-
 @app.get("/api/leaderboard")
 def get_leaderboard():
     try:
