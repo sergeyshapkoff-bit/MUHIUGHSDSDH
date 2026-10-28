@@ -15,15 +15,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ВСТАВЬ СЮДА СВОЮ ССЫЛКУ ИЗ SUPABASE (вместо пароля вставь свой пароль)
-# Пример: "postgresql://postgres:SuperPassword123@db.abcdefghij.supabase.co:5432/postgres"
+# ВСТАВЬ СЮДА СВОЮ ССЫЛКУ ИЗ SUPABASE (замени ТВОЙ_ПАРОЛЬ на свой пароль)
 DATABASE_URL = "postgresql://postgres:[7bwdzJgjEfureY1w ]@db.zmfepxqnxcvkvdjonzhp.supabase.co:5432/postgres"
 
 MAIN_ADMIN_ID = 5634302903 
 
 def get_db():
-    # Подключаемся к облачной базе Supabase
-    conn = psycopg2.connect(DATABASE_URL)
+    # Добавляем sslmode=require, иначе Supabase не пустит сервер
+    url = DATABASE_URL
+    if "?sslmode=require" not in url:
+        url += "?sslmode=require"
+    conn = psycopg2.connect(url)
     return conn
 
 class BuyRequest(BaseModel):
@@ -65,12 +67,14 @@ def get_balance(user_id: int, name: str = "Игрок"):
     now = int(time.time())
     
     if not row:
-        # Новый игрок
+        # Новый игрок получает 100 000
         cursor.execute(
             "INSERT INTO users (id, name, amount, apartments, last_payout) VALUES (%s, %s, %s, %s, %s)", 
             (user_id, name, 100000, json.dumps([]), now)
         )
         conn.commit()
+        cursor.close()
+        conn.close()
         return {"balance": 100000, "apartments": [], "earned": 0}
         
     current_balance = row['amount']
