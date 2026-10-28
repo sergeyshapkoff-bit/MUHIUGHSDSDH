@@ -16,13 +16,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Твоя ссылка на базу данных Supabase
 DATABASE_URL = "postgresql://postgres.zmfepxqnxcvkvdjonzhp:p0LwFeRg9NJ7Cusj@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require"
-
 MAIN_ADMIN_ID = 5634302903 
 
 def get_db():
     return psycopg2.connect(DATABASE_URL)
+
+def init_db():
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id bigint primary key,
+                name text,
+                amount bigint default 100000,
+                apartments jsonb default '[]'::jsonb,
+                last_payout bigint,
+                card_number text,
+                card_cvc text
+            );
+        """)
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN card_number TEXT;")
+            cursor.execute("ALTER TABLE users ADD COLUMN card_cvc TEXT;")
+        except: pass
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print("Ошибка инициализации БД:", e)
+
+init_db()
 
 class BuyRequest(BaseModel):
     user_id: int
@@ -30,6 +55,16 @@ class BuyRequest(BaseModel):
     apartment_name: str
     price: int
     income: int
+
+class SellRequest(BaseModel):
+    user_id: int
+    apartment_index: int
+    price: int
+
+class TransferRequest(BaseModel):
+    sender_id: int
+    receiver_id: int
+    amount: int
 
 class AddMoneyRequest(BaseModel):
     admin_id: int
@@ -58,7 +93,6 @@ def get_balance(user_id: int, name: str = "Игрок"):
         now = int(time.time())
         
         if not row:
-            # Генерируем карту для нового игрока
             card_num = "4" + "".join([str(random.randint(0, 9)) for _ in range(15)])
             card_formatted = " ".join([card_num[i:i+4] for i in range(0, 16, 4)])
             cvc = str(random.randint(100, 999))
@@ -72,7 +106,7 @@ def get_balance(user_id: int, name: str = "Игрок"):
             return {"balance": 100000, "apartments": [], "earned": 0, "card_number": card_formatted, "card_cvc": cvc}
             
         current_balance = int(row['amount'])
-        user_apartments = row['apartments'] if isinstance(row['apartments'], list) else json.loads(row['apartments'])
+        user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
         last_payout = int(row['last_payout']) if row['last_payout'] else now
         
         new_balance, new_last_payout, earned = calculate_income(current_balance, user_apartments, last_payout)
@@ -93,8 +127,10 @@ def buy_apartment(req: BuyRequest):
         cursor.execute("SELECT amount, apartments, last_payout FROM users WHERE id = %s", (req.user_id,))
         row = cursor.fetchone()
         
+        if not row: return {"status": "error", "message": "Игрок не найден"}
+            
         current_balance = int(row['amount'])
-        user_apartments = row['apartments'] if isinstance(row['apartments'], list) else json.loads(row['apartments'])
+        user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
         last_payout = int(row['last_payout']) if row['last_payout'] else int(time.time())
         
         current_balance, last_payout, _ = calculate_income(current_balance, user_apartments, last_payout)
@@ -103,12 +139,76 @@ def buy_apartment(req: BuyRequest):
             return {"status": "error", "message": "Недостаточно средств!"}
             
         new_balance = current_balance - req.price
-        user_apartments.append({"name": req.apartment_name, "income": req.income})
+        user_apartments.append({"name": req.apartment_name, "income": req.income, "buy_price": req.price})
         
         cursor.execute("UPDATE users SET amount = %s, apartments = %s, last_payout = %s WHERE id = %s", (new_balance, json.dumps(user_apartments), last_payout, req.user_id))
         conn.commit()
         cursor.close(); conn.close()
         return {"status": "ok", "message": "Успешно куплено!", "new_balance": new_balance}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/sell")
+def sell_apartment(req: SellRequest):
+    try:
+        conn = get_db()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT amount, apartments, last_payout FROM users WHERE id = %s", (req.user_id,))
+        row = cursor.fetchone()
+        
+        if not row: return {"status": "error", "message": "Игрок не найден"}
+            
+        current_balance = int(row['amount'])
+        user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
+        last_payout = int(row['last_payout']) if row['last_payout'] else int(time.time())
+        
+        if req.apartment_index < 0 or req.apartment_index >= len(user_apartments):
+            return {"status": "error", "message": "Квартира не найдена"}
+            
+        # Возвращаем 70% от цены
+        sell_price = int(req.price * 0.7)
+        current_balance, last_payout, _ = calculate_income(current_balance, user_apartments, last_payout)
+        
+        new_balance = current_balance + sell_price
+        user_apartments.pop(req.apartment_index)
+        
+        cursor.execute("UPDATE users SET amount = %s, apartments = %s, last_payout = %s WHERE id = %s", (new_balance, json.dumps(user_apartments), last_payout, req.user_id))
+        conn.commit()
+        cursor.close(); conn.close()
+        return {"status": "ok", "message": f"Квартира продана за {sell_price} €", "new_balance": new_balance}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/transfer")
+def transfer_money(req: TransferRequest):
+    try:
+        if req.sender_id == req.receiver_id:
+            return {"status": "error", "message": "Нельзя перевести самому себе"}
+        if req.amount <= 0:
+            return {"status": "error", "message": "Сумма должна быть больше 0"}
+            
+        conn = get_db()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Проверяем отправителя
+        cursor.execute("SELECT amount FROM users WHERE id = %s", (req.sender_id,))
+        sender = cursor.fetchone()
+        if not sender or int(sender['amount']) < req.amount:
+            return {"status": "error", "message": "Недостаточно средств или отправитель не найден"}
+            
+        # Проверяем получателя
+        cursor.execute("SELECT id FROM users WHERE id = %s", (req.receiver_id,))
+        receiver = cursor.fetchone()
+        if not receiver:
+            return {"status": "error", "message": "Получатель не найден. Пусть он зайдет в игру."}
+            
+        # Переводим
+        cursor.execute("UPDATE users SET amount = amount - %s WHERE id = %s", (req.amount, req.sender_id))
+        cursor.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, req.receiver_id))
+        conn.commit()
+        cursor.close(); conn.close()
+        
+        return {"status": "ok", "message": f"Успешно переведено {req.amount} €"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
