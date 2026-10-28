@@ -19,7 +19,6 @@
         main { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 0 20px 100px 20px; overflow-y: auto; display: none; transition: transform 0.3s ease, opacity 0.3s ease; }
         main.active { display: block; animation: fadeIn 0.4s ease-out; }
         
-        /* Карта */
         .bank-card { background: var(--card-color); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 20px; padding: 20px; margin-bottom: 25px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); position: relative; transition: all 0.3s ease; }
         .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
         .card-balance { font-size: 26px; font-weight: bold; }
@@ -54,7 +53,6 @@
         .nav-btn.active { color: #ffffff; }
         .nav-btn.active span { transform: scale(1.2) translateY(-2px); }
         
-        /* Биржа */
         .exchange-card { background: rgba(0,0,0,0.3); border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); animation: slideUp 0.3s ease-out backwards; }
         .exchange-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .exchange-title { font-size: 18px; font-weight: bold; }
@@ -66,7 +64,6 @@
         .btn-sell { background: #f87171; color: white; }
         .btn-buy:active, .btn-sell:active { transform: scale(0.95); }
 
-        /* Модалки */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a24; z-index: 100; display: none; flex-direction: column; animation: slideInRight 0.3s ease-out; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #232333; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .modal-header h2 { margin: 0; font-size: 20px; }
@@ -162,13 +159,11 @@
             <div id="my-apartments-list"></div>
         </main>
 
-        <!-- БИРЖА ТОКЕНОВ -->
         <main id="tab-trades">
-            <!-- Золото -->
             <div class="exchange-card">
                 <div class="exchange-header">
                     <div class="exchange-title">🪙 Золото</div>
-                    <div class="exchange-rate">Курс: 500 €</div>
+                    <div class="exchange-rate" id="rate-gold">Курс: ...</div>
                 </div>
                 <div class="token-balance" style="color:#ffd700" id="user-gold">0 🪙</div>
                 <div class="exchange-buttons">
@@ -177,11 +172,10 @@
                 </div>
             </div>
 
-            <!-- Алмазы -->
             <div class="exchange-card" style="animation-delay: 0.1s">
                 <div class="exchange-header">
                     <div class="exchange-title">💎 Алмазы</div>
-                    <div class="exchange-rate">Курс: 5 000 €</div>
+                    <div class="exchange-rate" id="rate-diamonds">Курс: ...</div>
                 </div>
                 <div class="token-balance" style="color:#00f2fe" id="user-diamonds">0 💎</div>
                 <div class="exchange-buttons">
@@ -190,11 +184,10 @@
                 </div>
             </div>
 
-            <!-- Крипта -->
             <div class="exchange-card" style="animation-delay: 0.2s">
                 <div class="exchange-header">
                     <div class="exchange-title">🚀 Крипта</div>
-                    <div class="exchange-rate">Курс: 50 000 €</div>
+                    <div class="exchange-rate" id="rate-crypto">Курс: ...</div>
                 </div>
                 <div class="token-balance" style="color:#f87171" id="user-crypto">0 🚀</div>
                 <div class="exchange-buttons">
@@ -215,7 +208,6 @@
         <button class="nav-btn" onclick="switchTab(2, this)"><span>📈</span> Биржа</button>
     </nav>
 
-    <!-- Модалки -->
     <div id="shop-modal" class="modal-overlay">
         <div class="modal-header"><h2>🏢 Магазин</h2><button class="close-btn" onclick="closeModal('shop-modal')">✕</button></div>
         <div class="modal-content" id="shop-list"></div>
@@ -226,14 +218,12 @@
         <div class="modal-content">
             <div class="list-item"><span>Твой ID:</span><span id="settings-user-id" style="color:#4ade80; font-family:monospace;"></span></div>
             <div class="list-item"><span>Твое имя:</span><span id="settings-user-name"></span></div>
-            
             <div class="section-title" style="margin-top:20px;">Полный контроль цветов</div>
             <div class="color-inputs">
                 <div class="color-picker-wrapper"><span>Фон 1</span><input type="color" id="bg-color-1" oninput="setCustomColor('bg1', this.value)"></div>
                 <div class="color-picker-wrapper"><span>Фон 2</span><input type="color" id="bg-color-2" oninput="setCustomColor('bg2', this.value)"></div>
                 <div class="color-picker-wrapper"><span>Карта</span><input type="color" id="card-color" oninput="setCustomColor('card', this.value)"></div>
             </div>
-            
             <button class="btn-confirm" style="width:100%; margin-top:10px; padding: 15px; border-radius: 15px; border: none; font-weight: bold; font-size: 16px;" onclick="closeModal('settings-modal')">ОК</button>
             <button id="admin-btn" class="admin-btn" style="display:none;" onclick="openAdminPanel()">👑 Панель Админа</button>
         </div>
@@ -282,7 +272,6 @@
         </div>
     </div>
 
-    <!-- Окно торговли токенами (Универсальное) -->
     <div id="token-modal" class="custom-modal">
         <div class="custom-box">
             <h3 id="token-modal-title">Купить 🪙</h3>
@@ -299,7 +288,8 @@
         let userId = user ? user.id : 123456789; 
         let userName = user ? (user.first_name + (user.last_name ? " " + user.last_name : "")) : "Гость";
         const MAIN_ADMIN_ID = 5634302903;
-        const RATES = { 'gold': 500, 'diamonds': 5000, 'crypto': 50000 };
+        
+        let currentRates = { gold: 500, diamonds: 5000, crypto: 50000 };
 
         document.getElementById("user-name").innerText = userName;
         document.getElementById("card-holder").innerText = userName.toUpperCase();
@@ -311,19 +301,15 @@
         let tabs = ['apartments', 'balance', 'trades'];
         let currentTabIndex = 1;
         let touchStartX = 0, touchEndX = 0;
-
         function updateTabs() {
             document.querySelectorAll('main').forEach(m => m.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('tab-' + tabs[currentTabIndex]).classList.add('active');
             document.querySelectorAll('.nav-btn')[currentTabIndex].classList.add('active');
         }
-
         function switchTab(index, btnElement) { currentTabIndex = index; updateTabs(); }
-
         document.getElementById('swipe-container').addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, false);
         document.getElementById('swipe-container').addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; handleSwipe(); }, false);
-
         function handleSwipe() {
             const swipeThreshold = 50;
             if (touchEndX < touchStartX - swipeThreshold && currentTabIndex < tabs.length - 1) { currentTabIndex++; updateTabs(); }
@@ -336,7 +322,6 @@
             else if (type === 'bg2') { document.documentElement.style.setProperty('--bg-color-2', color); localStorage.setItem('customBg2', color); }
             else if (type === 'card') { document.getElementById('main-card').style.background = color; localStorage.setItem('customCard', color); }
         }
-
         window.onload = () => {
             const bg1 = localStorage.getItem('customBg1') || '#1e3c72';
             const bg2 = localStorage.getItem('customBg2') || '#6a11cb';
@@ -349,9 +334,21 @@
                 document.getElementById('main-card').style.background = cardColor;
                 document.getElementById('card-color').value = cardColor === 'rgba(255, 255, 255, 0.15)' ? '#2a5298' : cardColor;
             }
+            loadRates(); // Загружаем актуальные курсы
         };
 
-        // --- ЗАГРУЗКА ДАННЫХ ---
+        // --- ЗАГРУЗКА КУРСОВ ---
+        async function loadRates() {
+            try {
+                const res = await fetch('https://got.de1.netrun.io/api/token_rates');
+                currentRates = await res.json();
+                document.getElementById('rate-gold').innerText = `Курс: ${currentRates.gold} €`;
+                document.getElementById('rate-diamonds').innerText = `Курс: ${currentRates.diamonds} €`;
+                document.getElementById('rate-crypto').innerText = `Курс: ${currentRates.crypto} €`;
+            } catch(e) { console.log("Ошибка загрузки курсов:", e); }
+        }
+
+        // --- ДАННЫЕ ---
         async function loadData() {
             try {
                 const res = await fetch(`https://got.de1.netrun.io/api/balance/${userId}?name=${encodeURIComponent(userName)}`);
@@ -361,7 +358,6 @@
                 let fb = data.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
                 document.getElementById("user-balance").innerHTML = `${fb} <span>€</span>`;
                 
-                // Токены
                 document.getElementById("user-gold").innerText = `${data.gold || 0} 🪙`;
                 document.getElementById("user-diamonds").innerText = `${data.diamonds || 0} 💎`;
                 document.getElementById("user-crypto").innerText = `${data.crypto || 0} 🚀`;
@@ -459,21 +455,19 @@
         function openTokenModal(action, tokenType) {
             currentToken = tokenType;
             tradeAction = action;
-            
             const names = { gold: '🪙 Золото', diamonds: '💎 Алмазы', crypto: '🚀 Крипта' };
             document.getElementById('token-modal-title').innerText = `${action === 'buy' ? 'Купить' : 'Продать'} ${names[tokenType]}`;
-            
             const btn = document.getElementById('token-submit-btn');
             btn.innerText = action === 'buy' ? 'Купить' : 'Продать';
             btn.className = action === 'buy' ? 'btn-confirm' : 'btn-danger';
-            
             document.getElementById('token-amount').value = '';
             document.getElementById('token-cost-text').innerText = 'Итого: 0 €';
             openModal('token-modal');
         }
 
         function updateTokenCost(amount) {
-            let total = (parseInt(amount) || 0) * RATES[currentToken];
+            let amt = parseInt(amount) || 0;
+            let total = amt * currentRates[currentToken];
             let txt = total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
             document.getElementById('token-cost-text').innerText = `Итого: ${txt} €`;
         }
@@ -482,13 +476,11 @@
             const amt = parseInt(document.getElementById('token-amount').value);
             if (isNaN(amt) || amt <= 0) return tg.showAlert('❌ Введите количество');
             closeModal('token-modal');
-            
             try {
                 const res = await fetch(`https://got.de1.netrun.io/api/trade_token`, { 
                     method: 'POST', headers: { 'Content-Type': 'application/json' }, 
                     body: JSON.stringify({ user_id: userId, token_type: currentToken, amount: amt, action: tradeAction }) 
                 }).then(r => r.json());
-                
                 if (res.status === 'ok') { tg.showAlert(`✅ ${res.message}`); loadData(); } 
                 else { tg.showAlert(`❌ ${res.message}`); }
             } catch (e) { tg.showAlert('⚠️ Ошибка сервера'); }
