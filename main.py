@@ -18,7 +18,13 @@ app.add_middleware(
 
 DATABASE_URL = "postgresql://postgres.zmfepxqnxcvkvdjonzhp:p0LwFeRg9NJ7Cusj@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require"
 MAIN_ADMIN_ID = 5634302903 
-TOKEN_RATE = 1000 # 1 тыковка = 1000 евро
+
+# Курсы токенов
+TOKEN_RATES = {
+    "gold": 500,
+    "diamonds": 5000,
+    "crypto": 50000
+}
 
 def get_db():
     return psycopg2.connect(DATABASE_URL)
@@ -36,26 +42,30 @@ def init_db():
                 last_payout bigint,
                 card_number text,
                 card_cvc text,
-                tokens bigint default 0
+                gold bigint default 0,
+                diamonds bigint default 0,
+                crypto bigint default 0
             );
         """)
-        # Добавляем колонки, если таблица уже есть
+        # Миграция для старых баз
         try: cursor.execute("ALTER TABLE users ADD COLUMN card_number TEXT;")
         except: pass
         try: cursor.execute("ALTER TABLE users ADD COLUMN card_cvc TEXT;")
         except: pass
-        try: cursor.execute("ALTER TABLE users ADD COLUMN tokens bigint default 0;")
+        try: cursor.execute("ALTER TABLE users ADD COLUMN gold bigint default 0;")
+        except: pass
+        try: cursor.execute("ALTER TABLE users ADD COLUMN diamonds bigint default 0;")
+        except: pass
+        try: cursor.execute("ALTER TABLE users ADD COLUMN crypto bigint default 0;")
         except: pass
         
         conn.commit()
-        cursor.close()
-        conn.close()
+        cursor.close(); conn.close()
     except Exception as e:
         print("Ошибка инициализации БД:", e)
 
 init_db()
 
-# Модели данных
 class BuyRequest(BaseModel):
     user_id: int
     user_name: str
@@ -81,7 +91,9 @@ class AddMoneyRequest(BaseModel):
 
 class TokenRequest(BaseModel):
     user_id: int
-    amount: int # Сколько тыковок купить/продать
+    token_type: str # "gold", "diamonds" или "crypto"
+    amount: int
+    action: str # "buy" или "sell"
 
 def calculate_income(amount, apartments, last_payout):
     now = int(time.time())
@@ -110,17 +122,16 @@ def get_balance(user_id: int, name: str = "Игрок"):
             cvc = str(random.randint(100, 999))
             
             cursor.execute(
-                "INSERT INTO users (id, name, amount, apartments, last_payout, card_number, card_cvc, tokens) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", 
-                (user_id, name, 100000, json.dumps([]), now, card_formatted, cvc, 0)
+                "INSERT INTO users (id, name, amount, apartments, last_payout, card_number, card_cvc) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
+                (user_id, name, 100000, json.dumps([]), now, card_formatted, cvc)
             )
             conn.commit()
             cursor.close(); conn.close()
-            return {"balance": 100000, "apartments": [], "earned": 0, "card_number": card_formatted, "card_cvc": cvc, "tokens": 0}
+            return {"balance": 100000, "apartments": [], "earned": 0, "card_number": card_formatted, "card_cvc": cvc, "gold": 0, "diamonds": 0, "crypto": 0}
             
         current_balance = int(row['amount'])
         user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
         last_payout = int(row['last_payout']) if row['last_payout'] else now
-        tokens = int(row['tokens']) if row['tokens'] else 0
         
         new_balance, new_last_payout, earned = calculate_income(current_balance, user_apartments, last_payout)
         
@@ -128,50 +139,52 @@ def get_balance(user_id: int, name: str = "Игрок"):
         conn.commit()
         cursor.close(); conn.close()
             
-        return {"balance": new_balance, "apartments": user_apartments, "earned": earned, "card_number": row['card_number'], "card_cvc": row['card_cvc'], "tokens": tokens}
+        return {
+            "balance": new_balance, "apartments": user_apartments, "earned": earned, 
+            "card_number": row['card_number'], "card_cvc": row['card_cvc'],
+            "gold": int(row.get('gold') or 0), "diamonds": int(row.get('diamonds') or 0), "crypto": int(row.get('crypto') or 0)
+        }
     except Exception as e:
         return {"balance": 0, "error": str(e)}
 
-# --- БИРЖА ТЫКОВОК ---
-@app.post("/api/buy_tokens")
-def buy_tokens(req: TokenRequest):
+# --- БИРЖА ТОКЕНОВ ---
+@app.post("/api/trade_token")
+def trade_token(req: TokenRequest):
+    if req.token_type not in TOKEN_RATES:
+        return {"status": "error", "message": "Неизвестный токен"}
+    
+    rate = TOKEN_RATES[req.token_type]
+    cost = req.amount * rate
+    
     try:
         conn = get_db()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount FROM users WHERE id = %s", (req.user_id,))
+        cursor.execute("SELECT * FROM users WHERE id = %s", (req.user_id,))
         row = cursor.fetchone()
         
-        cost = req.amount * TOKEN_RATE
-        if int(row['amount']) < cost:
-            return {"status": "error", "message": "Недостаточно денег!"}
+        if not row: return {"status": "error", "message": "Игрок не найден"}
+        
+        if req.action == "buy":
+            if int(row['amount']) < cost:
+                return {"status": "error", "message": "Недостаточно денег!"}
+            # Списываем евро, добавляем токены
+            cursor.execute(f"UPDATE users SET amount = amount - %s, {req.token_type} = {req.token_type} + %s WHERE id = %s", (cost, req.amount, req.user_id))
+        elif req.action == "sell":
+            current_token_bal = int(row.get(req.token_type) or 0)
+            if current_token_bal < req.amount:
+                return {"status": "error", "message": "Недостаточно токенов!"}
+            # Добавляем евро, списываем токены
+            cursor.execute(f"UPDATE users SET amount = amount + %s, {req.token_type} = {req.token_type} - %s WHERE id = %s", (cost, req.amount, req.user_id))
+        else:
+            return {"status": "error", "message": "Неверное действие"}
             
-        cursor.execute("UPDATE users SET amount = amount - %s, tokens = tokens + %s WHERE id = %s", (cost, req.amount, req.user_id))
         conn.commit()
         cursor.close(); conn.close()
-        return {"status": "ok", "message": f"Куплено {req.amount} 🎃"}
+        return {"status": "ok", "message": "Сделка успешно совершена!"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-@app.post("/api/sell_tokens")
-def sell_tokens(req: TokenRequest):
-    try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT tokens FROM users WHERE id = %s", (req.user_id,))
-        row = cursor.fetchone()
-        
-        if int(row['tokens']) < req.amount:
-            return {"status": "error", "message": "Недостаточно тыковок!"}
-            
-        profit = req.amount * TOKEN_RATE
-        cursor.execute("UPDATE users SET amount = amount + %s, tokens = tokens - %s WHERE id = %s", (profit, req.amount, req.user_id))
-        conn.commit()
-        cursor.close(); conn.close()
-        return {"status": "ok", "message": f"Продано {req.amount} 🎃"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-# Остальные функции без изменений...
+# --- ОСТАЛЬНОЕ ---
 @app.post("/api/buy")
 def buy_apartment(req: BuyRequest):
     try:
