@@ -15,7 +15,7 @@
         main { flex: 1; padding: 0 20px; overflow-y: auto; display: none; padding-bottom: 100px; }
         main.active { display: block; }
         
-        .bank-card { background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05)); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; padding: 20px; margin-bottom: 25px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); }
+        .bank-card { background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05)); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; padding: 20px; margin-bottom: 25px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); position: relative; }
         .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
         .card-balance { font-size: 26px; font-weight: bold; }
         .card-balance span { font-size: 16px; font-weight: normal; opacity: 0.8; }
@@ -24,6 +24,17 @@
         .copy-icon { font-size: 12px; margin-left: 8px; opacity: 0.6; }
         .card-bottom { display: flex; justify-content: space-between; font-size: 13px; opacity: 0.9; }
         .cvc-block { display: flex; align-items: center; cursor: pointer; }
+
+        /* Плашка с доходом */
+        .income-badge {
+            position: absolute; top: -15px; right: 20px;
+            background: #4ade80; color: #000; padding: 6px 15px;
+            border-radius: 20px; font-weight: bold; font-size: 14px;
+            box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4);
+            animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: none;
+        }
+        @keyframes pop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
         
         .section-title { font-size: 15px; font-weight: bold; margin-bottom: 10px; color: #a3c2ff; }
         .list-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 15px; margin-bottom: 10px; font-size: 14px; }
@@ -72,6 +83,9 @@
 
     <main id="tab-balance" class="active">
         <div class="bank-card">
+            <!-- Плашка с накопленным доходом -->
+            <div id="income-badge" class="income-badge">+ 0 €</div>
+            
             <div class="card-top">
                 <div class="card-balance" id="user-balance">0 <span>€</span></div>
                 <div class="visa-logo">VISA</div>
@@ -151,17 +165,25 @@
         document.getElementById("card-number").innerText = card.number;
         document.getElementById("card-cvc").innerText = "CVC: " + card.cvc;
 
-        // Загрузка данных с сервера
         async function loadData() {
             try {
-                // Отправляем имя на сервер
                 const url = `https://got.de1.netrun.io/api/balance/${userId}?name=${encodeURIComponent(userName)}`;
                 const response = await fetch(url);
                 const data = await response.json();
                 
+                // Обновляем баланс
                 let formattedBalance = data.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
                 document.getElementById("user-balance").innerHTML = `${formattedBalance} <span>€</span>`;
                 
+                // Показываем, сколько накапало
+                if (data.earned && data.earned > 0) {
+                    let badge = document.getElementById("income-badge");
+                    let fEarned = data.earned.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    badge.innerText = `+ ${fEarned} €`;
+                    badge.style.display = 'block';
+                    setTimeout(() => { badge.style.display = 'none'; }, 5000);
+                }
+
                 renderMyApartments(data.apartments || []);
             } catch (error) {
                 console.error("Ошибка:", error);
@@ -169,12 +191,10 @@
             }
         }
 
-        // Загрузка топа игроков
         async function loadLeaderboard() {
             try {
                 const response = await fetch(`https://got.de1.netrun.io/api/leaderboard`);
                 const data = await response.json();
-                
                 const list = document.getElementById('leaderboard-list');
                 list.innerHTML = '';
                 
@@ -192,9 +212,7 @@
                         <span style="color: #4ade80;">${fBalance} €</span>
                     </div>`;
                 });
-            } catch (e) {
-                console.error("Ошибка загрузки топа:", e);
-            }
+            } catch (e) { console.error("Ошибка топа:", e); }
         }
 
         function renderMyApartments(apts) {
@@ -208,7 +226,7 @@
             }
 
             let totalInc = 0;
-            apts.forEach((apt, index) => {
+            apts.forEach((apt) => {
                 totalInc += apt.income;
                 let formattedInc = apt.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
                 list.innerHTML += `
@@ -324,8 +342,8 @@
                 if (res.status === 'ok') {
                     tg.showAlert('✅ Успешно куплено!');
                     closeShop();
-                    loadData(); // Обновляем баланс
-                    loadLeaderboard(); // Обновляем топ
+                    loadData();
+                    loadLeaderboard();
                 } else {
                     tg.showAlert(`❌ ${res.message}`);
                 }
@@ -334,7 +352,6 @@
             }
         }
 
-        // Инициализация при запуске
         loadData();
         loadLeaderboard();
     </script>
