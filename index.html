@@ -38,10 +38,7 @@
         main.active { display: block; }
         
         .bank-card { 
-            background: var(--card-bg); 
-            backdrop-filter: blur(10px); 
-            border: var(--card-border); 
-            color: var(--card-text);
+            background: var(--card-bg); backdrop-filter: blur(10px); border: var(--card-border); color: var(--card-text);
             border-radius: 20px; padding: 20px; margin-bottom: 25px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); position: relative; transition: all 0.3s ease;
         }
         .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
@@ -85,14 +82,12 @@
         .color-swatch:active { transform: scale(0.9); }
         .color-swatch.active { border: 3px solid #4ade80; transform: scale(1.1); }
         
-        /* Фоны для свотчей */
         .swatch-default { background: linear-gradient(135deg, #1e3c72 0%, #6a11cb 100%); }
         .swatch-dark { background: linear-gradient(135deg, #0f0c29 0%, #24243e 100%); }
         .swatch-sunset { background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%); }
         .swatch-ocean { background: linear-gradient(135deg, #00b4db 0%, #0083b0 100%); }
         .swatch-matrix { background: linear-gradient(135deg, #000000 0%, #0f9b0f 100%); }
 
-        /* Стили карт для свотчей */
         .swatch-card-glass { background: rgba(255,255,255,0.2); color: white; display: flex; justify-content: center; align-items: center; font-size: 10px; font-weight: bold; }
         .swatch-card-dark { background: #111; color: white; display: flex; justify-content: center; align-items: center; font-size: 10px; font-weight: bold; }
         .swatch-card-gold { background: linear-gradient(135deg, #f12711, #f5af19); color: #000; display: flex; justify-content: center; align-items: center; font-size: 10px; font-weight: bold; }
@@ -122,12 +117,35 @@
         .btn-cancel { background: rgba(255,255,255,0.1); color: white; }
         .btn-confirm { background: #4ade80; color: #000; }
 
-        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #4ade80; color: #000; padding: 10px 20px; border-radius: 30px; font-weight: bold; font-size: 14px; transition: transform 0.3s; z-index: 300; }
+        /* ТУТОРИАЛ */
+        #tutorial-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .tutorial-box { background: linear-gradient(135deg, #232333, #1a1a24); padding: 30px 20px; border-radius: 25px; width: 90%; max-width: 350px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .tutorial-icon { font-size: 60px; margin-bottom: 15px; }
+        .tutorial-title { font-size: 22px; font-weight: bold; margin-bottom: 10px; color: #fff; }
+        .tutorial-text { font-size: 14px; color: #a3c2ff; margin-bottom: 25px; line-height: 1.5; }
+        .tutorial-btn { width: 100%; padding: 15px; border-radius: 15px; border: none; background: #4ade80; color: #000; font-weight: bold; font-size: 16px; cursor: pointer; transition: background 0.2s; }
+        .tutorial-btn:active { background: #22c55e; }
+
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #4ade80; color: #000; padding: 10px 20px; border-radius: 30px; font-weight: bold; font-size: 14px; transition: transform 0.3s; z-index: 1000; }
         #toast.show { transform: translateX(-50%) translateY(0); }
     </style>
 </head>
 <body>
     <div id="toast">Скопировано!</div>
+
+    <!-- МОДАЛКА ОБУЧЕНИЯ -->
+    <div id="tutorial-modal">
+        <div class="tutorial-box">
+            <div class="tutorial-icon" id="tut-icon">👋</div>
+            <div class="tutorial-title" id="tut-title">Добро пожаловать!</div>
+            <div class="tutorial-text" id="tut-text">
+                Ты получил <b>100 000 €</b> на старт. Пора строить свою империю!
+            </div>
+            <button class="tutorial-btn" onclick="nextTutorialStep()">Далее</button>
+        </div>
+    </div>
+
     <header>
         <div class="user-info">
             <div class="avatar">👤</div>
@@ -139,7 +157,6 @@
     </header>
 
     <main id="tab-balance" class="active">
-        <!-- Класс card-glass задается по умолчанию, JS его меняет -->
         <div class="bank-card card-glass" id="main-card">
             <div id="income-badge" class="income-badge">+ 0 €</div>
             <div class="card-top">
@@ -210,7 +227,6 @@
                 <span id="settings-user-name"></span>
             </div>
             
-            <!-- ПАЛИТРА -->
             <div class="section-title" style="margin-top:20px;">Фон приложения</div>
             <div class="color-palette">
                 <div class="color-swatch swatch-default" onclick="setBgTheme('default', this)"></div>
@@ -227,7 +243,6 @@
                 <div class="color-swatch swatch-card-gold" onclick="setCardTheme('card-gold', this)">Золото</div>
             </div>
 
-            <!-- Секретная кнопка для админа -->
             <button id="admin-btn" class="admin-btn" style="display:none;" onclick="openAdminPanel()">
                 👑 Панель Админа
             </button>
@@ -277,16 +292,47 @@
             document.getElementById("admin-btn").style.display = "block";
         }
 
+        // ==========================================
+        // ТУТОРИАЛ (ОБУЧЕНИЕ)
+        // ==========================================
+        const tutorialSteps = [
+            { icon: "👋", title: "Добро пожаловать!", text: "Ты получил <b>100 000 €</b> на старт. Пора строить свою империю!" },
+            { icon: "🏢", title: "Покупка квартир", text: "Нажми на большую кнопку <b>«+»</b> внизу экрана, чтобы открыть магазин и купить свою первую квартиру." },
+            { icon: "💵", title: "Пассивный доход", text: "Каждая квартира приносит деньги каждый час, даже когда ты не в игре! Заходи почаще, чтобы собирать прибыль." },
+            { icon: "⚙️", title: "Настройки", text: "Нажми на шестеренку вверху, чтобы изменить цвет фона и стиль своей банковской карты." }
+        ];
+        let currentTutStep = 0;
+
+        function checkTutorial() {
+            // Проверяем, проходил ли игрок обучение раньше
+            if (!localStorage.getItem('tutorial_done_' + userId)) {
+                document.getElementById('tutorial-modal').style.display = 'flex';
+                if (tg.BackButton) tg.BackButton.hide(); // Прячем кнопку назад
+            }
+        }
+
+        function nextTutorialStep() {
+            currentTutStep++;
+            if (currentTutStep >= tutorialSteps.length) {
+                // Обучение завершено
+                document.getElementById('tutorial-modal').style.display = 'none';
+                localStorage.setItem('tutorial_done_' + userId, 'true');
+            } else {
+                // Показываем следующий шаг
+                const step = tutorialSteps[currentTutStep];
+                document.getElementById("tut-icon").innerText = step.icon;
+                document.getElementById("tut-title").innerText = step.title;
+                document.getElementById("tut-text").innerHTML = step.text;
+            }
+        }
+
         // --- ЛОГИКА ЦВЕТОВ ---
         function setBgTheme(themeName, element) {
-            // Очищаем классы body (кроме активных вкладок)
             document.body.className = ''; 
             if (themeName !== 'default') {
                 document.body.classList.add(`theme-${themeName}`);
             }
             localStorage.setItem('userBgTheme', themeName);
-            
-            // Визуальное выделение активного кружочка
             document.querySelectorAll('.color-palette:first-of-type .color-swatch').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
         }
@@ -295,24 +341,17 @@
             const card = document.getElementById('main-card');
             card.className = `bank-card ${themeName}`;
             localStorage.setItem('userCardTheme', themeName);
-            
-            // Визуальное выделение активного кружочка
             document.querySelectorAll('.color-palette:last-of-type .color-swatch').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
         }
 
-        // Загрузка сохраненных тем при запуске
         window.onload = () => {
             const savedBg = localStorage.getItem('userBgTheme') || 'default';
             const savedCard = localStorage.getItem('userCardTheme') || 'card-glass';
             
-            // Применяем фон
             if (savedBg !== 'default') document.body.classList.add(`theme-${savedBg}`);
-            
-            // Применяем карту
             document.getElementById('main-card').className = `bank-card ${savedCard}`;
             
-            // Подсвечиваем нужные свотчи в настройках
             setTimeout(() => {
                 const bgSwatches = document.querySelectorAll('.color-palette:first-of-type .color-swatch');
                 const bgIndex = ['default', 'dark', 'sunset', 'ocean', 'matrix'].indexOf(savedBg);
@@ -322,6 +361,9 @@
                 const cardIndex = ['card-glass', 'card-dark', 'card-gold'].indexOf(savedCard);
                 if (cardIndex !== -1 && cardSwatches[cardIndex]) cardSwatches[cardIndex].classList.add('active');
             }, 100);
+            
+            // Запускаем проверку обучения
+            checkTutorial();
         };
 
         // --- ОСТАЛЬНАЯ ЛОГИКА ---
