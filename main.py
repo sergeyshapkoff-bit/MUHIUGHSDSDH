@@ -14,31 +14,36 @@ app.add_middleware(
 )
 
 def get_db():
+    # Создаем подключение к базе данных
     conn = sqlite3.connect("game.db")
     return conn
 
-# Модель данных для покупки
 class BuyRequest(BaseModel):
     user_id: int
+    user_name: str
     apartment_name: str
     price: int
     income: int
 
 @app.get("/api/balance/{user_id}")
-def get_balance(user_id: int):
+def get_balance(user_id: int, name: str = "Игрок"):
     conn = get_db()
     cursor = conn.cursor()
-    # Создаем таблицу пользователей (добавили колонку apartments)
-    cursor.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, amount INTEGER, apartments TEXT DEFAULT '[]')")
+    # Создаем таблицу, если её нет. Добавили колонку name (имя игрока)
+    cursor.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, amount INTEGER, apartments TEXT DEFAULT '[]')")
     
     cursor.execute("SELECT amount, apartments FROM users WHERE id = ?", (user_id,))
     row = cursor.fetchone()
     
     if not row:
-        # Даем новому игроку 100 000 евро на старт, чтобы он мог купить первую квартиру
-        cursor.execute("INSERT INTO users (id, amount, apartments) VALUES (?, ?, ?)", (user_id, 100000, '[]'))
+        # Если игрок зашел впервые, даем 100 000 €
+        cursor.execute("INSERT INTO users (id, name, amount, apartments) VALUES (?, ?, ?, ?)", (user_id, name, 100000, '[]'))
         conn.commit()
         return {"balance": 100000, "apartments": []}
+        
+    # Обновляем имя на случай, если игрок сменил его в Telegram
+    cursor.execute("UPDATE users SET name = ? WHERE id = ?", (name, user_id))
+    conn.commit()
         
     return {"balance": row[0], "apartments": json.loads(row[1])}
 
@@ -56,11 +61,11 @@ def buy_apartment(req: BuyRequest):
     current_balance = row[0]
     user_apartments = json.loads(row[1])
     
-    # Проверяем, хватает ли денег
+    # Проверяем баланс
     if current_balance < req.price:
         return {"status": "error", "message": "Недостаточно средств!"}
         
-    # Списываем деньги и добавляем квартиру
+    # Списываем деньги, добавляем квартиру
     new_balance = current_balance - req.price
     user_apartments.append({"name": req.apartment_name, "income": req.income})
     
@@ -68,3 +73,13 @@ def buy_apartment(req: BuyRequest):
     conn.commit()
     
     return {"status": "ok", "message": "Успешно куплено!", "new_balance": new_balance, "apartments": user_apartments}
+
+@app.get("/api/leaderboard")
+def get_leaderboard():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, amount INTEGER, apartments TEXT DEFAULT '[]')")
+    # Берем топ-5 игроков по балансу
+    cursor.execute("SELECT name, amount FROM users ORDER BY amount DESC LIMIT 5")
+    rows = cursor.fetchall()
+    return {"leaders": [{"name": r[0], "balance": r[1]} for r in rows]}
