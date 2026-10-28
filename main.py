@@ -18,6 +18,7 @@ app.add_middleware(
 
 DATABASE_URL = "postgresql://postgres.zmfepxqnxcvkvdjonzhp:p0LwFeRg9NJ7Cusj@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require"
 MAIN_ADMIN_ID = 5634302903 
+TOKEN_RATE = 1000 # 1 тыковка = 1000 евро
 
 def get_db():
     return psycopg2.connect(DATABASE_URL)
@@ -34,13 +35,18 @@ def init_db():
                 apartments jsonb default '[]'::jsonb,
                 last_payout bigint,
                 card_number text,
-                card_cvc text
+                card_cvc text,
+                tokens bigint default 0
             );
         """)
-        try:
-            cursor.execute("ALTER TABLE users ADD COLUMN card_number TEXT;")
-            cursor.execute("ALTER TABLE users ADD COLUMN card_cvc TEXT;")
+        # Добавляем колонки, если таблица уже есть
+        try: cursor.execute("ALTER TABLE users ADD COLUMN card_number TEXT;")
         except: pass
+        try: cursor.execute("ALTER TABLE users ADD COLUMN card_cvc TEXT;")
+        except: pass
+        try: cursor.execute("ALTER TABLE users ADD COLUMN tokens bigint default 0;")
+        except: pass
+        
         conn.commit()
         cursor.close()
         conn.close()
@@ -49,6 +55,7 @@ def init_db():
 
 init_db()
 
+# Модели данных
 class BuyRequest(BaseModel):
     user_id: int
     user_name: str
@@ -71,6 +78,10 @@ class AddMoneyRequest(BaseModel):
     admin_id: int
     target_id: int
     amount: int
+
+class TokenRequest(BaseModel):
+    user_id: int
+    amount: int # Сколько тыковок купить/продать
 
 def calculate_income(amount, apartments, last_payout):
     now = int(time.time())
@@ -99,16 +110,17 @@ def get_balance(user_id: int, name: str = "Игрок"):
             cvc = str(random.randint(100, 999))
             
             cursor.execute(
-                "INSERT INTO users (id, name, amount, apartments, last_payout, card_number, card_cvc) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-                (user_id, name, 100000, json.dumps([]), now, card_formatted, cvc)
+                "INSERT INTO users (id, name, amount, apartments, last_payout, card_number, card_cvc, tokens) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", 
+                (user_id, name, 100000, json.dumps([]), now, card_formatted, cvc, 0)
             )
             conn.commit()
             cursor.close(); conn.close()
-            return {"balance": 100000, "apartments": [], "earned": 0, "card_number": card_formatted, "card_cvc": cvc}
+            return {"balance": 100000, "apartments": [], "earned": 0, "card_number": card_formatted, "card_cvc": cvc, "tokens": 0}
             
         current_balance = int(row['amount'])
         user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
         last_payout = int(row['last_payout']) if row['last_payout'] else now
+        tokens = int(row['tokens']) if row['tokens'] else 0
         
         new_balance, new_last_payout, earned = calculate_income(current_balance, user_apartments, last_payout)
         
@@ -116,10 +128,50 @@ def get_balance(user_id: int, name: str = "Игрок"):
         conn.commit()
         cursor.close(); conn.close()
             
-        return {"balance": new_balance, "apartments": user_apartments, "earned": earned, "card_number": row['card_number'], "card_cvc": row['card_cvc']}
+        return {"balance": new_balance, "apartments": user_apartments, "earned": earned, "card_number": row['card_number'], "card_cvc": row['card_cvc'], "tokens": tokens}
     except Exception as e:
         return {"balance": 0, "error": str(e)}
 
+# --- БИРЖА ТЫКОВОК ---
+@app.post("/api/buy_tokens")
+def buy_tokens(req: TokenRequest):
+    try:
+        conn = get_db()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT amount FROM users WHERE id = %s", (req.user_id,))
+        row = cursor.fetchone()
+        
+        cost = req.amount * TOKEN_RATE
+        if int(row['amount']) < cost:
+            return {"status": "error", "message": "Недостаточно денег!"}
+            
+        cursor.execute("UPDATE users SET amount = amount - %s, tokens = tokens + %s WHERE id = %s", (cost, req.amount, req.user_id))
+        conn.commit()
+        cursor.close(); conn.close()
+        return {"status": "ok", "message": f"Куплено {req.amount} 🎃"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/sell_tokens")
+def sell_tokens(req: TokenRequest):
+    try:
+        conn = get_db()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT tokens FROM users WHERE id = %s", (req.user_id,))
+        row = cursor.fetchone()
+        
+        if int(row['tokens']) < req.amount:
+            return {"status": "error", "message": "Недостаточно тыковок!"}
+            
+        profit = req.amount * TOKEN_RATE
+        cursor.execute("UPDATE users SET amount = amount + %s, tokens = tokens - %s WHERE id = %s", (profit, req.amount, req.user_id))
+        conn.commit()
+        cursor.close(); conn.close()
+        return {"status": "ok", "message": f"Продано {req.amount} 🎃"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+# Остальные функции без изменений...
 @app.post("/api/buy")
 def buy_apartment(req: BuyRequest):
     try:
@@ -128,8 +180,6 @@ def buy_apartment(req: BuyRequest):
         cursor.execute("SELECT amount, apartments, last_payout FROM users WHERE id = %s", (req.user_id,))
         row = cursor.fetchone()
         
-        if not row: return {"status": "error", "message": "Игрок не найден"}
-            
         current_balance = int(row['amount'])
         user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
         last_payout = int(row['last_payout']) if row['last_payout'] else int(time.time())
@@ -157,8 +207,6 @@ def sell_apartment(req: SellRequest):
         cursor.execute("SELECT amount, apartments, last_payout FROM users WHERE id = %s", (req.user_id,))
         row = cursor.fetchone()
         
-        if not row: return {"status": "error", "message": "Игрок не найден"}
-            
         current_balance = int(row['amount'])
         user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
         last_payout = int(row['last_payout']) if row['last_payout'] else int(time.time())
@@ -166,7 +214,6 @@ def sell_apartment(req: SellRequest):
         if req.apartment_index < 0 or req.apartment_index >= len(user_apartments):
             return {"status": "error", "message": "Квартира не найдена"}
             
-        # Возвращаем 70% от цены
         sell_price = int(req.price * 0.7)
         current_balance, last_payout, _ = calculate_income(current_balance, user_apartments, last_payout)
         
@@ -183,40 +230,28 @@ def sell_apartment(req: SellRequest):
 @app.post("/api/transfer")
 def transfer_money(req: TransferRequest):
     try:
-        if req.amount <= 0:
-            return {"status": "error", "message": "Сумма должна быть больше 0"}
-            
-        # Очищаем номер карты от пробелов (если игрок ввел с пробелами)
+        if req.amount <= 0: return {"status": "error", "message": "Сумма должна быть больше 0"}
         clean_card = req.card_number.replace(" ", "")
-            
         conn = get_db()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Проверяем отправителя (того, кто нажал кнопку)
         cursor.execute("SELECT amount FROM users WHERE id = %s", (req.sender_id,))
         sender = cursor.fetchone()
-        if not sender or int(sender['amount']) < req.amount:
-            return {"status": "error", "message": "Недостаточно средств!"}
+        if not sender or int(sender['amount']) < req.amount: return {"status": "error", "message": "Недостаточно средств!"}
             
-        # Ищем получателя по НОМЕРУ КАРТЫ и CVC
         cursor.execute("SELECT id, name FROM users WHERE card_number = %s AND card_cvc = %s", (clean_card, req.card_cvc))
         receiver = cursor.fetchone()
-        
-        if not receiver:
-            return {"status": "error", "message": "Игрок с такой картой и CVC не найден!"}
+        if not receiver: return {"status": "error", "message": "Игрок с такой картой не найден!"}
+        if receiver['id'] == req.sender_id: return {"status": "error", "message": "Нельзя перевести на свою карту!"}
             
-        if receiver['id'] == req.sender_id:
-            return {"status": "error", "message": "Нельзя перевести деньги на свою же карту!"}
-            
-        # Переводим
         cursor.execute("UPDATE users SET amount = amount - %s WHERE id = %s", (req.amount, req.sender_id))
         cursor.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, receiver['id']))
         conn.commit()
         cursor.close(); conn.close()
-        
-        return {"status": "ok", "message": f"Успешно переведено {req.amount} € игроку {receiver['name']}"}
+        return {"status": "ok", "message": f"Переведено {req.amount} € игроку {receiver['name']}"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
 @app.get("/api/leaderboard")
 def get_leaderboard():
     try:
