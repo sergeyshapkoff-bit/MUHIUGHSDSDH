@@ -16,7 +16,7 @@ app.add_middleware(
 )
 
 # ВСТАВЬ СЮДА СВОЮ ССЫЛКУ ИЗ SUPABASE (замени ТВОЙ_ПАРОЛЬ на свой пароль)
-DATABASE_URL = "postgresql://postgres:[7bwdzJgjEfureY1w ]@db.zmfepxqnxcvkvdjonzhp.supabase.co:5432/postgres"
+DATABASE_URL = "postgresql://postgres:[1atP7cKaZFJInn5q]@db.zmfepxqnxcvkvdjonzhp.supabase.co:5432/postgres"
 
 MAIN_ADMIN_ID = 5634302903 
 
