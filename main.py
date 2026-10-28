@@ -19,15 +19,19 @@ app.add_middleware(
 DATABASE_URL = "postgresql://postgres.zmfepxqnxcvkvdjonzhp:p0LwFeRg9NJ7Cusj@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require"
 MAIN_ADMIN_ID = 5634302903 
 
-# Курсы токенов
-TOKEN_RATES = {
-    "gold": 500,
-    "diamonds": 5000,
-    "crypto": 50000
-}
-
 def get_db():
     return psycopg2.connect(DATABASE_URL)
+
+# --- ДИНАМИЧЕСКИЙ КУРС ТОКЕНОВ (МЕНЯЕТСЯ КАЖДЫЙ ДЕНЬ) ---
+def get_current_rates():
+    day = int(time.time()) // 86400 # Номер дня
+    rng = random.Random(day) # Генератор случайных чисел на основе дня
+    
+    return {
+        "gold": rng.randint(400, 600),          # Золото: 400 - 600 €
+        "diamonds": rng.randint(4000, 6000),    # Алмазы: 4000 - 6000 €
+        "crypto": rng.randint(35000, 65000)     # Крипта: 35000 - 65000 €
+    }
 
 def init_db():
     try:
@@ -47,20 +51,16 @@ def init_db():
                 crypto bigint default 0
             );
         """)
-        # Миграция для старых баз
-        try: cursor.execute("ALTER TABLE users ADD COLUMN card_number TEXT;")
-        except: pass
-        try: cursor.execute("ALTER TABLE users ADD COLUMN card_cvc TEXT;")
-        except: pass
-        try: cursor.execute("ALTER TABLE users ADD COLUMN gold bigint default 0;")
-        except: pass
-        try: cursor.execute("ALTER TABLE users ADD COLUMN diamonds bigint default 0;")
-        except: pass
-        try: cursor.execute("ALTER TABLE users ADD COLUMN crypto bigint default 0;")
-        except: pass
+        # Безопасное добавление колонок, если база была создана ранее
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS card_number TEXT;")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS card_cvc TEXT;")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS gold bigint DEFAULT 0;")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS diamonds bigint DEFAULT 0;")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS crypto bigint DEFAULT 0;")
         
         conn.commit()
         cursor.close(); conn.close()
+        print("База данных успешно инициализирована.")
     except Exception as e:
         print("Ошибка инициализации БД:", e)
 
@@ -91,9 +91,9 @@ class AddMoneyRequest(BaseModel):
 
 class TokenRequest(BaseModel):
     user_id: int
-    token_type: str # "gold", "diamonds" или "crypto"
+    token_type: str
     amount: int
-    action: str # "buy" или "sell"
+    action: str
 
 def calculate_income(amount, apartments, last_payout):
     now = int(time.time())
@@ -106,6 +106,10 @@ def calculate_income(amount, apartments, last_payout):
         last_payout += hours_passed * 3600
         return amount, last_payout, earned
     return amount, last_payout, 0
+
+@app.get("/api/token_rates")
+def get_rates():
+    return get_current_rates()
 
 @app.get("/api/balance/{user_id}")
 def get_balance(user_id: int, name: str = "Игрок"):
@@ -147,13 +151,16 @@ def get_balance(user_id: int, name: str = "Игрок"):
     except Exception as e:
         return {"balance": 0, "error": str(e)}
 
-# --- БИРЖА ТОКЕНОВ ---
 @app.post("/api/trade_token")
 def trade_token(req: TokenRequest):
-    if req.token_type not in TOKEN_RATES:
+    rates = get_current_rates()
+    if req.token_type not in rates:
         return {"status": "error", "message": "Неизвестный токен"}
     
-    rate = TOKEN_RATES[req.token_type]
+    if req.amount <= 0 or req.amount > 1000000:
+        return {"status": "error", "message": "Неверное количество токенов"}
+        
+    rate = rates[req.token_type]
     cost = req.amount * rate
     
     try:
@@ -167,14 +174,12 @@ def trade_token(req: TokenRequest):
         if req.action == "buy":
             if int(row['amount']) < cost:
                 return {"status": "error", "message": "Недостаточно денег!"}
-            # Списываем евро, добавляем токены
-            cursor.execute(f"UPDATE users SET amount = amount - %s, {req.token_type} = {req.token_type} + %s WHERE id = %s", (cost, req.amount, req.user_id))
+            cursor.execute(f"UPDATE users SET amount = amount - %s, {req.token_type} = COALESCE({req.token_type}, 0) + %s WHERE id = %s", (cost, req.amount, req.user_id))
         elif req.action == "sell":
             current_token_bal = int(row.get(req.token_type) or 0)
             if current_token_bal < req.amount:
                 return {"status": "error", "message": "Недостаточно токенов!"}
-            # Добавляем евро, списываем токены
-            cursor.execute(f"UPDATE users SET amount = amount + %s, {req.token_type} = {req.token_type} - %s WHERE id = %s", (cost, req.amount, req.user_id))
+            cursor.execute(f"UPDATE users SET amount = amount + %s, {req.token_type} = COALESCE({req.token_type}, 0) - %s WHERE id = %s", (cost, req.amount, req.user_id))
         else:
             return {"status": "error", "message": "Неверное действие"}
             
@@ -184,7 +189,6 @@ def trade_token(req: TokenRequest):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-# --- ОСТАЛЬНОЕ ---
 @app.post("/api/buy")
 def buy_apartment(req: BuyRequest):
     try:
