@@ -442,6 +442,7 @@
             const card = document.getElementById('transfer-card').value;
             const cvc = document.getElementById('transfer-cvc').value;
             const amt = parseInt(document.getElementById('transfer-amount').value);
+            
             if (card.length < 19 || cvc.length < 3 || isNaN(amt) || amt <= 0) return tg.showAlert('❌ Заполните поля верно');
             closeModal('transfer-modal');
             try {
