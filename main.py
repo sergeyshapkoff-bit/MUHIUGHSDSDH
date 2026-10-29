@@ -22,26 +22,26 @@ MAIN_ADMIN_ID = 5634302903
 def get_db():
     return psycopg2.connect(DATABASE_URL)
 
-# --- ДИНАМИЧЕСКИЙ КУРС ТОКЕНОВ (МЕНЯЕТСЯ КАЖДЫЙ ДЕНЬ) ---
+# --- ДИНАМИЧЕСКИЙ КУРС ТОКЕНОВ ---
 def get_current_rates():
-    day = int(time.time()) // 86400 # Номер дня
-    rng = random.Random(day) # Генератор случайных чисел на основе дня
-    
+    day = int(time.time()) // 86400
+    rng = random.Random(day)
     return {
-        "gold": rng.randint(400, 600),          # Золото: 400 - 600 €
-        "diamonds": rng.randint(4000, 6000),    # Алмазы: 4000 - 6000 €
-        "crypto": rng.randint(35000, 65000)     # Крипта: 35000 - 65000 €
+        "gold": rng.randint(400, 600),
+        "diamonds": rng.randint(4000, 6000),
+        "crypto": rng.randint(35000, 65000)
     }
 
 def init_db():
     try:
         conn = get_db()
         cursor = conn.cursor()
+        # ВОТ ЗДЕСЬ МЫ УКАЗАЛИ 140000
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id bigint primary key,
                 name text,
-                amount bigint default 100000,
+                amount bigint default 140000, 
                 apartments jsonb default '[]'::jsonb,
                 last_payout bigint,
                 card_number text,
@@ -51,7 +51,6 @@ def init_db():
                 crypto bigint default 0
             );
         """)
-        # Безопасное добавление колонок, если база была создана ранее
         cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS card_number TEXT;")
         cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS card_cvc TEXT;")
         cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS gold bigint DEFAULT 0;")
@@ -125,13 +124,14 @@ def get_balance(user_id: int, name: str = "Игрок"):
             card_formatted = " ".join([card_num[i:i+4] for i in range(0, 16, 4)])
             cvc = str(random.randint(100, 999))
             
+            # ВОТ ЗДЕСЬ МЫ ВЫДАЕМ 140000 НОВОМУ ИГРОКУ
             cursor.execute(
                 "INSERT INTO users (id, name, amount, apartments, last_payout, card_number, card_cvc) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-                (user_id, name, 100000, json.dumps([]), now, card_formatted, cvc)
+                (user_id, name, 140000, json.dumps([]), now, card_formatted, cvc)
             )
             conn.commit()
             cursor.close(); conn.close()
-            return {"balance": 100000, "apartments": [], "earned": 0, "card_number": card_formatted, "card_cvc": cvc, "gold": 0, "diamonds": 0, "crypto": 0}
+            return {"balance": 140000, "apartments": [], "earned": 0, "card_number": card_formatted, "card_cvc": cvc, "gold": 0, "diamonds": 0, "crypto": 0}
             
         current_balance = int(row['amount'])
         user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
@@ -248,34 +248,25 @@ def sell_apartment(req: SellRequest):
 def transfer_money(req: TransferRequest):
     try:
         if req.amount <= 0: return {"status": "error", "message": "Сумма должна быть больше 0"}
-        
-        # Очищаем номер карты от пробелов
         clean_card = req.card_number.replace(" ", "")
-        
         conn = get_db()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Проверяем отправителя
         cursor.execute("SELECT amount FROM users WHERE id = %s", (req.sender_id,))
         sender = cursor.fetchone()
         if not sender or int(sender['amount']) < req.amount: 
             return {"status": "error", "message": "Недостаточно средств!"}
             
-        # Ищем получателя. Используем REPLACE, чтобы игнорировать пробелы в базе!
         cursor.execute("SELECT id, name FROM users WHERE REPLACE(card_number, ' ', '') = %s AND card_cvc = %s", (clean_card, req.card_cvc))
         receiver = cursor.fetchone()
         
-        if not receiver: 
-            return {"status": "error", "message": "Игрок с такой картой не найден!"}
-        if receiver['id'] == req.sender_id: 
-            return {"status": "error", "message": "Нельзя перевести на свою карту!"}
+        if not receiver: return {"status": "error", "message": "Игрок с такой картой не найден!"}
+        if receiver['id'] == req.sender_id: return {"status": "error", "message": "Нельзя перевести на свою карту!"}
             
-        # Переводим
         cursor.execute("UPDATE users SET amount = amount - %s WHERE id = %s", (req.amount, req.sender_id))
         cursor.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, receiver['id']))
         conn.commit()
         cursor.close(); conn.close()
-        
         return {"status": "ok", "message": f"Успешно переведено {req.amount} € игроку {receiver['name']}"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
