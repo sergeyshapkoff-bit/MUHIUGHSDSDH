@@ -248,24 +248,35 @@ def sell_apartment(req: SellRequest):
 def transfer_money(req: TransferRequest):
     try:
         if req.amount <= 0: return {"status": "error", "message": "Сумма должна быть больше 0"}
+        
+        # Очищаем номер карты от пробелов
         clean_card = req.card_number.replace(" ", "")
+        
         conn = get_db()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
+        # Проверяем отправителя
         cursor.execute("SELECT amount FROM users WHERE id = %s", (req.sender_id,))
         sender = cursor.fetchone()
-        if not sender or int(sender['amount']) < req.amount: return {"status": "error", "message": "Недостаточно средств!"}
+        if not sender or int(sender['amount']) < req.amount: 
+            return {"status": "error", "message": "Недостаточно средств!"}
             
-        cursor.execute("SELECT id, name FROM users WHERE card_number = %s AND card_cvc = %s", (clean_card, req.card_cvc))
+        # Ищем получателя. Используем REPLACE, чтобы игнорировать пробелы в базе!
+        cursor.execute("SELECT id, name FROM users WHERE REPLACE(card_number, ' ', '') = %s AND card_cvc = %s", (clean_card, req.card_cvc))
         receiver = cursor.fetchone()
-        if not receiver: return {"status": "error", "message": "Игрок с такой картой не найден!"}
-        if receiver['id'] == req.sender_id: return {"status": "error", "message": "Нельзя перевести на свою карту!"}
+        
+        if not receiver: 
+            return {"status": "error", "message": "Игрок с такой картой не найден!"}
+        if receiver['id'] == req.sender_id: 
+            return {"status": "error", "message": "Нельзя перевести на свою карту!"}
             
+        # Переводим
         cursor.execute("UPDATE users SET amount = amount - %s WHERE id = %s", (req.amount, req.sender_id))
         cursor.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, receiver['id']))
         conn.commit()
         cursor.close(); conn.close()
-        return {"status": "ok", "message": f"Переведено {req.amount} € игроку {receiver['name']}"}
+        
+        return {"status": "ok", "message": f"Успешно переведено {req.amount} € игроку {receiver['name']}"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
