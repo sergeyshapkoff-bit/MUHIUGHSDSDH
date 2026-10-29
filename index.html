@@ -113,10 +113,29 @@
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideInRight { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        /* Стили для туториала */
+        #tutorial-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .tut-box { background: linear-gradient(135deg, #232333, #1a1a24); padding: 30px 20px; border-radius: 25px; width: 90%; max-width: 350px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .tut-icon { font-size: 60px; margin-bottom: 15px; }
+        .tut-title { font-size: 22px; font-weight: bold; margin-bottom: 10px; color: #fff; }
+        .tut-text { font-size: 14px; color: #a3c2ff; margin-bottom: 25px; line-height: 1.5; }
+        .tut-btn { width: 100%; padding: 15px; border-radius: 15px; border: none; background: #4ade80; color: #000; font-weight: bold; font-size: 16px; cursor: pointer; transition: background 0.2s; }
     </style>
 </head>
 <body>
     <div id="toast">Скопировано!</div>
+
+    <!-- МОДАЛКА ОБУЧЕНИЯ -->
+    <div id="tutorial-modal">
+        <div class="tut-box">
+            <div class="tut-icon" id="tut-icon">👋</div>
+            <div class="tut-title" id="tut-title">Добро пожаловать!</div>
+            <div class="tut-text" id="tut-text">Придумай свой ник для игры:</div>
+            <input type="text" id="tut-name-input" placeholder="Твой ник" style="display:none; width:100%; padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.1); color:white; font-size:16px; text-align:center; margin-bottom:20px; outline:none;">
+            <button class="tut-btn" onclick="nextTutorialStep()">Далее</button>
+        </div>
+    </div>
 
     <header>
         <div class="user-info">
@@ -233,7 +252,8 @@
         <div class="modal-header"><h2>👑 Админ-панель</h2><button class="close-btn" onclick="closeModal('admin-modal')">✕</button></div>
         <div class="modal-content">
             <p style="font-size: 12px; color: #8892b0; margin-bottom: 15px;">Все игроки и их карты.</p>
-            <div id="admin-users-list"></div>
+            <div id="admin-users-list" style="margin-bottom: 20px;"></div>
+            <button class="btn-danger" style="width:100%; padding: 15px; border-radius: 15px; border: none; font-weight: bold; font-size: 16px;" onclick="resetAllUsers()">⚠️ Сбросить ВСЕХ (140к)</button>
         </div>
     </div>
 
@@ -287,19 +307,73 @@
         const user = tg.initDataUnsafe?.user;
         let userId = user ? user.id : 123456789; 
         
-        // Формируем красивое имя: "Имя (@username)"
         let baseName = user ? (user.first_name + (user.last_name ? " " + user.last_name : "")) : "Гость";
         let userUsername = user && user.username ? "@" + user.username : "";
-        let userName = baseName + (userUsername ? ` (${userUsername})` : "");
-
+        let playerName = baseName + (userUsername ? ` (${userUsername})` : "");
+        
         const MAIN_ADMIN_ID = 5634302903;
         let currentRates = { gold: 500, diamonds: 5000, crypto: 50000 };
 
-        document.getElementById("user-name").innerText = userName;
+        document.getElementById("user-name").innerText = playerName;
         document.getElementById("card-holder").innerText = baseName.toUpperCase();
         document.getElementById("settings-user-id").innerText = userId;
-        document.getElementById("settings-user-name").innerText = userName;
+        document.getElementById("settings-user-name").innerText = playerName;
         if (userId === MAIN_ADMIN_ID) document.getElementById("admin-btn").style.display = "block";
+
+        // --- ТУТОРИАЛ ---
+        const tutData = [
+            { icon: "👋", title: "Привет!", text: "Придумай свой ник для игры:", isNameInput: true },
+            { icon: "💰", title: "Стартовый капитал", text: "Ты получил 140 000 €. Пора строить!", isNameInput: false },
+            { icon: "🏢", title: "Квартиры", text: "Нажми «+» чтобы купить квартиру.", isNameInput: false },
+            { icon: "📈", title: "Биржа", text: "Покупай и продавай токены.", isNameInput: false }
+        ];
+        let tutStep = 0;
+
+        function checkTutorial() {
+            if (!localStorage.getItem('tutorial_done_v2_' + userId)) {
+                document.getElementById('tutorial-modal').style.display = 'flex';
+                showTutorialStep();
+            }
+        }
+
+        function showTutorialStep() {
+            const step = tutData[tutStep];
+            document.getElementById('tut-icon').innerText = step.icon;
+            document.getElementById('tut-title').innerText = step.title;
+            document.getElementById('tut-text').innerText = step.text;
+            const input = document.getElementById('tut-name-input');
+            if (step.isNameInput) {
+                input.style.display = 'block';
+                input.value = playerName;
+            } else {
+                input.style.display = 'none';
+            }
+        }
+
+        async function nextTutorialStep() {
+            if (tutData[tutStep].isNameInput) {
+                const newName = document.getElementById('tut-name-input').value.trim();
+                if (newName) {
+                    playerName = newName;
+                    document.getElementById('user-name').innerText = playerName;
+                    document.getElementById('settings-user-name').innerText = playerName;
+                    // Отправляем на сервер
+                    fetch('https://got.de1.netrun.io/api/set_name', { 
+                        method: 'POST', headers: {'Content-Type': 'application/json'}, 
+                        body: JSON.stringify({ user_id: userId, name: playerName }) 
+                    });
+                }
+            }
+            tutStep++;
+            if (tutStep >= tutData.length) {
+                document.getElementById('tutorial-modal').style.display = 'none';
+                localStorage.setItem('tutorial_done_v2_' + userId, 'true');
+                loadLeaderboard();
+            } else {
+                showTutorialStep();
+            }
+        }
+        // ----------------------------------------------
 
         // --- СВАЙПЫ ---
         let tabs = ['apartments', 'balance', 'trades'];
@@ -339,6 +413,7 @@
                 document.getElementById('card-color').value = cardColor === 'rgba(255, 255, 255, 0.15)' ? '#2a5298' : cardColor;
             }
             loadRates();
+            checkTutorial(); // Запускаем туториал при загрузке
         };
 
         // --- ЗАГРУЗКА КУРСОВ ---
@@ -355,9 +430,15 @@
         // --- ДАННЫЕ ---
         async function loadData() {
             try {
-                const res = await fetch(`https://got.de1.netrun.io/api/balance/${userId}?name=${encodeURIComponent(userName)}`);
+                const res = await fetch(`https://got.de1.netrun.io/api/balance/${userId}?name=${encodeURIComponent(playerName)}`);
                 const data = await res.json();
                 if(data.error) return;
+
+                // Обновляем ник, если он есть в базе
+                if (data.name) {
+                    playerName = data.name;
+                    document.getElementById("user-name").innerText = playerName;
+                }
 
                 let fb = data.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
                 document.getElementById("user-balance").innerHTML = `${fb} <span>€</span>`;
@@ -390,7 +471,6 @@
                 const medals = ["🥇", "🥈", "🥉", "🏅", "🏅"];
                 data.leaders.forEach((player, index) => {
                     let fBalance = player.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                    // Здесь отображается имя, которое мы сохранили (с юзернеймом)
                     list.innerHTML += `<div class="list-item" style="animation-delay: ${index * 0.1}s"><span>${medals[index]} ${player.name}</span><span style="color: #4ade80;">${fBalance} €</span></div>`;
                 });
             } catch (e) { }
@@ -421,6 +501,29 @@
         function openModal(id) { document.getElementById(id).style.display = 'flex'; if (tg.BackButton) tg.BackButton.show(); }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; if (tg.BackButton) tg.BackButton.hide(); }
         if (tg.BackButton) tg.BackButton.onClick(() => { document.querySelectorAll('.modal-overlay, .custom-modal').forEach(m => m.style.display = 'none'); });
+
+        // --- СБРОС ВСЕХ (АДМИН) ---
+        async function resetAllUsers() {
+            const confirm = await tg.showConfirm("⚠️ ВНИМАНИЕ! Это удалит ВСЕХ игроков и сбросит их прогресс. Вы уверены?");
+            if (!confirm) return;
+            try {
+                const res = await fetch('https://got.de1.netrun.io/api/admin/reset_all', { 
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({ admin_id: userId, target_id: 0, amount: 0 }) 
+                }).then(r => r.json());
+                
+                if (res.status === 'ok') {
+                    tg.showAlert(`✅ ${res.message}`);
+                    closeModal('admin-modal');
+                    loadData();
+                    loadLeaderboard();
+                } else {
+                    tg.showAlert(`❌ ${res.message}`);
+                }
+            } catch (e) {
+                tg.showAlert('⚠️ Ошибка сервера');
+            }
+        }
 
         // --- ПРОДАЖА ---
         let sellingIndex = null, sellingPrice = null;
@@ -580,7 +683,7 @@
         async function confirmBuy() {
             closeModal('buy-confirm-modal'); if (!buyingItem) return;
             try {
-                const res = await fetch('https://got.de1.netrun.io/api/buy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: userId, user_name: userName, apartment_name: buyingItem.name, price: buyingItem.price, income: buyingItem.income }) }).then(r => r.json());
+                const res = await fetch('https://got.de1.netrun.io/api/buy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: userId, user_name: playerName, apartment_name: buyingItem.name, price: buyingItem.price, income: buyingItem.income }) }).then(r => r.json());
                 if (res.status === 'ok') { tg.showAlert('✅ Куплено!'); closeModal('shop-modal'); loadData(); loadLeaderboard(); } else { tg.showAlert(`❌ ${res.message}`); }
             } catch (e) { tg.showAlert('⚠️ Ошибка'); }
         }
