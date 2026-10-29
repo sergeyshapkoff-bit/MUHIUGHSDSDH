@@ -1,310 +1,598 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import psycopg2
-from psycopg2.extras import RealDictCursor
-import json
-import time
-import random
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-DATABASE_URL = "postgresql://postgres.zmfepxqnxcvkvdjonzhp:p0LwFeRg9NJ7Cusj@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require"
-MAIN_ADMIN_ID = 5634302903 
-
-def get_db():
-    return psycopg2.connect(DATABASE_URL)
-
-# --- ДИНАМИЧЕСКИЙ КУРС ТОКЕНОВ ---
-def get_current_rates():
-    day = int(time.time()) // 86400
-    rng = random.Random(day)
-    return {
-        "gold": rng.randint(400, 600),
-        "diamonds": rng.randint(4000, 6000),
-        "crypto": rng.randint(35000, 65000)
-    }
-
-def init_db():
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        # ВОТ ЗДЕСЬ МЫ УКАЗАЛИ 140000
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id bigint primary key,
-                name text,
-                amount bigint default 140000, 
-                apartments jsonb default '[]'::jsonb,
-                last_payout bigint,
-                card_number text,
-                card_cvc text,
-                gold bigint default 0,
-                diamonds bigint default 0,
-                crypto bigint default 0
-            );
-        """)
-        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS card_number TEXT;")
-        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS card_cvc TEXT;")
-        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS gold bigint DEFAULT 0;")
-        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS diamonds bigint DEFAULT 0;")
-        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS crypto bigint DEFAULT 0;")
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Стройка</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root { --bg-color-1: #1e3c72; --bg-color-2: #6a11cb; --card-color: rgba(255, 255, 255, 0.15); }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; padding: 0; height: 100vh; background: linear-gradient(135deg, var(--bg-color-1) 0%, var(--bg-color-2) 100%); color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; overflow: hidden; user-select: none; transition: background 0.5s ease; }
         
-        conn.commit()
-        cursor.close(); conn.close()
-        print("База данных успешно инициализирована.")
-    except Exception as e:
-        print("Ошибка инициализации БД:", e)
-
-init_db()
-
-class BuyRequest(BaseModel):
-    user_id: int
-    user_name: str
-    apartment_name: str
-    price: int
-    income: int
-
-class SellRequest(BaseModel):
-    user_id: int
-    apartment_index: int
-    price: int
-
-class TransferRequest(BaseModel):
-    sender_id: int
-    card_number: str
-    card_cvc: str
-    amount: int
-
-class AddMoneyRequest(BaseModel):
-    admin_id: int
-    target_id: int
-    amount: int
-
-class TokenRequest(BaseModel):
-    user_id: int
-    token_type: str
-    amount: int
-    action: str
-
-def calculate_income(amount, apartments, last_payout):
-    now = int(time.time())
-    if not last_payout: last_payout = now
-    hours_passed = (now - last_payout) // 3600
-    if hours_passed > 0:
-        total_income = sum(int(apt.get("income", 0)) for apt in apartments)
-        earned = total_income * hours_passed
-        amount += earned
-        last_payout += hours_passed * 3600
-        return amount, last_payout, earned
-    return amount, last_payout, 0
-
-@app.get("/api/token_rates")
-def get_rates():
-    return get_current_rates()
-
-@app.get("/api/balance/{user_id}")
-def get_balance(user_id: int, name: str = "Игрок"):
-    try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-        row = cursor.fetchone()
-        now = int(time.time())
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px; flex-shrink: 0; animation: fadeInDown 0.5s; }
+        .user-info { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+        .avatar { width: 36px; height: 36px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 16px; }
+        .icons { font-size: 22px; display: flex; gap: 15px; opacity: 0.8; cursor: pointer; transition: transform 0.2s; }
         
-        if not row:
-            card_num = "4" + "".join([str(random.randint(0, 9)) for _ in range(15)])
-            card_formatted = " ".join([card_num[i:i+4] for i in range(0, 16, 4)])
-            cvc = str(random.randint(100, 999))
-            
-            # ВОТ ЗДЕСЬ МЫ ВЫДАЕМ 140000 НОВОМУ ИГРОКУ
-            cursor.execute(
-                "INSERT INTO users (id, name, amount, apartments, last_payout, card_number, card_cvc) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-                (user_id, name, 140000, json.dumps([]), now, card_formatted, cvc)
-            )
-            conn.commit()
-            cursor.close(); conn.close()
-            return {"balance": 140000, "apartments": [], "earned": 0, "card_number": card_formatted, "card_cvc": cvc, "gold": 0, "diamonds": 0, "crypto": 0}
-            
-        current_balance = int(row['amount'])
-        user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
-        last_payout = int(row['last_payout']) if row['last_payout'] else now
+        #swipe-container { flex: 1; position: relative; overflow: hidden; }
+        main { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 0 20px 100px 20px; overflow-y: auto; display: none; transition: transform 0.3s ease, opacity 0.3s ease; }
+        main.active { display: block; animation: fadeIn 0.4s ease-out; }
         
-        new_balance, new_last_payout, earned = calculate_income(current_balance, user_apartments, last_payout)
+        .bank-card { background: var(--card-color); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 20px; padding: 20px; margin-bottom: 25px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); position: relative; transition: all 0.3s ease; }
+        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
+        .card-balance { font-size: 26px; font-weight: bold; }
+        .card-balance span { font-size: 16px; font-weight: normal; opacity: 0.8; }
+        .visa-logo { font-size: 22px; font-weight: 900; font-style: italic; letter-spacing: 2px; }
+        .card-number { font-size: 18px; letter-spacing: 1.5px; margin-bottom: 15px; font-family: monospace; white-space: nowrap; display: flex; align-items: center; cursor: pointer; }
+        .copy-icon { font-size: 12px; margin-left: 8px; opacity: 0.6; }
+        .card-bottom { display: flex; justify-content: space-between; font-size: 13px; opacity: 0.9; }
+        .cvc-block { display: flex; align-items: center; cursor: pointer; }
+
+        .income-badge { position: absolute; top: -15px; right: 20px; background: #4ade80; color: #000; padding: 6px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4); animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: none; z-index: 10; }
         
-        cursor.execute("UPDATE users SET name = %s, amount = %s, last_payout = %s WHERE id = %s", (name, new_balance, new_last_payout, user_id))
-        conn.commit()
-        cursor.close(); conn.close()
-            
-        return {
-            "balance": new_balance, "apartments": user_apartments, "earned": earned, 
-            "card_number": row['card_number'], "card_cvc": row['card_cvc'],
-            "gold": int(row.get('gold') or 0), "diamonds": int(row.get('diamonds') or 0), "crypto": int(row.get('crypto') or 0)
+        .section-title { font-size: 15px; font-weight: bold; margin-bottom: 10px; color: rgba(255,255,255,0.9); text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        .list-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.15); padding: 15px; border-radius: 15px; margin-bottom: 10px; font-size: 14px; backdrop-filter: blur(5px); animation: slideUp 0.3s ease-out backwards; }
+        
+        .btn-action { width: 100%; background: #4ade80; color: #000; border: none; padding: 15px; border-radius: 15px; font-weight: bold; font-size: 16px; margin-top: 10px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3); }
+        .btn-action:active { transform: scale(0.95); }
+
+        .my-apt-card { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(5px); border-radius: 15px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; animation: slideUp 0.3s ease-out backwards; }
+        .my-apt-info { flex: 1; }
+        .my-apt-title { font-weight: bold; font-size: 15px; margin-bottom: 5px; }
+        .my-apt-income { font-size: 13px; color: #4ade80; font-weight: bold; }
+        .sell-btn { background: #f87171; color: white; border: none; padding: 8px 12px; border-radius: 10px; font-weight: bold; font-size: 12px; cursor: pointer; }
+        
+        .fab-container { position: absolute; bottom: 70px; left: 0; width: 100%; display: flex; justify-content: center; pointer-events: none; z-index: 10; }
+        .fab { width: 60px; height: 60px; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; font-weight: 300; box-shadow: 0 4px 15px rgba(106, 17, 203, 0.5); border: 2px solid rgba(255, 255, 255, 0.2); pointer-events: auto; cursor: pointer; }
+        .fab:active { transform: scale(0.85); }
+        
+        nav { display: flex; justify-content: space-between; background: rgba(15, 23, 42, 0.95); padding: 12px 10px calc(12px + env(safe-area-inset-bottom)) 10px; border-top-left-radius: 25px; border-top-right-radius: 25px; backdrop-filter: blur(10px); position: absolute; bottom: 0; width: 100%; z-index: 5; }
+        .nav-btn { background: none; border: none; color: #8892b0; font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; flex: 1; transition: color 0.2s; }
+        .nav-btn span { font-size: 22px; margin-bottom: 2px; transition: transform 0.2s; }
+        .nav-btn.active { color: #ffffff; }
+        .nav-btn.active span { transform: scale(1.2) translateY(-2px); }
+        
+        .exchange-card { background: rgba(0,0,0,0.3); border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); animation: slideUp 0.3s ease-out backwards; }
+        .exchange-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .exchange-title { font-size: 18px; font-weight: bold; }
+        .exchange-rate { font-size: 12px; color: #a3c2ff; }
+        .token-balance { font-size: 28px; font-weight: bold; margin-bottom: 15px; }
+        .exchange-buttons { display: flex; gap: 10px; }
+        .exchange-buttons button { flex: 1; padding: 12px; border-radius: 12px; border: none; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; }
+        .btn-buy { background: #4ade80; color: #000; }
+        .btn-sell { background: #f87171; color: white; }
+        .btn-buy:active, .btn-sell:active { transform: scale(0.95); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a24; z-index: 100; display: none; flex-direction: column; animation: slideInRight 0.3s ease-out; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #232333; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .modal-header h2 { margin: 0; font-size: 20px; }
+        .close-btn { background: rgba(255,255,255,0.1); border: none; color: white; font-size: 20px; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        .modal-content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 50px; }
+
+        .color-inputs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .color-picker-wrapper { display: flex; flex-direction: column; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 15px; flex: 1; }
+        .color-picker-wrapper span { font-size: 11px; color: #a3c2ff; text-align: center; }
+        input[type="color"] { -webkit-appearance: none; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; padding: 0; background: none; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: 3px solid rgba(255,255,255,0.2); border-radius: 50%; }
+
+        .class-group { margin-bottom: 25px; }
+        .class-title { font-size: 16px; font-weight: bold; color: #a3c2ff; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .apt-shop-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.06); padding: 15px; border-radius: 15px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); }
+        .apt-shop-info { display: flex; flex-direction: column; gap: 4px; flex: 1; padding-right: 10px; }
+        .apt-shop-name { font-weight: bold; font-size: 15px; }
+        .apt-shop-desc { font-size: 12px; color: #8892b0; }
+        .apt-shop-income { font-size: 12px; color: #4ade80; font-weight: bold; margin-top: 4px; }
+        .buy-btn { background: #4ade80; color: #000; border: none; padding: 10px 15px; border-radius: 12px; font-weight: bold; font-size: 13px; cursor: pointer; }
+
+        .admin-btn { width: 100%; background: #ffaa00; color: #000; padding: 15px; border-radius: 15px; border: none; font-weight: bold; font-size: 16px; margin-top: 20px; cursor: pointer; }
+        .user-row { display: flex; flex-direction: column; gap: 5px; background: rgba(255,255,255,0.08); padding: 15px; border-radius: 15px; margin-bottom: 10px; border-left: 3px solid #ffaa00; }
+        .user-row-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 5px;}
+        .user-row-name { font-weight: bold; font-size: 15px; color: #fff; }
+        .user-row-balance { font-size: 14px; color: #4ade80; font-weight: bold; }
+        .user-row-details { font-size: 11px; color: #8892b0; display: flex; justify-content: space-between;}
+        .add-money-btn { background: #4ade80; color: #000; border: none; padding: 5px 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; margin-top: 5px; }
+
+        .custom-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .custom-box { background: #232333; padding: 25px; border-radius: 20px; width: 90%; max-width: 350px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .custom-box h3 { margin: 0 0 15px 0; font-size: 20px; color: #fff; }
+        .custom-box p { font-size: 14px; color: #a3c2ff; margin-bottom: 20px; }
+        .custom-box input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white; font-size: 16px; outline: none; text-align: center; }
+        .modal-actions { display: flex; gap: 10px; justify-content: center; }
+        .modal-actions button { padding: 12px 20px; border-radius: 12px; border: none; font-weight: bold; font-size: 15px; cursor: pointer; flex: 1; transition: transform 0.2s; }
+        .btn-cancel { background: rgba(255,255,255,0.1); color: white; }
+        .btn-confirm { background: #4ade80; color: #000; }
+        .btn-danger { background: #f87171; color: white; }
+
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #4ade80; color: #000; padding: 10px 20px; border-radius: 30px; font-weight: bold; font-size: 14px; transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); z-index: 1000; }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div id="toast">Скопировано!</div>
+
+    <header>
+        <div class="user-info">
+            <div class="avatar">👤</div>
+            <span id="user-name">Загрузка...</span>
+        </div>
+        <div class="icons" onclick="openModal('settings-modal')">
+            <span>⚙️</span>
+        </div>
+    </header>
+
+    <div id="swipe-container">
+        <main id="tab-balance" class="active">
+            <div class="bank-card" id="main-card">
+                <div id="income-badge" class="income-badge">+ 0 €</div>
+                <div class="card-top">
+                    <div class="card-balance" id="user-balance">0 <span>€</span></div>
+                    <div class="visa-logo">VISA</div>
+                </div>
+                <div class="card-number" onclick="copyText(document.getElementById('card-number').innerText)">
+                    <span id="card-number">**** **** **** ****</span>
+                    <span class="copy-icon">📋</span>
+                </div>
+                <div class="card-bottom">
+                    <div id="card-holder">NAME</div>
+                    <div class="cvc-block" onclick="copyText(document.getElementById('card-cvc').innerText.replace('CVC: ', ''))">
+                        <span id="card-cvc">CVC: ***</span>
+                        <span class="copy-icon">📋</span>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-action" onclick="openModal('transfer-modal')">💸 Перевести деньги</button>
+            <div class="section-title" style="margin-top:20px;">Топ по балансу</div>
+            <div id="leaderboard-list"></div>
+        </main>
+
+        <main id="tab-apartments">
+            <div class="section-title">Твой общий доход: <span style="color:#4ade80" id="total-income">0 €/ч</span></div>
+            <div id="my-apartments-list"></div>
+        </main>
+
+        <main id="tab-trades">
+            <div class="exchange-card">
+                <div class="exchange-header">
+                    <div class="exchange-title">🪙 Золото</div>
+                    <div class="exchange-rate" id="rate-gold">Курс: ...</div>
+                </div>
+                <div class="token-balance" style="color:#ffd700" id="user-gold">0 🪙</div>
+                <div class="exchange-buttons">
+                    <button class="btn-buy" onclick="openTokenModal('buy', 'gold')">Купить</button>
+                    <button class="btn-sell" onclick="openTokenModal('sell', 'gold')">Продать</button>
+                </div>
+            </div>
+
+            <div class="exchange-card" style="animation-delay: 0.1s">
+                <div class="exchange-header">
+                    <div class="exchange-title">💎 Алмазы</div>
+                    <div class="exchange-rate" id="rate-diamonds">Курс: ...</div>
+                </div>
+                <div class="token-balance" style="color:#00f2fe" id="user-diamonds">0 💎</div>
+                <div class="exchange-buttons">
+                    <button class="btn-buy" onclick="openTokenModal('buy', 'diamonds')">Купить</button>
+                    <button class="btn-sell" onclick="openTokenModal('sell', 'diamonds')">Продать</button>
+                </div>
+            </div>
+
+            <div class="exchange-card" style="animation-delay: 0.2s">
+                <div class="exchange-header">
+                    <div class="exchange-title">🚀 Крипта</div>
+                    <div class="exchange-rate" id="rate-crypto">Курс: ...</div>
+                </div>
+                <div class="token-balance" style="color:#f87171" id="user-crypto">0 🚀</div>
+                <div class="exchange-buttons">
+                    <button class="btn-buy" onclick="openTokenModal('buy', 'crypto')">Купить</button>
+                    <button class="btn-sell" onclick="openTokenModal('sell', 'crypto')">Продать</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="fab-container">
+        <div class="fab" onclick="openShop()">+</div>
+    </div>
+
+    <nav>
+        <button class="nav-btn" onclick="switchTab(0, this)"><span>🏢</span> Квартиры</button>
+        <button class="nav-btn active" onclick="switchTab(1, this)"><span>💰</span> Баланс</button>
+        <button class="nav-btn" onclick="switchTab(2, this)"><span>📈</span> Биржа</button>
+    </nav>
+
+    <div id="shop-modal" class="modal-overlay">
+        <div class="modal-header"><h2>🏢 Магазин</h2><button class="close-btn" onclick="closeModal('shop-modal')">✕</button></div>
+        <div class="modal-content" id="shop-list"></div>
+    </div>
+
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal-header"><h2>⚙️ Настройки</h2><button class="close-btn" onclick="closeModal('settings-modal')">✕</button></div>
+        <div class="modal-content">
+            <div class="list-item"><span>Твой ID:</span><span id="settings-user-id" style="color:#4ade80; font-family:monospace;"></span></div>
+            <div class="list-item"><span>Твое имя:</span><span id="settings-user-name"></span></div>
+            <div class="section-title" style="margin-top:20px;">Полный контроль цветов</div>
+            <div class="color-inputs">
+                <div class="color-picker-wrapper"><span>Фон 1</span><input type="color" id="bg-color-1" oninput="setCustomColor('bg1', this.value)"></div>
+                <div class="color-picker-wrapper"><span>Фон 2</span><input type="color" id="bg-color-2" oninput="setCustomColor('bg2', this.value)"></div>
+                <div class="color-picker-wrapper"><span>Карта</span><input type="color" id="card-color" oninput="setCustomColor('card', this.value)"></div>
+            </div>
+            <button class="btn-confirm" style="width:100%; margin-top:10px; padding: 15px; border-radius: 15px; border: none; font-weight: bold; font-size: 16px;" onclick="closeModal('settings-modal')">ОК</button>
+            <button id="admin-btn" class="admin-btn" style="display:none;" onclick="openAdminPanel()">👑 Панель Админа</button>
+        </div>
+    </div>
+
+    <div id="admin-modal" class="modal-overlay">
+        <div class="modal-header"><h2>👑 Админ-панель</h2><button class="close-btn" onclick="closeModal('admin-modal')">✕</button></div>
+        <div class="modal-content">
+            <p style="font-size: 12px; color: #8892b0; margin-bottom: 15px;">Все игроки и их карты.</p>
+            <div id="admin-users-list"></div>
+        </div>
+    </div>
+
+    <div id="give-money-modal" class="custom-modal">
+        <div class="custom-box">
+            <h3>Выдать деньги</h3>
+            <p id="give-money-target">Игроку...</p>
+            <input type="number" id="give-money-amount" placeholder="Сумма в €" inputmode="numeric">
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('give-money-modal')">Отмена</button><button class="btn-confirm" onclick="confirmAddMoney()">Выдать</button></div>
+        </div>
+    </div>
+
+    <div id="buy-confirm-modal" class="custom-modal">
+        <div class="custom-box">
+            <h3>Подтверждение</h3>
+            <p id="buy-confirm-text">Купить квартиру?</p>
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('buy-confirm-modal')">Отмена</button><button class="btn-confirm" onclick="confirmBuy()">Купить</button></div>
+        </div>
+    </div>
+
+    <div id="sell-confirm-modal" class="custom-modal">
+        <div class="custom-box">
+            <h3>Продажа</h3>
+            <p id="sell-confirm-text">Продать квартиру за 70%?</p>
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('sell-confirm-modal')">Отмена</button><button class="btn-danger" onclick="confirmSell()">Продать</button></div>
+        </div>
+    </div>
+
+    <div id="transfer-modal" class="custom-modal">
+        <div class="custom-box">
+            <h3>💸 Перевод по карте</h3>
+            <input type="tel" id="transfer-card" placeholder="0000 0000 0000 0000" maxlength="19" oninput="formatCardInput(this)">
+            <input type="number" id="transfer-cvc" placeholder="CVC код (3 цифры)" maxlength="3">
+            <input type="number" id="transfer-amount" placeholder="Сумма в €" inputmode="numeric">
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('transfer-modal')">Отмена</button><button class="btn-confirm" onclick="confirmTransfer()">Отправить</button></div>
+        </div>
+    </div>
+
+    <div id="token-modal" class="custom-modal">
+        <div class="custom-box">
+            <h3 id="token-modal-title">Купить 🪙</h3>
+            <input type="number" id="token-amount" placeholder="Количество" inputmode="numeric" oninput="updateTokenCost(this.value)">
+            <p id="token-cost-text" style="color:#4ade80; font-weight:bold; margin-bottom:20px;">Итого: 0 €</p>
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('token-modal')">Отмена</button><button class="btn-confirm" id="token-submit-btn" onclick="confirmTokenTrade()">Купить</button></div>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        const user = tg.initDataUnsafe?.user;
+        let userId = user ? user.id : 123456789; 
+        
+        // Формируем красивое имя: "Имя (@username)"
+        let baseName = user ? (user.first_name + (user.last_name ? " " + user.last_name : "")) : "Гость";
+        let userUsername = user && user.username ? "@" + user.username : "";
+        let userName = baseName + (userUsername ? ` (${userUsername})` : "");
+
+        const MAIN_ADMIN_ID = 5634302903;
+        let currentRates = { gold: 500, diamonds: 5000, crypto: 50000 };
+
+        document.getElementById("user-name").innerText = userName;
+        document.getElementById("card-holder").innerText = baseName.toUpperCase();
+        document.getElementById("settings-user-id").innerText = userId;
+        document.getElementById("settings-user-name").innerText = userName;
+        if (userId === MAIN_ADMIN_ID) document.getElementById("admin-btn").style.display = "block";
+
+        // --- СВАЙПЫ ---
+        let tabs = ['apartments', 'balance', 'trades'];
+        let currentTabIndex = 1;
+        let touchStartX = 0, touchEndX = 0;
+        function updateTabs() {
+            document.querySelectorAll('main').forEach(m => m.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + tabs[currentTabIndex]).classList.add('active');
+            document.querySelectorAll('.nav-btn')[currentTabIndex].classList.add('active');
         }
-    except Exception as e:
-        return {"balance": 0, "error": str(e)}
+        function switchTab(index, btnElement) { currentTabIndex = index; updateTabs(); }
+        document.getElementById('swipe-container').addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, false);
+        document.getElementById('swipe-container').addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; handleSwipe(); }, false);
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            if (touchEndX < touchStartX - swipeThreshold && currentTabIndex < tabs.length - 1) { currentTabIndex++; updateTabs(); }
+            if (touchEndX > touchStartX + swipeThreshold && currentTabIndex > 0) { currentTabIndex--; updateTabs(); }
+        }
 
-@app.post("/api/trade_token")
-def trade_token(req: TokenRequest):
-    rates = get_current_rates()
-    if req.token_type not in rates:
-        return {"status": "error", "message": "Неизвестный токен"}
-    
-    if req.amount <= 0 or req.amount > 1000000:
-        return {"status": "error", "message": "Неверное количество токенов"}
-        
-    rate = rates[req.token_type]
-    cost = req.amount * rate
-    
-    try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM users WHERE id = %s", (req.user_id,))
-        row = cursor.fetchone()
-        
-        if not row: return {"status": "error", "message": "Игрок не найден"}
-        
-        if req.action == "buy":
-            if int(row['amount']) < cost:
-                return {"status": "error", "message": "Недостаточно денег!"}
-            cursor.execute(f"UPDATE users SET amount = amount - %s, {req.token_type} = COALESCE({req.token_type}, 0) + %s WHERE id = %s", (cost, req.amount, req.user_id))
-        elif req.action == "sell":
-            current_token_bal = int(row.get(req.token_type) or 0)
-            if current_token_bal < req.amount:
-                return {"status": "error", "message": "Недостаточно токенов!"}
-            cursor.execute(f"UPDATE users SET amount = amount + %s, {req.token_type} = COALESCE({req.token_type}, 0) - %s WHERE id = %s", (cost, req.amount, req.user_id))
-        else:
-            return {"status": "error", "message": "Неверное действие"}
+        // --- ЦВЕТА ---
+        function setCustomColor(type, color) {
+            if (type === 'bg1') { document.documentElement.style.setProperty('--bg-color-1', color); localStorage.setItem('customBg1', color); }
+            else if (type === 'bg2') { document.documentElement.style.setProperty('--bg-color-2', color); localStorage.setItem('customBg2', color); }
+            else if (type === 'card') { document.getElementById('main-card').style.background = color; localStorage.setItem('customCard', color); }
+        }
+        window.onload = () => {
+            const bg1 = localStorage.getItem('customBg1') || '#1e3c72';
+            const bg2 = localStorage.getItem('customBg2') || '#6a11cb';
+            const cardColor = localStorage.getItem('customCard') || 'rgba(255, 255, 255, 0.15)';
+            document.documentElement.style.setProperty('--bg-color-1', bg1);
+            document.documentElement.style.setProperty('--bg-color-2', bg2);
+            document.getElementById('bg-color-1').value = bg1;
+            document.getElementById('bg-color-2').value = bg2;
+            if (localStorage.getItem('customCard')) {
+                document.getElementById('main-card').style.background = cardColor;
+                document.getElementById('card-color').value = cardColor === 'rgba(255, 255, 255, 0.15)' ? '#2a5298' : cardColor;
+            }
+            loadRates();
+        };
+
+        // --- ЗАГРУЗКА КУРСОВ ---
+        async function loadRates() {
+            try {
+                const res = await fetch('https://got.de1.netrun.io/api/token_rates');
+                currentRates = await res.json();
+                document.getElementById('rate-gold').innerText = `Курс: ${currentRates.gold} €`;
+                document.getElementById('rate-diamonds').innerText = `Курс: ${currentRates.diamonds} €`;
+                document.getElementById('rate-crypto').innerText = `Курс: ${currentRates.crypto} €`;
+            } catch(e) { console.log("Ошибка загрузки курсов:", e); }
+        }
+
+        // --- ДАННЫЕ ---
+        async function loadData() {
+            try {
+                const res = await fetch(`https://got.de1.netrun.io/api/balance/${userId}?name=${encodeURIComponent(userName)}`);
+                const data = await res.json();
+                if(data.error) return;
+
+                let fb = data.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                document.getElementById("user-balance").innerHTML = `${fb} <span>€</span>`;
+                
+                document.getElementById("user-gold").innerText = `${data.gold || 0} 🪙`;
+                document.getElementById("user-diamonds").innerText = `${data.diamonds || 0} 💎`;
+                document.getElementById("user-crypto").innerText = `${data.crypto || 0} 🚀`;
+
+                if (data.card_number) document.getElementById("card-number").innerText = data.card_number;
+                if (data.card_cvc) document.getElementById("card-cvc").innerText = "CVC: " + data.card_cvc;
+
+                if (data.earned && data.earned > 0) {
+                    let badge = document.getElementById("income-badge");
+                    let fEarned = data.earned.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    badge.innerText = `+ ${fEarned} €`;
+                    badge.style.display = 'block';
+                    setTimeout(() => { badge.style.display = 'none'; }, 5000);
+                }
+                renderMyApartments(data.apartments || []);
+            } catch (error) { }
+        }
+        setInterval(loadData, 60000);
+
+        async function loadLeaderboard() {
+            try {
+                const res = await fetch(`https://got.de1.netrun.io/api/leaderboard`);
+                const data = await res.json();
+                const list = document.getElementById('leaderboard-list'); list.innerHTML = '';
+                if (!data.leaders || data.leaders.length === 0) return;
+                const medals = ["🥇", "🥈", "🥉", "🏅", "🏅"];
+                data.leaders.forEach((player, index) => {
+                    let fBalance = player.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    // Здесь отображается имя, которое мы сохранили (с юзернеймом)
+                    list.innerHTML += `<div class="list-item" style="animation-delay: ${index * 0.1}s"><span>${medals[index]} ${player.name}</span><span style="color: #4ade80;">${fBalance} €</span></div>`;
+                });
+            } catch (e) { }
+        }
+
+        function renderMyApartments(apts) {
+            const list = document.getElementById('my-apartments-list'); list.innerHTML = '';
+            if (apts.length === 0) {
+                list.innerHTML = `<div style="text-align:center; color:#8892b0; margin-top:20px; font-size:13px;">Нет квартир. Нажми «+»!</div>`;
+                document.getElementById("total-income").innerText = `0 €/ч`; return;
+            }
+            let totalInc = 0;
+            apts.forEach((apt, index) => {
+                totalInc += apt.income;
+                let fi = apt.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                let bp = apt.buy_price || (apt.income * 100);
+                list.innerHTML += `
+                <div class="my-apt-card" style="animation-delay: ${index * 0.05}s">
+                    <div class="my-apt-info"><div class="my-apt-title">🏠 ${apt.name}</div><div class="my-apt-income">💵 ${fi} €/ч</div></div>
+                    <button class="sell-btn" onclick="prepareSell(${index}, ${bp})">Продать</button>
+                </div>`;
+            });
+            let ft = totalInc.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+            document.getElementById("total-income").innerText = `${ft} €/ч`;
+        }
+
+        // --- МОДАЛКИ ---
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; if (tg.BackButton) tg.BackButton.show(); }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; if (tg.BackButton) tg.BackButton.hide(); }
+        if (tg.BackButton) tg.BackButton.onClick(() => { document.querySelectorAll('.modal-overlay, .custom-modal').forEach(m => m.style.display = 'none'); });
+
+        // --- ПРОДАЖА ---
+        let sellingIndex = null, sellingPrice = null;
+        function prepareSell(index, price) {
+            sellingIndex = index; sellingPrice = price;
+            let ret = Math.floor(price * 0.7);
+            document.getElementById('sell-confirm-text').innerHTML = `Продать за <b>${ret} €</b>?`;
+            openModal('sell-confirm-modal');
+        }
+        async function confirmSell() {
+            closeModal('sell-confirm-modal'); if (sellingIndex === null) return;
+            try {
+                const res = await fetch('https://got.de1.netrun.io/api/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: userId, apartment_index: sellingIndex, price: sellingPrice }) }).then(r => r.json());
+                if (res.status === 'ok') { tg.showAlert(`✅ ${res.message}`); loadData(); loadLeaderboard(); } else { tg.showAlert(`❌ ${res.message}`); }
+            } catch (e) { tg.showAlert('⚠️ Ошибка'); }
+        }
+
+        // --- ПЕРЕВОДЫ ---
+        function formatCardInput(input) {
+            let v = input.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+            input.value = v.match(/.{1,4}/g)?.join(' ') || '';
+        }
+        async function confirmTransfer() {
+            const card = document.getElementById('transfer-card').value;
+            const cvc = document.getElementById('transfer-cvc').value;
+            const amt = parseInt(document.getElementById('transfer-amount').value);
             
-        conn.commit()
-        cursor.close(); conn.close()
-        return {"status": "ok", "message": "Сделка успешно совершена!"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+            if (card.length < 19 || cvc.length < 3 || isNaN(amt) || amt <= 0) return tg.showAlert('❌ Заполните поля верно');
+            closeModal('transfer-modal');
+            try {
+                const res = await fetch('https://got.de1.netrun.io/api/transfer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sender_id: userId, card_number: card, card_cvc: cvc, amount: amt }) }).then(r => r.json());
+                if (res.status === 'ok') { tg.showAlert(`✅ ${res.message}`); loadData(); loadLeaderboard(); } else { tg.showAlert(`❌ ${res.message}`); }
+            } catch (e) { tg.showAlert('⚠️ Ошибка'); }
+        }
 
-@app.post("/api/buy")
-def buy_apartment(req: BuyRequest):
-    try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount, apartments, last_payout FROM users WHERE id = %s", (req.user_id,))
-        row = cursor.fetchone()
-        
-        current_balance = int(row['amount'])
-        user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
-        last_payout = int(row['last_payout']) if row['last_payout'] else int(time.time())
-        
-        current_balance, last_payout, _ = calculate_income(current_balance, user_apartments, last_payout)
-        
-        if current_balance < req.price:
-            return {"status": "error", "message": "Недостаточно средств!"}
-            
-        new_balance = current_balance - req.price
-        user_apartments.append({"name": req.apartment_name, "income": req.income, "buy_price": req.price})
-        
-        cursor.execute("UPDATE users SET amount = %s, apartments = %s, last_payout = %s WHERE id = %s", (new_balance, json.dumps(user_apartments), last_payout, req.user_id))
-        conn.commit()
-        cursor.close(); conn.close()
-        return {"status": "ok", "message": "Успешно куплено!", "new_balance": new_balance}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+        // --- БИРЖА ---
+        let currentToken = 'gold', tradeAction = 'buy';
+        function openTokenModal(action, tokenType) {
+            currentToken = tokenType;
+            tradeAction = action;
+            const names = { gold: '🪙 Золото', diamonds: '💎 Алмазы', crypto: '🚀 Крипта' };
+            document.getElementById('token-modal-title').innerText = `${action === 'buy' ? 'Купить' : 'Продать'} ${names[tokenType]}`;
+            const btn = document.getElementById('token-submit-btn');
+            btn.innerText = action === 'buy' ? 'Купить' : 'Продать';
+            btn.className = action === 'buy' ? 'btn-confirm' : 'btn-danger';
+            document.getElementById('token-amount').value = '';
+            document.getElementById('token-cost-text').innerText = 'Итого: 0 €';
+            openModal('token-modal');
+        }
 
-@app.post("/api/sell")
-def sell_apartment(req: SellRequest):
-    try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount, apartments, last_payout FROM users WHERE id = %s", (req.user_id,))
-        row = cursor.fetchone()
-        
-        current_balance = int(row['amount'])
-        user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
-        last_payout = int(row['last_payout']) if row['last_payout'] else int(time.time())
-        
-        if req.apartment_index < 0 or req.apartment_index >= len(user_apartments):
-            return {"status": "error", "message": "Квартира не найдена"}
-            
-        sell_price = int(req.price * 0.7)
-        current_balance, last_payout, _ = calculate_income(current_balance, user_apartments, last_payout)
-        
-        new_balance = current_balance + sell_price
-        user_apartments.pop(req.apartment_index)
-        
-        cursor.execute("UPDATE users SET amount = %s, apartments = %s, last_payout = %s WHERE id = %s", (new_balance, json.dumps(user_apartments), last_payout, req.user_id))
-        conn.commit()
-        cursor.close(); conn.close()
-        return {"status": "ok", "message": f"Квартира продана за {sell_price} €", "new_balance": new_balance}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+        function updateTokenCost(amount) {
+            let amt = parseInt(amount) || 0;
+            let total = amt * currentRates[currentToken];
+            let txt = total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+            document.getElementById('token-cost-text').innerText = `Итого: ${txt} €`;
+        }
 
-@app.post("/api/transfer")
-def transfer_money(req: TransferRequest):
-    try:
-        if req.amount <= 0: return {"status": "error", "message": "Сумма должна быть больше 0"}
-        clean_card = req.card_number.replace(" ", "")
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        
-        cursor.execute("SELECT amount FROM users WHERE id = %s", (req.sender_id,))
-        sender = cursor.fetchone()
-        if not sender or int(sender['amount']) < req.amount: 
-            return {"status": "error", "message": "Недостаточно средств!"}
-            
-        cursor.execute("SELECT id, name FROM users WHERE REPLACE(card_number, ' ', '') = %s AND card_cvc = %s", (clean_card, req.card_cvc))
-        receiver = cursor.fetchone()
-        
-        if not receiver: return {"status": "error", "message": "Игрок с такой картой не найден!"}
-        if receiver['id'] == req.sender_id: return {"status": "error", "message": "Нельзя перевести на свою карту!"}
-            
-        cursor.execute("UPDATE users SET amount = amount - %s WHERE id = %s", (req.amount, req.sender_id))
-        cursor.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, receiver['id']))
-        conn.commit()
-        cursor.close(); conn.close()
-        return {"status": "ok", "message": f"Успешно переведено {req.amount} € игроку {receiver['name']}"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+        async function confirmTokenTrade() {
+            const amt = parseInt(document.getElementById('token-amount').value);
+            if (isNaN(amt) || amt <= 0) return tg.showAlert('❌ Введите количество');
+            closeModal('token-modal');
+            try {
+                const res = await fetch(`https://got.de1.netrun.io/api/trade_token`, { 
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ user_id: userId, token_type: currentToken, amount: amt, action: tradeAction }) 
+                }).then(r => r.json());
+                if (res.status === 'ok') { tg.showAlert(`✅ ${res.message}`); loadData(); } 
+                else { tg.showAlert(`❌ ${res.message}`); }
+            } catch (e) { tg.showAlert('⚠️ Ошибка сервера'); }
+        }
 
-@app.get("/api/leaderboard")
-def get_leaderboard():
-    try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT name, amount FROM users ORDER BY amount DESC LIMIT 5")
-        rows = cursor.fetchall()
-        cursor.close(); conn.close()
-        return {"leaders": [{"name": r['name'], "balance": int(r['amount'])} for r in rows]}
-    except: return {"leaders": []}
+        // --- АДМИНКА ---
+        async function openAdminPanel() {
+            openModal('admin-modal');
+            const list = document.getElementById('admin-users-list'); list.innerHTML = 'Загрузка...';
+            try {
+                const data = await fetch(`https://got.de1.netrun.io/api/admin/users`).then(r => r.json());
+                list.innerHTML = '';
+                data.users.forEach(u => {
+                    let fBal = u.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    list.innerHTML += `
+                    <div class="user-row">
+                        <div class="user-row-header"><span class="user-row-name">${u.name}</span><span class="user-row-balance">${fBal} €</span></div>
+                        <div class="user-row-details"><span>ID: ${u.id}</span><span>💳 ${u.card || 'Нет'}</span><span>CVC: ${u.cvc || '***'}</span></div>
+                        <button class="add-money-btn" onclick="openGiveMoneyModal(${u.id}, '${u.name}')">+ Выдать</button>
+                    </div>`;
+                });
+            } catch (e) { list.innerHTML = 'Ошибка'; }
+        }
 
-@app.get("/api/admin/users")
-def get_all_users():
-    try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, name, amount, card_number, card_cvc FROM users")
-        rows = cursor.fetchall()
-        cursor.close(); conn.close()
-        return {"users": [{"id": r['id'], "name": r['name'], "balance": int(r['amount']), "card": r['card_number'], "cvc": r['card_cvc']} for r in rows]}
-    except: return {"users": []}
+        let currentTargetId = null, currentTargetName = null;
+        function openGiveMoneyModal(tid, tname) {
+            currentTargetId = tid; currentTargetName = tname;
+            document.getElementById('give-money-target').innerText = `Игроку: ${tname}`;
+            document.getElementById('give-money-amount').value = '';
+            openModal('give-money-modal');
+        }
+        async function confirmAddMoney() {
+            const amt = parseInt(document.getElementById('give-money-amount').value);
+            if (isNaN(amt) || amt <= 0) return tg.showAlert('❌ Неверная сумма');
+            closeModal('give-money-modal');
+            try {
+                const res = await fetch('https://got.de1.netrun.io/api/admin/add_money', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ admin_id: userId, target_id: currentTargetId, amount: amt }) }).then(r => r.json());
+                if (res.status === 'ok') { tg.showAlert(`✅ Выдано ${amt} €`); openAdminPanel(); loadLeaderboard(); if (currentTargetId === userId) loadData(); } else { tg.showAlert(`❌ ${res.message}`); }
+            } catch (e) { tg.showAlert('⚠️ Ошибка'); }
+        }
 
-@app.post("/api/admin/add_money")
-def add_money(req: AddMoneyRequest):
-    if req.admin_id != MAIN_ADMIN_ID: return {"status": "error", "message": "Нет прав!"}
-    try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount FROM users WHERE id = %s", (req.target_id,))
-        row = cursor.fetchone()
-        new_balance = int(row['amount']) + req.amount
-        cursor.execute("UPDATE users SET amount = %s WHERE id = %s", (new_balance, req.target_id))
-        conn.commit()
-        cursor.close(); conn.close()
-        return {"status": "ok", "message": f"Начислено {req.amount} €"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+        // --- МАГАЗИН ---
+        const shopData = [
+            { class: "🏚 Эконом-класс", items: [
+                { name: "Студия «Муравейник»", price: 15000, income: 100, desc: "15 кв.м." },
+                { name: "Хрущёвка", price: 45000, income: 400, desc: "Советский уют." },
+                { name: "Панелька", price: 120000, income: 1200, desc: "Слышно соседей." }
+            ]},
+            { class: "🏙 Комфорт-класс", items: [
+                { name: "Кирпичный дом", price: 350000, income: 4000, desc: "Рядом парк." },
+                { name: "ЖК «Солнечный»", price: 800000, income: 10000, desc: "Новый дом." }
+            ]},
+            { class: "💼 Бизнес-класс", items: [
+                { name: "ЖК «Небоскрёб»", price: 2500000, income: 35000, desc: "Панорамный вид." },
+                { name: "Лофт в центре", price: 5000000, income: 80000, desc: "Кирпичные стены." }
+            ]},
+            { class: "👑 Премиум", items: [
+                { name: "Пентхаус", price: 15000000, income: 300000, desc: "Свой бассейн." },
+                { name: "Остров «Форбс»", price: 100000000, income: 2500000, desc: "Личный остров." }
+            ]}
+        ];
+
+        function openShop() {
+            const list = document.getElementById('shop-list'); list.innerHTML = '';
+            shopData.forEach((group, gIndex) => {
+                let html = `<div class="class-group" style="animation: slideUp 0.3s ease-out backwards; animation-delay: ${gIndex * 0.1}s"><div class="class-title">${group.class}</div>`;
+                group.items.forEach((item, index) => {
+                    let fp = item.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    let fi = item.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    html += `
+                    <div class="apt-shop-item">
+                        <div class="apt-shop-info">
+                            <div class="apt-shop-name">🏠 ${item.name}</div>
+                            <div class="apt-shop-desc">${item.desc}</div>
+                            <div class="apt-shop-income">+ ${fi} €/ч</div>
+                        </div>
+                        <button class="buy-btn" onclick="prepareBuy('${group.class}', ${index})">${fp} €</button>
+                    </div>`;
+                });
+                html += `</div>`; list.innerHTML += html;
+            });
+            openModal('shop-modal');
+        }
+
+        let buyingItem = null;
+        function prepareBuy(gname, idx) {
+            buyingItem = shopData.find(g => g.class === gname).items[idx];
+            document.getElementById('buy-confirm-text').innerHTML = `Купить <b>"${buyingItem.name}"</b> за <b>${buyingItem.price} €</b>?`;
+            openModal('buy-confirm-modal');
+        }
+        async function confirmBuy() {
+            closeModal('buy-confirm-modal'); if (!buyingItem) return;
+            try {
+                const res = await fetch('https://got.de1.netrun.io/api/buy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: userId, user_name: userName, apartment_name: buyingItem.name, price: buyingItem.price, income: buyingItem.income }) }).then(r => r.json());
+                if (res.status === 'ok') { tg.showAlert('✅ Куплено!'); closeModal('shop-modal'); loadData(); loadLeaderboard(); } else { tg.showAlert(`❌ ${res.message}`); }
+            } catch (e) { tg.showAlert('⚠️ Ошибка'); }
+        }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text.trim()).then(() => {
+                const toast = document.getElementById("toast");
+                toast.classList.add("show"); setTimeout(() => toast.classList.remove("show"), 2000);
+            });
+        }
+
+        loadData(); loadLeaderboard();
+    </script>
+</body>
+</html>
