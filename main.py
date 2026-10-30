@@ -1,277 +1,189 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import psycopg2
-from psycopg2.extras import RealDictCursor
 import json
-import time
-import random
+import os
 
-app = FastAPI()
+# Константы
+CLAN_COST = 500000
+SAVE_FILE = "game_data.json"
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# --- КЛАССЫ ДАННЫХ ---
 
-DATABASE_URL = "postgresql://postgres.zmfepxqnxcvkvdjonzhp:p0LwFeRg9NJ7Cusj@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require"
-MAIN_ADMIN_ID = 5634302903 
+class Player:
+    def __init__(self, name, balance=0, clan_name=None):
+        self.name = name
+        self.balance = balance
+        self.clan_name = clan_name
 
-def get_db():
-    return psycopg2.connect(DATABASE_URL)
+    def to_dict(self):
+        return {"name": self.name, "balance": self.balance, "clan_name": self.clan_name}
 
-def get_current_rates():
-    day = int(time.time()) // 86400
-    rng = random.Random(day)
-    return {
-        "gold": rng.randint(400, 600),
-        "diamonds": rng.randint(4000, 6000),
-        "crypto": rng.randint(35000, 65000)
-    }
+    @classmethod
+    def from_dict(cls, data):
+        return cls(data["name"], data["balance"], data["clan_name"])
 
-def init_db():
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id bigint primary key,
-                name text,
-                amount bigint default 140000, 
-                apartments jsonb default '[]'::jsonb,
-                last_payout bigint,
-                card_number text,
-                card_cvc text,
-                gold bigint default 0,
-                diamonds bigint default 0,
-                crypto bigint default 0
-            );
-        """)
-        conn.commit()
-        cursor.close(); conn.close()
-    except Exception as e:
-        print("Ошибка инициализации БД:", e)
+class Clan:
+    def __init__(self, name, leader, is_private, members=None, treasury=0):
+        self.name = name
+        self.leader = leader
+        self.is_private = is_private
+        self.members = members if members else [leader]
+        self.treasury = treasury
 
-init_db()
-
-class BuyRequest(BaseModel):
-    user_id: int
-    user_name: str
-    apartment_name: str
-    price: int
-    income: int
-
-class SellRequest(BaseModel):
-    user_id: int
-    apartment_index: int
-    price: int
-
-class TransferRequest(BaseModel):
-    sender_id: int
-    card_number: str
-    card_cvc: str
-    amount: int
-
-class AddMoneyRequest(BaseModel):
-    admin_id: int
-    target_id: int
-    amount: int
-
-class TokenRequest(BaseModel):
-    user_id: int
-    token_type: str
-    amount: int
-    action: str
-
-class SetNameRequest(BaseModel):
-    user_id: int
-    name: str
-
-def calculate_income(amount, apartments, last_payout):
-    now = int(time.time())
-    if not last_payout: last_payout = now
-    hours_passed = (now - last_payout) // 3600
-    if hours_passed > 0:
-        total_income = sum(int(apt.get("income", 0)) for apt in apartments)
-        earned = total_income * hours_passed
-        amount += earned
-        last_payout += hours_passed * 3600
-        return amount, last_payout, earned
-    return amount, last_payout, 0
-
-@app.get("/api/token_rates")
-def get_rates():
-    return get_current_rates()
-
-@app.post("/api/set_name")
-def set_name(req: SetNameRequest):
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE users SET name = %s WHERE id = %s", (req.name, req.user_id))
-        conn.commit()
-        cursor.close(); conn.close()
-        return {"status": "ok"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-@app.get("/api/balance/{user_id}")
-def get_balance(user_id: int, name: str = "Игрок"):
-    try:
-        conn = get_db()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-        row = cursor.fetchone()
-        now = int(time.time())
-        
-        if not row:
-            card_num = "4" + "".join([str(random.randint(0, 9)) for _ in range(15)])
-            card_formatted = " ".join([card_num[i:i+4] for i in range(0, 16, 4)])
-            cvc = str(random.randint(100, 999))
-            
-            cursor.execute(
-                "INSERT INTO users (id, name, amount, apartments, last_payout, card_number, card_cvc) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-                (user_id, name, 140000, json.dumps([]), now, card_formatted, cvc)
-            )
-            conn.commit()
-            cursor.close(); conn.close()
-            return {"balance": 140000, "apartments": [], "earned": 0, "card_number": card_formatted, "card_cvc": cvc, "gold": 0, "diamonds": 0, "crypto": 0, "name": name}
-            
-        current_balance = int(row['amount'])
-        user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
-        last_payout = int(row['last_payout']) if row['last_payout'] else now
-        
-        new_balance, new_last_payout, earned = calculate_income(current_balance, user_apartments, last_payout)
-        
-        # Имя не перезаписываем автоматически, если оно уже есть (чтобы кастомный ник не сбрасывался)
-        if not row['name'] or row['name'] == "Игрок":
-             cursor.execute("UPDATE users SET name = %s WHERE id = %s", (name, user_id))
-             
-        cursor.execute("UPDATE users SET amount = %s, last_payout = %s WHERE id = %s", (new_balance, new_last_payout, user_id))
-        conn.commit()
-        cursor.close(); conn.close()
-            
+    def to_dict(self):
         return {
-            "balance": new_balance, "apartments": user_apartments, "earned": earned, 
-            "card_number": row['card_number'], "card_cvc": row['card_cvc'],
-            "gold": int(row.get('gold') or 0), "diamonds": int(row.get('diamonds') or 0), "crypto": int(row.get('crypto') or 0),
-            "name": row['name']
+            "name": self.name,
+            "leader": self.leader,
+            "is_private": self.is_private,
+            "members": self.members,
+            "treasury": self.treasury
         }
-    except Exception as e:
-        return {"balance": 0, "error": str(e)}
 
-# --- СБРОС ВСЕХ ---
-@app.post("/api/admin/reset_all")
-def reset_all(req: AddMoneyRequest):
-    if req.admin_id != MAIN_ADMIN_ID: return {"status": "error", "message": "Нет прав!"}
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("DROP TABLE IF EXISTS users;")
-        conn.commit()
-        cursor.close(); conn.close()
-        init_db() # Пересоздаем пустую таблицу
-        return {"status": "ok", "message": "Все игроки удалены, баланс сброшен до 140к!"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    @classmethod
+    def from_dict(cls, data):
+        return cls(data["name"], data["leader"], data["is_private"], data["members"], data["treasury"])
 
-# ... остальные функции (trade_token, buy, sell, transfer, leaderboard) остаются без изменений ...
-@app.post("/api/trade_token")
-def trade_token(req: TokenRequest):
-    rates = get_current_rates()
-    if req.token_type not in rates: return {"status": "error", "message": "Неизвестный токен"}
-    if req.amount <= 0 or req.amount > 1000000: return {"status": "error", "message": "Неверное количество"}
-    rate = rates[req.token_type]; cost = req.amount * rate
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM users WHERE id = %s", (req.user_id,)); row = cursor.fetchone()
-        if not row: return {"status": "error", "message": "Игрок не найден"}
-        if req.action == "buy":
-            if int(row['amount']) < cost: return {"status": "error", "message": "Недостаточно денег!"}
-            cursor.execute(f"UPDATE users SET amount = amount - %s, {req.token_type} = COALESCE({req.token_type}, 0) + %s WHERE id = %s", (cost, req.amount, req.user_id))
-        elif req.action == "sell":
-            if int(row.get(req.token_type) or 0) < req.amount: return {"status": "error", "message": "Недостаточно токенов!"}
-            cursor.execute(f"UPDATE users SET amount = amount + %s, {req.token_type} = COALESCE({req.token_type}, 0) - %s WHERE id = %s", (cost, req.amount, req.user_id))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok", "message": "Сделка успешна!"}
-    except Exception as e: return {"status": "error", "message": str(e)}
+    def get_card(self):
+        privacy = "🔒 Приватный (Private)" if self.is_private else "🌐 Открытый (Public)"
+        members_str = ", ".join(self.members)
+        return (
+            f"\n========== КАРТА КЛАНА ==========\n"
+            f"🏰 Название: {self.name}\n"
+            f"👑 Лидер: {self.leader}\n"
+            f"🔐 Статус: {privacy}\n"
+            f"👥 Участники ({len(self.members)}): {members_str}\n"
+            f"💰 Казна клана: {self.treasury} монет\n"
+            f"================================="
+        )
 
-@app.post("/api/buy")
-def buy_apartment(req: BuyRequest):
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount, apartments, last_payout FROM users WHERE id = %s", (req.user_id,)); row = cursor.fetchone()
-        current_balance = int(row['amount']); user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
-        last_payout = int(row['last_payout']) if row['last_payout'] else int(time.time())
-        current_balance, last_payout, _ = calculate_income(current_balance, user_apartments, last_payout)
-        if current_balance < req.price: return {"status": "error", "message": "Недостаточно средств!"}
-        new_balance = current_balance - req.price
-        user_apartments.append({"name": req.apartment_name, "income": req.income, "buy_price": req.price})
-        cursor.execute("UPDATE users SET amount = %s, apartments = %s, last_payout = %s WHERE id = %s", (new_balance, json.dumps(user_apartments), last_payout, req.user_id))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok", "message": "Куплено!"}
-    except Exception as e: return {"status": "error", "message": str(e)}
+# --- ОСНОВНАЯ ЛОГИКА ИГРЫ ---
 
-@app.post("/api/sell")
-def sell_apartment(req: SellRequest):
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount, apartments, last_payout FROM users WHERE id = %s", (req.user_id,)); row = cursor.fetchone()
-        current_balance = int(row['amount']); user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
-        last_payout = int(row['last_payout']) if row['last_payout'] else int(time.time())
-        if req.apartment_index < 0 or req.apartment_index >= len(user_apartments): return {"status": "error", "message": "Не найдено"}
-        sell_price = int(req.price * 0.7)
-        current_balance, last_payout, _ = calculate_income(current_balance, user_apartments, last_payout)
-        new_balance = current_balance + sell_price; user_apartments.pop(req.apartment_index)
-        cursor.execute("UPDATE users SET amount = %s, apartments = %s, last_payout = %s WHERE id = %s", (new_balance, json.dumps(user_apartments), last_payout, req.user_id))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok", "message": f"Продана за {sell_price} €"}
-    except Exception as e: return {"status": "error", "message": str(e)}
+class Game:
+    def __init__(self):
+        self.players = {}
+        self.clans = {}
+        self.current_player = None
+        self.load_data()
 
-@app.post("/api/transfer")
-def transfer_money(req: TransferRequest):
-    try:
-        clean_card = req.card_number.replace(" ", "")
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount FROM users WHERE id = %s", (req.sender_id,)); sender = cursor.fetchone()
-        if not sender or int(sender['amount']) < req.amount: return {"status": "error", "message": "Недостаточно средств!"}
-        cursor.execute("SELECT id, name FROM users WHERE REPLACE(card_number, ' ', '') = %s AND card_cvc = %s", (clean_card, req.card_cvc)); receiver = cursor.fetchone()
-        if not receiver: return {"status": "error", "message": "Игрок не найден!"}
-        if receiver['id'] == req.sender_id: return {"status": "error", "message": "Это ваша карта!"}
-        cursor.execute("UPDATE users SET amount = amount - %s WHERE id = %s", (req.amount, req.sender_id))
-        cursor.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, receiver['id']))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok", "message": f"Переведено {req.amount} € игроку {receiver['name']}"}
-    except Exception as e: return {"status": "error", "message": str(e)}
+    # Загрузка и сохранение
+    def load_data(self):
+        if os.path.exists(SAVE_FILE):
+            with open(SAVE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                for p_data in data.get("players", {}).values():
+                    player = Player.from_dict(p_data)
+                    self.players[player.name] = player
+                for c_data in data.get("clans", {}).values():
+                    clan = Clan.from_dict(c_data)
+                    self.clans[clan.name] = clan
+        else:
+            # Создаем тестового игрока, если база пуста
+            self.players["admin"] = Player("admin", balance=1000000) # 1 млн для тестов
+            self.save_data()
 
-@app.get("/api/leaderboard")
-def get_leaderboard():
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT name, amount FROM users ORDER BY amount DESC LIMIT 5")
-        rows = cursor.fetchall(); cursor.close(); conn.close()
-        return {"leaders": [{"name": r['name'], "balance": int(r['amount'])} for r in rows]}
-    except: return {"leaders": []}
+    def save_data(self):
+        data = {
+            "players": {p.name: p.to_dict() for p in self.players.values()},
+            "clans": {c.name: c.to_dict() for c in self.clans.values()}
+        }
+        with open(SAVE_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
 
-@app.get("/api/admin/users")
-def get_all_users():
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, name, amount, card_number, card_cvc FROM users")
-        rows = cursor.fetchall(); cursor.close(); conn.close()
-        return {"users": [{"id": r['id'], "name": r['name'], "balance": int(r['amount']), "card": r['card_number'], "cvc": r['card_cvc']} for r in rows]}
-    except: return {"users": []}
+    # Авторизация (для простоты)
+    def login(self):
+        print("\n--- ВХОД В ИГРУ ---")
+        name = input("Введите ваше имя (для теста: admin): ").strip()
+        if name in self.players:
+            self.current_player = self.players[name]
+            print(f"✅ Добро пожаловать, {self.current_player.name}!")
+        else:
+            print("❌ Игрок не найден. Создаем нового игрока с 0 монет.")
+            self.current_player = Player(name, balance=0)
+            self.players[name] = self.current_player
+            self.save_data()
 
-@app.post("/api/admin/add_money")
-def add_money(req: AddMoneyRequest):
-    if req.admin_id != MAIN_ADMIN_ID: return {"status": "error", "message": "Нет прав!"}
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount FROM users WHERE id = %s", (req.target_id,)); row = cursor.fetchone()
-        new_balance = int(row['amount']) + req.amount
-        cursor.execute("UPDATE users SET amount = %s WHERE id = %s", (new_balance, req.target_id))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok", "message": f"Выдано {req.amount} €"}
-    except Exception as e: return {"status": "error", "message": str(e)}
+    # Вкладка "Кланы"
+    def show_clans_tab(self):
+        print("\n--- 👥 ВКЛАДКА КЛАНЫ ---")
+        if not self.clans:
+            print("Пока не создано ни одного клана.")
+            return
+
+        print(f"{'Название':<15} | {'Лидер':<10} | {'Тип':<10} | {'Участники'}")
+        print("-" * 55)
+        for clan in self.clans.values():
+            privacy = "🔒 Private" if clan.is_private else "🌐 Public"
+            print(f"{clan.name:<15} | {clan.leader:<10} | {privacy:<10} | {len(clan.members)}")
+        
+        # Просмотр карты
+        choice = input("\nВведите название клана для просмотра карты (или Enter, чтобы выйти): ").strip()
+        if choice:
+            if choice in self.clans:
+                print(self.clans[choice].get_card())
+            else:
+                print("❌ Клан не найден.")
+
+    # Создание клана
+    def create_clan(self):
+        print("\n--- 🏰 СОЗДАНИЕ КЛАНА ---")
+        
+        if self.current_player.clan_name:
+            print(f"❌ Вы уже состоите в клане '{self.current_player.clan_name}'. Выйдите из него, чтобы создать новый.")
+            return
+
+        if self.current_player.balance < CLAN_COST:
+            print(f"❌ Недостаточно средств! Нужно {CLAN_COST} монет. У вас: {self.current_player.balance}.")
+            return
+
+        clan_name = input("Введите название нового клана: ").strip()
+        if not clan_name:
+            print("❌ Название не может быть пустым.")
+            return
+        if clan_name in self.clans:
+            print("❌ Клан с таким названием уже существует.")
+            return
+
+        print("Выберите приватность клана:")
+        print("1. 🌐 Public (Открытый - любой может вступить)")
+        print("2. 🔒 Private (Приватный - только по приглашению)")
+        privacy_choice = input("Ваш выбор (1/2): ").strip()
+
+        is_private = True if privacy_choice == "2" else False
+
+        # Списание средств и создание
+        self.current_player.balance -= CLAN_COST
+        self.current_player.clan_name = clan_name
+        
+        new_clan = Clan(name=clan_name, leader=self.current_player.name, is_private=is_private)
+        self.clans[clan_name] = new_clan
+        
+        self.save_data()
+        print(f"\n✅ Клан '{clan_name}' успешно создан! Списано {CLAN_COST} монет.")
+        print(f"Остаток на балансе: {self.current_player.balance}")
+
+    # Главное меню
+    def run(self):
+        self.login()
+        
+        while True:
+            print("\n================ ГЛАВНОЕ МЕНЮ ================")
+            print(f"👤 Игрок: {self.current_player.name} | 💰 Баланс: {self.current_player.balance} | 🏰 Клан: {self.current_player.clan_name or 'Нет'}")
+            print("1. 👥 Вкладка 'Кланы'")
+            print("2. 🏰 Создать клан (500,000 монет)")
+            print("3. 🚪 Выход")
+            
+            choice = input("Выберите действие: ").strip()
+            
+            if choice == "1":
+                self.show_clans_tab()
+            elif choice == "2":
+                self.create_clan()
+            elif choice == "3":
+                print("Сохранение данных и выход...")
+                self.save_data()
+                break
+            else:
+                print("❌ Неверный ввод. Попробуйте снова.")
+
+# Запуск игры
+if __name__ == "__main__":
+    game = Game()
+    game.run()
