@@ -93,6 +93,7 @@
         .custom-box { background: #232333; padding: 25px; border-radius: 20px; width: 90%; max-width: 350px; text-align: center; }
         .custom-box input, .custom-box select { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white; font-size: 16px; outline: none; }
         
+        /* Черный текст для выпадающего списка */
         select option { color: black; background-color: white; }
         
         .modal-actions { display: flex; gap: 10px; }
@@ -621,8 +622,29 @@
         async function executeBuy() {
             closeModal('buy-modal');
             if (!buyItemData) return;
-            const res = await fetch(`${SERVER_URL}/api/buy`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, user_name: playerName, apartment_name: buyItemData.name, price: buyItemData.price, income: buyItemData.income}) }).then(r=>r.json());
-            if (res.status === 'ok') { tg.showAlert('✅ Куплено!'); closeModal('shop-modal'); loadData(); } else tg.showAlert(res.message);
+            try {
+                const res = await fetch(`${SERVER_URL}/api/buy`, { 
+                    method:'POST', 
+                    headers:{'Content-Type':'application/json'}, 
+                    body: JSON.stringify({
+                        user_id: userId, 
+                        user_name: playerName, 
+                        apartment_name: buyItemData.name, 
+                        price: buyItemData.price, 
+                        income: buyItemData.income
+                    }) 
+                }).then(r=>r.json());
+                
+                if (res.status === 'ok') { 
+                    tg.showAlert('✅ Успешно куплено!'); 
+                    closeModal('shop-modal'); 
+                    loadData(); 
+                } else { 
+                    tg.showAlert("❌ Ошибка: " + res.message); 
+                }
+            } catch(e) {
+                tg.showAlert("⚠️ Ошибка соединения с сервером");
+            }
         }
 
         async function sellApt(index, price) {
