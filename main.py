@@ -24,7 +24,6 @@ def get_db():
 
 # --- ДИНАМИЧЕСКИЙ КУРС ТОКЕНОВ (С КОЛЕБАНИЯМИ) ---
 def get_current_rates():
-    # Используем час, чтобы курсы менялись каждый час
     hour = int(time.time()) // 3600
     rng = random.Random(hour)
     
@@ -32,12 +31,11 @@ def get_current_rates():
         "silver": 50, "gold": 500, "diamonds": 5000, "bitcoin": 65000, "tesla": 250
     }
     
-    # Добавляем случайные колебания от -5% до +5%
     rates = {}
     for token, base in base_rates.items():
         change = rng.uniform(-0.05, 0.05)
         price = int(base * (1 + change))
-        trend = "up" if change > 0 else "down" # Стрелочка для сайта
+        trend = "up" if change > 0 else "down"
         rates[token] = {"price": price, "trend": trend}
     return rates
 
@@ -45,12 +43,11 @@ def init_db():
     try:
         conn = get_db()
         cursor = conn.cursor()
-        # Таблица обновлена под новые нужды
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id bigint primary key,
                 name text,
-                amount bigint default 220000, 
+                amount bigint default 220000,
                 apartments jsonb default '[]'::jsonb,
                 businesses jsonb default '[]'::jsonb,
                 last_payout bigint,
@@ -60,10 +57,15 @@ def init_db():
                 card_cvc text
             );
         """)
+        # Безопасное добавление колонок для старых баз
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS businesses jsonb DEFAULT '[]'::jsonb;")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_roll bigint DEFAULT 0;")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_businesses jsonb DEFAULT '[]'::jsonb;")
         conn.commit()
         cursor.close(); conn.close()
+        print("БД успешно инициализирована!")
     except Exception as e:
-        print("Ошибка инициализации БД:", e)
+        print("Ошибка БД:", e)
 
 init_db()
 
@@ -104,11 +106,7 @@ class AdminMoneyRequest(BaseModel):
     target_id: int
     amount: int
 
-class AdminTokenRequest(BaseModel):
-    admin_id: int
-    token_type: str
-
-# --- БАЗОВАЯ ЛОГИКА ---
+# --- ЛОГИКА ---
 def calculate_income(amount, apartments, businesses, last_payout):
     now = int(time.time())
     if not last_payout: last_payout = now
@@ -164,8 +162,7 @@ def get_businesses(user_id: int):
         row = cursor.fetchone()
         
         now = int(time.time())
-        if now - int(row['last_roll'] or 0) > 86400: # 24 часа
-            # Роллим 2 бизнеса
+        if now - int(row['last_roll'] or 0) > 86400:
             rolled = random.sample(BUSINESS_POOL, 2)
             cursor.execute("UPDATE users SET last_roll = %s, daily_businesses = %s WHERE id = %s", (now, json.dumps(rolled), user_id))
             conn.commit()
@@ -175,7 +172,9 @@ def get_businesses(user_id: int):
             
         cursor.close(); conn.close()
         return {"businesses": daily}
-    except: return {"businesses": []}
+    except Exception as e: 
+        print("Ошибка бизнесов:", e)
+        return {"businesses": []}
 
 @app.post("/api/buy_business")
 def buy_business(req: BusinessBuyRequest):
@@ -199,7 +198,6 @@ def buy_business(req: BusinessBuyRequest):
         if int(row['amount']) < bus['price']:
             return {"status": "error", "message": "Недостаточно денег!"}
             
-        # Списываем деньги, добавляем бизнес, удаляем из магазина
         new_amount = int(row['amount']) - bus['price']
         owned.append({"name": bus['name'], "income": bus['income'], "rarity": bus['rarity']})
         daily.pop(req.business_index)
@@ -210,7 +208,6 @@ def buy_business(req: BusinessBuyRequest):
         return {"status": "ok", "message": f"Куплен бизнес {bus['name']}!"}
     except Exception as e: return {"status": "error", "message": str(e)}
 
-# --- БАЛАНС И ОПЕРАЦИИ ---
 @app.get("/api/balance/{user_id}")
 def get_balance(user_id: int, name: str = "Игрок"):
     try:
@@ -245,7 +242,9 @@ def get_balance(user_id: int, name: str = "Игрок"):
             "balance": new_balance, "apartments": user_apartments, "businesses": user_businesses, "earned": earned, 
             "card_number": row['card_number'], "card_cvc": row['card_cvc'], "name": row['name']
         }
-    except Exception as e: return {"balance": 0, "error": str(e)}
+    except Exception as e: 
+        print("ОШИБКА БАЛАНСА:", e)
+        return {"balance": 0, "error": str(e)}
 
 @app.post("/api/trade_token")
 def trade_token(req: TokenRequest):
@@ -259,13 +258,10 @@ def trade_token(req: TokenRequest):
             if int(row['amount']) < cost: return {"status": "error", "message": "Мало денег!"}
             cursor.execute(f"UPDATE users SET amount = amount - %s WHERE id = %s", (cost, req.user_id))
         elif req.action == "sell":
-            # Упрощенно: просто добавляем деньги (в реальной игре нужно хранить токены в БД)
             cursor.execute(f"UPDATE users SET amount = amount + %s WHERE id = %s", (cost, req.user_id))
         conn.commit(); cursor.close(); conn.close()
         return {"status": "ok", "message": "Сделка успешна!"}
     except Exception as e: return {"status": "error", "message": str(e)}
-
-# ... (функции buy, sell, transfer оставляем похожими, меняем только валюту на $) ...
 
 @app.post("/api/buy")
 def buy_apartment(req: BuyRequest):
@@ -303,10 +299,8 @@ def transfer_money(req: TransferRequest):
         conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT amount FROM users WHERE id = %s", (req.sender_id,)); sender = cursor.fetchone()
         if not sender or int(sender['amount']) < req.amount: return {"status": "error", "message": "Мало средств"}
-        
         cursor.execute("SELECT id, name FROM users WHERE id = %s", (req.receiver_id,)); receiver = cursor.fetchone()
         if not receiver: return {"status": "error", "message": "Игрок не найден"}
-        
         cursor.execute("UPDATE users SET amount = amount - %s WHERE id = %s", (req.amount, req.sender_id))
         cursor.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, req.receiver_id))
         conn.commit(); cursor.close(); conn.close()
