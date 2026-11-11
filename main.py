@@ -25,15 +25,11 @@ def get_db():
 def is_admin(uid):
     if uid == MAIN_ADMIN_ID: return True
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db(); cursor = conn.cursor()
         cursor.execute("SELECT 1 FROM admins WHERE user_id = %s", (uid,))
-        res = cursor.fetchone()
-        cursor.close()
-        conn.close()
+        res = cursor.fetchone(); cursor.close(); conn.close()
         return bool(res)
-    except:
-        return False
+    except: return False
 
 def get_current_rates():
     hour = int(time.time()) // 3600
@@ -83,12 +79,13 @@ def init_db():
     try:
         conn = get_db()
         cursor = conn.cursor()
+        # Добавили колонку portfolio
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id bigint primary key, name text, amount bigint default 220000,
                 apartments jsonb default '[]'::jsonb, businesses jsonb default '[]'::jsonb,
                 last_payout bigint, last_roll bigint default 0, daily_businesses jsonb default '[]'::jsonb,
-                card_number text, card_cvc text
+                card_number text, card_cvc text, portfolio jsonb default '{}'::jsonb
             );
         """)
         cursor.execute("""
@@ -101,6 +98,10 @@ def init_db():
                 user_id bigint primary key
             );
         """)
+        
+        # Безопасное добавление колонки на случай, если таблица уже была создана
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS portfolio jsonb DEFAULT '{}'::jsonb;")
+        
         conn.commit()
         
         cursor.execute("SELECT COUNT(*) FROM companies")
@@ -190,8 +191,6 @@ def list_admins(admin_id: int):
         admins = [MAIN_ADMIN_ID] + [r[0] for r in rows]
         return {"admins": admins}
     except: return {"admins": [MAIN_ADMIN_ID]}
-
-# ... (Остальные эндпоинты идут без изменений, просто скопированы из предыдущего кода) ...
 
 @app.get("/api/token_rates")
 def get_rates(): return get_current_rates()
@@ -332,11 +331,12 @@ def get_balance(user_id: int, name: str = "Игрок"):
             cvc = str(random.randint(100, 999))
             cursor.execute("INSERT INTO users (id, name, amount, last_payout, card_number, card_cvc) VALUES (%s, %s, %s, %s, %s, %s)", (user_id, name, 220000, now, card_formatted, cvc))
             conn.commit(); cursor.close(); conn.close()
-            return {"balance": 220000, "apartments": [], "businesses": [], "earned": 0, "card_number": card_formatted, "card_cvc": cvc, "name": name}
+            return {"balance": 220000, "apartments": [], "businesses": [], "earned": 0, "card_number": card_formatted, "card_cvc": cvc, "name": name, "portfolio": {}}
             
         current_balance = int(row['amount'])
         user_apartments = safe_json_load(row['apartments'], [])
         user_businesses = safe_json_load(row['businesses'], [])
+        user_portfolio = safe_json_load(row.get('portfolio'), {})
         last_payout = int(row['last_payout']) if row['last_payout'] else now
         
         new_balance, new_last_payout, earned = calculate_income(current_balance, user_apartments, user_businesses, last_payout)
@@ -344,25 +344,42 @@ def get_balance(user_id: int, name: str = "Игрок"):
         cursor.execute("UPDATE users SET amount = %s, last_payout = %s WHERE id = %s", (new_balance, new_last_payout, user_id))
         conn.commit(); cursor.close(); conn.close()
             
-        return {"balance": new_balance, "apartments": user_apartments, "businesses": user_businesses, "earned": earned, "card_number": row['card_number'], "card_cvc": row['card_cvc'], "name": row['name']}
+        return {"balance": new_balance, "apartments": user_apartments, "businesses": user_businesses, "earned": earned, "card_number": row['card_number'], "card_cvc": row['card_cvc'], "name": row['name'], "portfolio": user_portfolio}
     except Exception as e: return {"balance": 0, "error": str(e)}
 
 @app.post("/api/trade_token")
 def trade_token(req: TokenRequest):
     rates = get_current_rates()
-    if req.token_type not in rates: return {"status": "error"}
+    if req.token_type not in rates: return {"status": "error", "message": "Неизвестный токен"}
+    
     cost = req.amount * rates[req.token_type]['price']
+    
     try:
         conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount FROM users WHERE id = %s", (req.user_id,)); row = cursor.fetchone()
+        cursor.execute("SELECT amount, portfolio FROM users WHERE id = %s", (req.user_id,))
+        row = cursor.fetchone()
+        
+        portfolio = safe_json_load(row['portfolio'], {})
+        current_qty = int(portfolio.get(req.token_type, 0))
+        
         if req.action == "buy":
-            if int(row['amount']) < cost: return {"status": "error", "message": "Мало денег!"}
-            cursor.execute(f"UPDATE users SET amount = amount - %s WHERE id = %s", (cost, req.user_id))
+            if int(row['amount']) < cost: 
+                return {"status": "error", "message": "Недостаточно денег!"}
+            
+            portfolio[req.token_type] = current_qty + req.amount
+            cursor.execute("UPDATE users SET amount = amount - %s, portfolio = %s WHERE id = %s", (cost, json.dumps(portfolio), req.user_id))
+            
         elif req.action == "sell":
-            cursor.execute(f"UPDATE users SET amount = amount + %s WHERE id = %s", (cost, req.user_id))
+            if current_qty < req.amount: 
+                return {"status": "error", "message": "Недостаточно токенов!"}
+            
+            portfolio[req.token_type] = current_qty - req.amount
+            cursor.execute("UPDATE users SET amount = amount + %s, portfolio = %s WHERE id = %s", (cost, json.dumps(portfolio), req.user_id))
+            
         conn.commit(); cursor.close(); conn.close()
         return {"status": "ok", "message": "Сделка успешна!"}
-    except: return {"status": "error"}
+    except Exception as e: 
+        return {"status": "error", "message": str(e)}
 
 @app.post("/api/buy")
 def buy_apartment(req: BuyRequest):
