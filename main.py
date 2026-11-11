@@ -1,394 +1,648 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import psycopg2
-from psycopg2.extras import RealDictCursor
-import json
-import time
-import random
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-DATABASE_URL = "postgresql://postgres.zmfepxqnxcvkvdjonzhp:p0LwFeRg9NJ7Cusj@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require"
-MAIN_ADMIN_ID = 5634302903 
-
-def get_db():
-    return psycopg2.connect(DATABASE_URL)
-
-def get_current_rates():
-    hour = int(time.time()) // 3600
-    rng = random.Random(hour)
-    base_rates = {"silver": 50, "gold": 500, "diamonds": 5000, "bitcoin": 65000, "tesla": 250}
-    rates = {}
-    for token, base in base_rates.items():
-        change = rng.uniform(-0.05, 0.05)
-        price = int(base * (1 + change))
-        trend = "up" if change > 0 else "down"
-        rates[token] = {"price": price, "trend": trend}
-    return rates
-
-DEFAULT_COMPANIES = [
-    {"name": "Эконом - Класс", "tiers": [
-        {"name": "«Заречный парк»", "price": 25000, "income": 210},
-        {"name": "«Соколиный край»", "price": 55000, "income": 600},
-        {"name": "Остров «Фарбс»", "price": 100000, "income": 1000}
-    ]},
-    {"name": "Комфорт - Класс", "tiers": [
-        {"name": "«Панелька»", "price": 155000, "income": 1350},
-        {"name": "ЖК «Мапид»", "price": 300000, "income": 3000},
-        {"name": "ЖК «Ясно.Янино»", "price": 660000, "income": 5700},
-        {"name": "«Алма Сити»", "price": 1150000, "income": 12000}
-    ]},
-    {"name": "Премиум - Комфорт", "tiers": [
-        {"name": "ЖК «Солнечный»", "price": 3000000, "income": 32000},
-        {"name": "«Кирпичный Дом»", "price": 8000000, "income": 55500},
-        {"name": "ЖК «Новая Боровая»", "price": 12500000, "income": 140000}
-    ]},
-    {"name": "Бизнес - Класс", "tiers": [
-        {"name": "ЖК «DEPO»", "price": 50000000, "income": 1345600},
-        {"name": "ЖК «Минск-Мир»", "price": 100000000, "income": 3000000}
-    ]},
-    {"name": "Люкс", "tiers": [
-        {"name": "Пентхаус", "price": 125500555, "income": 6000007}
-    ]},
-    {"name": "Бизнес - Люкс", "tiers": [
-        {"name": "ЖК «Малиновка»", "price": 222200000, "income": 8000000},
-        {"name": "ЖК «Небосреб 2.0»", "price": 500000000, "income": 10500000},
-        {"name": "ЖК «Клевер парк»", "price": 1000000000, "income": 25550975},
-        {"name": "ЖК «Последняя Слеза»", "price": 5000000000, "income": 100000000}
-    ]}
-]
-
-def init_db():
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id bigint primary key, name text, amount bigint default 220000,
-                apartments jsonb default '[]'::jsonb, businesses jsonb default '[]'::jsonb,
-                last_payout bigint, last_roll bigint default 0, daily_businesses jsonb default '[]'::jsonb,
-                card_number text, card_cvc text
-            );
-        """)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS companies (
-                id serial primary key, name text, tiers jsonb default '[]'::jsonb
-            );
-        """)
-        conn.commit()
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Стройка</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root { --bg-color-1: #1e3c72; --bg-color-2: #6a11cb; --card-color: rgba(255, 255, 255, 0.15); }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; padding: 0; height: 100vh; background: linear-gradient(135deg, var(--bg-color-1) 0%, var(--bg-color-2) 100%); color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; overflow: hidden; user-select: none; transition: background 0.5s ease; }
         
-        cursor.execute("SELECT COUNT(*) FROM companies")
-        if cursor.fetchone()[0] == 0:
-            for comp in DEFAULT_COMPANIES:
-                cursor.execute("INSERT INTO companies (name, tiers) VALUES (%s, %s)", (comp['name'], json.dumps(comp['tiers'])))
-            conn.commit()
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px; flex-shrink: 0; }
+        .user-info { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+        .avatar { width: 36px; height: 36px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 16px; }
+        .icons { font-size: 22px; display: flex; gap: 15px; opacity: 0.8; cursor: pointer; }
+        
+        #swipe-container { flex: 1; position: relative; overflow: hidden; }
+        main { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 0 20px 100px 20px; overflow-y: auto; display: none; }
+        main.active { display: block; animation: fadeIn 0.4s ease-out; }
+        
+        .bank-card { background: var(--card-color); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 20px; padding: 20px; margin-bottom: 25px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); position: relative; }
+        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
+        .card-balance { font-size: 26px; font-weight: bold; color: #4ade80; }
+        .card-balance span { font-size: 16px; font-weight: normal; opacity: 0.8; color: white;}
+        .visa-logo { font-size: 22px; font-weight: 900; font-style: italic; letter-spacing: 2px; }
+        .card-number { font-size: 18px; letter-spacing: 1.5px; margin-bottom: 15px; font-family: monospace; white-space: nowrap; display: flex; align-items: center; cursor: pointer; }
+        .copy-icon { font-size: 12px; margin-left: 8px; opacity: 0.6; }
+        .card-bottom { display: flex; justify-content: space-between; font-size: 13px; opacity: 0.9; }
+        .cvc-block { display: flex; align-items: center; cursor: pointer; }
+
+        .income-badge { position: absolute; top: -15px; right: 20px; background: #4ade80; color: #000; padding: 6px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4); animation: popIn 0.5s; display: none; z-index: 10; }
+        
+        .section-title { font-size: 15px; font-weight: bold; margin-bottom: 10px; color: rgba(255,255,255,0.9); }
+        .list-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.15); padding: 15px; border-radius: 15px; margin-bottom: 10px; font-size: 14px; backdrop-filter: blur(5px); }
+        
+        .btn-action { width: 100%; background: #4ade80; color: #000; border: none; padding: 15px; border-radius: 15px; font-weight: bold; font-size: 16px; margin-top: 10px; cursor: pointer; }
+        .btn-action:active { transform: scale(0.95); }
+
+        .my-apt-card { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(5px); border-radius: 15px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .my-apt-info { flex: 1; }
+        .my-apt-title { font-weight: bold; font-size: 15px; margin-bottom: 5px; }
+        .my-apt-income { font-size: 13px; color: #4ade80; font-weight: bold; }
+        .sell-btn { background: #f87171; color: white; border: none; padding: 8px 12px; border-radius: 10px; font-weight: bold; font-size: 12px; cursor: pointer; }
+        
+        .fab-container { position: absolute; bottom: 90px; left: 0; width: 100%; display: flex; justify-content: center; pointer-events: none; z-index: 10; }
+        .fab { width: 60px; height: 60px; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; box-shadow: 0 4px 15px rgba(106, 17, 203, 0.5); border: 2px solid rgba(255, 255, 255, 0.2); pointer-events: auto; cursor: pointer; }
+        .fab:active { transform: scale(0.85); }
+        
+        nav { display: flex; justify-content: space-between; background: rgba(15, 23, 42, 0.95); padding: 10px 5px calc(10px + env(safe-area-inset-bottom)) 5px; border-top-left-radius: 25px; border-top-right-radius: 25px; position: absolute; bottom: 0; width: 100%; z-index: 5; }
+        .nav-btn { background: none; border: none; color: #8892b0; font-size: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; flex: 1; }
+        .nav-btn span { font-size: 20px; margin-bottom: 2px; }
+        .nav-btn.active { color: #ffffff; }
+        
+        .exchange-card { background: rgba(0,0,0,0.3); border-radius: 15px; padding: 15px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+        .rate-info { display: flex; flex-direction: column; flex: 1; min-width: 120px; }
+        .rate-title { font-size: 16px; font-weight: bold; }
+        .rate-price { font-size: 12px; color: #a3c2ff; }
+        .exchange-buttons { display: flex; align-items: center; gap: 6px; }
+        .rate-trend { font-size: 16px; font-weight: bold; width: 15px; text-align: center; }
+        .trend-up { color: #4ade80; }
+        .trend-down { color: #f87171; }
+        .exchange-buttons button { padding: 6px 10px; border-radius: 8px; border: none; font-weight: bold; font-size: 11px; cursor: pointer; white-space: nowrap; }
+
+        .bus-card { background: rgba(0,0,0,0.4); border-radius: 15px; padding: 15px; margin-bottom: 15px; border-left: 5px solid #ccc; display: flex; flex-direction: column; gap: 5px; }
+        .bus-Common { border-left-color: #9ca3af; }
+        .bus-Rare { border-left-color: #3b82f6; }
+        .bus-Epic { border-left-color: #a855f7; }
+        .bus-Mythic { border-left-color: #ef4444; }
+        .bus-Legendary { border-left-color: #f59e0b; }
+        .bus-Chromatic { border-left-color: transparent; border-image: linear-gradient(to bottom, #ff0000, #00ff00, #0000ff) 1; }
+        .bus-title { font-size: 16px; font-weight: bold; }
+        .bus-info { font-size: 12px; color: #a3c2ff; }
+        .bus-price { font-size: 14px; color: #4ade80; font-weight: bold; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a24; z-index: 100; display: none; flex-direction: column; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #232333; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .modal-header h2 { margin: 0; font-size: 20px; }
+        .close-btn { background: rgba(255,255,255,0.1); border: none; color: white; font-size: 20px; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; }
+        .modal-content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 50px; }
+
+        .class-group { margin-bottom: 25px; }
+        .class-title { font-size: 15px; font-weight: bold; color: #a3c2ff; margin-bottom: 10px; text-transform: uppercase; }
+        .apt-shop-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.06); padding: 15px; border-radius: 15px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); }
+        .buy-btn { background: #4ade80; color: #000; border: none; padding: 10px 15px; border-radius: 12px; font-weight: bold; font-size: 13px; cursor: pointer; }
+
+        .admin-btn { width: 100%; background: #ffaa00; color: #000; padding: 15px; border-radius: 15px; border: none; font-weight: bold; font-size: 16px; margin-top: 20px; cursor: pointer; }
+        .user-row { display: flex; flex-direction: column; gap: 5px; background: rgba(255,255,255,0.08); padding: 15px; border-radius: 15px; margin-bottom: 10px; border-left: 3px solid #ffaa00; }
+        .admin-btns { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap;}
+        .admin-btns button { flex: 1; padding: 8px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; }
+
+        .custom-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; display: none; justify-content: center; align-items: center; }
+        .custom-box { background: #232333; padding: 25px; border-radius: 20px; width: 90%; max-width: 350px; text-align: center; }
+        .custom-box input, .custom-box select { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white; font-size: 16px; outline: none; }
+        
+        select option { color: black; background-color: white; }
+        
+        .modal-actions { display: flex; gap: 10px; }
+        .modal-actions button { padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; flex: 1; }
+        .btn-cancel { background: rgba(255,255,255,0.1); color: white; }
+        .btn-confirm { background: #4ade80; color: #000; }
+        .btn-danger { background: #f87171; color: white; }
+
+        .color-inputs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .color-picker-wrapper { display: flex; flex-direction: column; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 15px; flex: 1; }
+        input[type="color"] { -webkit-appearance: none; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; padding: 0; background: none; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: 3px solid rgba(255,255,255,0.2); border-radius: 50%; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="user-info">
+            <div class="avatar">👤</div>
+            <span id="user-name">Загрузка...</span>
+        </div>
+        <div class="icons" onclick="openModal('settings-modal')"><span>⚙️</span></div>
+    </header>
+
+    <div id="swipe-container">
+        <main id="tab-balance" class="active">
+            <div class="bank-card" id="main-card">
+                <div id="income-badge" class="income-badge">+ 0 $</div>
+                <div class="card-top">
+                    <div class="card-balance" id="user-balance">0 <span>$</span></div>
+                    <div class="visa-logo">VISA</div>
+                </div>
+                <div class="card-number" onclick="copyText(document.getElementById('card-number').innerText)">
+                    <span id="card-number">**** **** **** ****</span> <span class="copy-icon">📋</span>
+                </div>
+                <div class="card-bottom">
+                    <div id="card-holder">NAME</div>
+                    <div class="cvc-block" onclick="copyText(document.getElementById('card-cvc').innerText.replace('CVC: ', ''))">
+                        <span id="card-cvc">CVC: ***</span> <span class="copy-icon">📋</span>
+                    </div>
+                </div>
+            </div>
+            <button class="btn-action" onclick="openTransferModal()">💸 Перевести деньги</button>
+            <div class="section-title" style="margin-top:20px;">Топ по балансу</div>
+            <div id="leaderboard-list"></div>
+        </main>
+
+        <main id="tab-apartments">
+            <div class="section-title">Твой доход: <span style="color:#4ade80" id="total-income">0 $/ч</span></div>
+            <div id="my-apartments-list"></div>
+        </main>
+
+        <main id="tab-businesses">
+            <div class="section-title">Твои Бизнесы</div>
+            <div id="my-businesses-list"></div>
+            <div class="section-title" style="margin-top:20px; color: #ffaa00;">Доступны сегодня (24ч):</div>
+            <div id="daily-businesses-list"></div>
+        </main>
+
+        <main id="tab-trades">
+            <div class="section-title">Курсы (меняются каждый час)</div>
+            <div id="exchange-list"></div>
+        </main>
+    </div>
+
+    <div class="fab-container"><div class="fab" onclick="openShop()">+</div></div>
+
+    <nav>
+        <button class="nav-btn" onclick="switchTab(0, this)"><span>🏢</span> Квартиры</button>
+        <button class="nav-btn active" onclick="switchTab(1, this)"><span>💰</span> Баланс</button>
+        <button class="nav-btn" onclick="switchTab(2, this)"><span>🏭</span> Бизнесы</button>
+        <button class="nav-btn" onclick="switchTab(3, this)"><span>📈</span> Биржа</button>
+    </nav>
+
+    <!-- Модалки -->
+    <div id="shop-modal" class="modal-overlay">
+        <div class="modal-header"><h2>🏢 Магазин</h2><button class="close-btn" onclick="closeModal('shop-modal')">✕</button></div>
+        <div class="modal-content" id="shop-list"></div>
+    </div>
+
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal-header"><h2>⚙️ Настройки</h2><button class="close-btn" onclick="closeModal('settings-modal')">✕</button></div>
+        <div class="modal-content">
+            <div class="list-item">
+                <span>Изменить ник:</span>
+                <input type="text" id="nickname-input" style="width: 50%; padding: 5px; border-radius: 5px; border: none;">
+                <button onclick="saveNickname()" style="background:#4ade80; border:none; border-radius:5px; padding:5px 10px; font-weight:bold;">ОК</button>
+            </div>
+            <div class="list-item"><span>Твой ID:</span><span id="settings-user-id" style="color:#4ade80;"></span></div>
             
-        cursor.close(); conn.close()
-    except Exception as e: print("Ошибка БД:", e)
+            <div class="section-title" style="margin-top:20px;">Цвета интерфейса</div>
+            <div class="color-inputs">
+                <div class="color-picker-wrapper"><span>Фон 1</span><input type="color" id="bg-color-1" oninput="setCustomColor('bg1', this.value)"></div>
+                <div class="color-picker-wrapper"><span>Фон 2</span><input type="color" id="bg-color-2" oninput="setCustomColor('bg2', this.value)"></div>
+                <div class="color-picker-wrapper"><span>Карта</span><input type="color" id="card-color" oninput="setCustomColor('card', this.value)"></div>
+            </div>
 
-init_db()
+            <button id="admin-btn" class="admin-btn" style="display:none;" onclick="openAdminPanel()">👑 Панель Админа</button>
+        </div>
+    </div>
 
-class BuyRequest(BaseModel):
-    user_id: int; user_name: str; apartment_name: str; price: int; income: int
-class SellRequest(BaseModel):
-    user_id: int; apartment_index: int; price: int
-class TransferRequest(BaseModel):
-    sender_id: int; receiver_id: int; amount: int
-class TokenRequest(BaseModel):
-    user_id: int; token_type: str; amount: int; action: str
-class BusinessBuyRequest(BaseModel):
-    user_id: int; business_index: int
-class SetNameRequest(BaseModel):
-    user_id: int; name: str
-class AdminMoneyRequest(BaseModel):
-    admin_id: int; target_id: int; amount: int
-class AdminCompanyRequest(BaseModel):
-    admin_id: int; company_name: str; tier_data: dict = None
+    <div id="admin-modal" class="modal-overlay">
+        <div class="modal-header"><h2>👑 Админ-панель</h2><button class="close-btn" onclick="closeModal('admin-modal')">✕</button></div>
+        <div class="modal-content">
+            <div class="section-title">Управление</div>
+            <button class="btn-action" style="background:#3b82f6; color:#fff;" onclick="openAdminCompanies()">🏢 Настроить компании</button>
+            <div class="section-title" style="margin-top:20px;">Игроки</div>
+            <div id="admin-users-list"></div>
+            <button class="admin-btn" style="background:#f87171; margin-top:20px;" onclick="resetAllUsers()">⚠️ Сбросить ВСЕХ (220к)</button>
+        </div>
+    </div>
 
-def calculate_income(amount, apartments, businesses, last_payout):
-    now = int(time.time())
-    if not last_payout: last_payout = now
-    hours_passed = (now - last_payout) // 3600
-    if hours_passed > 0:
-        total_income = sum(int(a.get("income", 0)) for a in apartments) + sum(int(b.get("income", 0)) for b in businesses)
-        earned = total_income * hours_passed
-        amount += earned
-        last_payout += hours_passed * 3600
-        return amount, last_payout, earned
-    return amount, last_payout, 0
+    <div id="admin-companies-modal" class="modal-overlay">
+        <div class="modal-header"><h2>🏢 Компании</h2><button class="close-btn" onclick="closeModal('admin-companies-modal')">✕</button></div>
+        <div class="modal-content">
+            <button class="btn-action" style="background:#4ade80; color:#000; margin-bottom:20px;" onclick="addCompanyPrompt()">➕ Добавить компанию</button>
+            <div id="admin-companies-list"></div>
+        </div>
+    </div>
 
-@app.get("/api/token_rates")
-def get_rates(): return get_current_rates()
+    <div id="transfer-modal" class="custom-modal">
+        <div class="custom-box">
+            <h3>💸 Перевод</h3>
+            <select id="transfer-user-select"><option value="">Загрузка...</option></select>
+            <input type="number" id="transfer-amount" placeholder="Сумма в $" inputmode="numeric">
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('transfer-modal')">Отмена</button><button class="btn-confirm" onclick="confirmTransfer()">Отправить</button></div>
+        </div>
+    </div>
 
-@app.post("/api/set_name")
-def set_name(req: SetNameRequest):
-    try:
-        conn = get_db(); cursor = conn.cursor()
-        cursor.execute("UPDATE users SET name = %s WHERE id = %s", (req.name, req.user_id))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok"}
-    except: return {"status": "error"}
+    <div id="buy-modal" class="custom-modal">
+        <div class="custom-box">
+            <h3 id="buy-modal-title">Купить?</h3>
+            <p id="buy-modal-text"></p>
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('buy-modal')">Отмена</button><button class="btn-confirm" onclick="executeBuy()">Купить</button></div>
+        </div>
+    </div>
 
-@app.get("/api/all_users")
-def get_all_users_for_transfer():
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, name FROM users ORDER BY amount DESC LIMIT 50")
-        rows = cursor.fetchall(); cursor.close(); conn.close()
-        return {"users": [{"id": r['id'], "name": r['name']} for r in rows]}
-    except: return {"users": []}
+    <div id="admin-money-modal" class="custom-modal">
+        <div class="custom-box">
+            <h3>Управление деньгами</h3>
+            <p id="admin-money-target"></p>
+            <input type="number" id="admin-money-amount" placeholder="Сумма">
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal('admin-money-modal')">Отмена</button>
+                <button class="btn-confirm" onclick="adminAddMoney()">Выдать</button>
+                <button class="btn-danger" onclick="adminRemoveMoney()">Забрать</button>
+            </div>
+        </div>
+    </div>
 
-@app.get("/api/companies")
-def get_companies():
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, name, tiers FROM companies ORDER BY id ASC")
-        rows = cursor.fetchall(); cursor.close(); conn.close()
-        return {"companies": [{"id": r['id'], "name": r['name'], "tiers": json.loads(r['tiers'])} for r in rows]}
-    except: return {"companies": []}
-
-@app.post("/api/admin/add_company")
-def add_company(req: AdminCompanyRequest):
-    if req.admin_id != MAIN_ADMIN_ID: return {"status": "error"}
-    try:
-        conn = get_db(); cursor = conn.cursor()
-        cursor.execute("INSERT INTO companies (name, tiers) VALUES (%s, %s)", (req.company_name, '[]'))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok", "message": "Компания добавлена!"}
-    except: return {"status": "error"}
-
-@app.post("/api/admin/add_tier/{company_id}")
-def add_tier(company_id: int, req: AdminCompanyRequest):
-    if req.admin_id != MAIN_ADMIN_ID: return {"status": "error"}
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT tiers FROM companies WHERE id = %s", (company_id,))
-        row = cursor.fetchone()
-        tiers = json.loads(row['tiers'])
-        tiers.append(req.tier_data)
-        cursor.execute("UPDATE companies SET tiers = %s WHERE id = %s", (json.dumps(tiers), company_id))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok", "message": "Тариф добавлен!"}
-    except Exception as e: return {"status": "error", "message": str(e)}
-
-@app.post("/api/admin/delete_company/{company_id}")
-def delete_company(company_id: int, req: AdminCompanyRequest):
-    if req.admin_id != MAIN_ADMIN_ID: return {"status": "error"}
-    try:
-        conn = get_db(); cursor = conn.cursor()
-        cursor.execute("DELETE FROM companies WHERE id = %s", (company_id,))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok", "message": "Компания удалена!"}
-    except: return {"status": "error"}
-
-# --- БИЗНЕСЫ С ШАНСАМИ ---
-BUSINESS_POOL = [
-    {"name": "Киоск", "rarity": "Common", "price": 50000, "income": 1000, "req": 1, "weight": 50},
-    {"name": "Кофейня", "rarity": "Rare", "price": 250000, "income": 6000, "req": 2, "weight": 25},
-    {"name": "Автосервис", "rarity": "Epic", "price": 1500000, "income": 40000, "req": 3, "weight": 15},
-    {"name": "Завод", "rarity": "Mythic", "price": 15000000, "income": 450000, "req": 5, "weight": 7},
-    {"name": "Нефтевышка", "rarity": "Legendary", "price": 150000000, "income": 5000000, "req": 8, "weight": 2.5},
-    {"name": "Космопорт", "rarity": "Chromatic", "price": 2000000000, "income": 80000000, "req": 12, "weight": 0.5}
-]
-
-def get_weighted_business():
-    total_weight = sum(b['weight'] for b in BUSINESS_POOL)
-    r = random.uniform(0, total_weight)
-    upto = 0
-    for b in BUSINESS_POOL:
-        if upto + b['weight'] >= r:
-            return b
-        upto += b['weight']
-    return BUSINESS_POOL[0]
-
-@app.get("/api/businesses/{user_id}")
-def get_businesses(user_id: int):
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT last_roll, daily_businesses FROM users WHERE id = %s", (user_id,))
-        row = cursor.fetchone()
-        now = int(time.time())
-        if now - int(row['last_roll'] or 0) > 86400:
-            # Роллим 2 УНИКАЛЬНЫХ бизнеса по шансам
-            rolled = []
-            while len(rolled) < 2:
-                b = get_weighted_business()
-                if b not in rolled:
-                    rolled.append(b)
-            cursor.execute("UPDATE users SET last_roll = %s, daily_businesses = %s WHERE id = %s", (now, json.dumps(rolled), user_id))
-            conn.commit(); daily = rolled
-        else:
-            daily = row['daily_businesses'] if isinstance(row['daily_businesses'], list) else json.loads(row['daily_businesses'] or '[]')
-        cursor.close(); conn.close()
-        return {"businesses": daily}
-    except: return {"businesses": []}
-
-@app.post("/api/buy_business")
-def buy_business(req: BusinessBuyRequest):
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount, apartments, businesses, daily_businesses FROM users WHERE id = %s", (req.user_id,))
-        row = cursor.fetchone()
-        daily = row['daily_businesses'] if isinstance(row['daily_businesses'], list) else json.loads(row['daily_businesses'] or '[]')
-        owned = row['businesses'] if isinstance(row['businesses'], list) else json.loads(row['businesses'] or '[]')
-        apts = row['apartments'] if isinstance(row['apartments'], list) else json.loads(row['apartments'] or '[]')
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        const user = tg.initDataUnsafe?.user;
+        let userId = user ? user.id : 123456789; 
+        let playerName = user ? (user.first_name + (user.last_name ? " " + user.last_name : "")) : "Гость";
+        const MAIN_ADMIN_ID = 5634302903;
         
-        if req.business_index < 0 or req.business_index >= len(daily): return {"status": "error", "message": "Не найден"}
-        bus = daily[req.business_index]
-        if len(apts) < bus['req']: return {"status": "error", "message": f"Нужно {bus['req']} кв."}
-        if int(row['amount']) < bus['price']: return {"status": "error", "message": "Мало денег!"}
+        let currentRates = {};
+        let companiesData = [];
+
+        document.getElementById("settings-user-id").innerText = userId;
+        if (userId === MAIN_ADMIN_ID) document.getElementById("admin-btn").style.display = "block";
+
+        // --- СВАЙПЫ ---
+        let tabs = ['apartments', 'balance', 'businesses', 'trades'];
+        let currentTabIndex = 1;
+        let touchStartX = 0;
+        function updateTabs() {
+            document.querySelectorAll('main').forEach(m => m.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + tabs[currentTabIndex]).classList.add('active');
+            document.querySelectorAll('.nav-btn')[currentTabIndex].classList.add('active');
+        }
+        function switchTab(index, btnElement) { currentTabIndex = index; updateTabs(); }
+        document.getElementById('swipe-container').addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
+        document.getElementById('swipe-container').addEventListener('touchmove', e => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > 70) {
+                if (diff > 0 && currentTabIndex < tabs.length - 1) { currentTabIndex++; updateTabs(); touchStartX = e.changedTouches[0].screenX; }
+                else if (diff < 0 && currentTabIndex > 0) { currentTabIndex--; updateTabs(); touchStartX = e.changedTouches[0].screenX; }
+            }
+        });
+
+        // --- ЦВЕТА ---
+        function setCustomColor(type, color) {
+            if (type === 'bg1') { document.documentElement.style.setProperty('--bg-color-1', color); localStorage.setItem('customBg1', color); }
+            else if (type === 'bg2') { document.documentElement.style.setProperty('--bg-color-2', color); localStorage.setItem('customBg2', color); }
+            else if (type === 'card') { document.getElementById('main-card').style.background = color; localStorage.setItem('customCard', color); }
+        }
+        window.onload = () => {
+            const bg1 = localStorage.getItem('customBg1') || '#1e3c72';
+            const bg2 = localStorage.getItem('customBg2') || '#6a11cb';
+            const cardColor = localStorage.getItem('customCard') || 'rgba(255, 255, 255, 0.15)';
+            document.documentElement.style.setProperty('--bg-color-1', bg1);
+            document.documentElement.style.setProperty('--bg-color-2', bg2);
+            document.getElementById('bg-color-1').value = bg1;
+            document.getElementById('bg-color-2').value = bg2;
+            if (localStorage.getItem('customCard')) {
+                document.getElementById('main-card').style.background = cardColor;
+                document.getElementById('card-color').value = cardColor === 'rgba(255, 255, 255, 0.15)' ? '#2a5298' : cardColor;
+            }
+            loadRates();
+            loadCompanies();
+        };
+
+        // --- ЗАГРУЗКА ДАННЫХ ---
+        async function loadData() {
+            try {
+                const res = await fetch(`https://got.de1.netrun.io/api/balance/${userId}?name=${encodeURIComponent(playerName)}`);
+                const data = await res.json();
+                if(data.error) { tg.showAlert("Ошибка сервера: " + data.error); return; }
+
+                document.getElementById("user-name").innerText = data.name || playerName;
+                document.getElementById("nickname-input").value = data.name || playerName;
+
+                let fb = data.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                document.getElementById("user-balance").innerHTML = `${fb} <span>$</span>`;
+                
+                if (data.card_number) document.getElementById("card-number").innerText = data.card_number;
+                if (data.card_cvc) document.getElementById("card-cvc").innerText = "CVC: " + data.card_cvc;
+
+                if (data.earned > 0) {
+                    let badge = document.getElementById("income-badge");
+                    badge.innerText = `+ ${data.earned} $`;
+                    badge.style.display = 'block';
+                    setTimeout(() => { badge.style.display = 'none'; }, 5000);
+                }
+                renderApartments(data.apartments || []);
+                renderBusinesses(data.businesses || []);
+                loadDailyBusinesses();
+            } catch (error) { tg.showAlert("Ошибка загрузки данных"); }
+        }
+
+        async function loadLeaderboard() {
+            try {
+                const res = await fetch(`https://got.de1.netrun.io/api/leaderboard`);
+                const data = await res.json();
+                const list = document.getElementById('leaderboard-list'); list.innerHTML = '';
+                if (!data.leaders) return;
+                const medals = ["🥇", "🥈", "🥉", "🏅", "🏅"];
+                data.leaders.forEach((p, i) => {
+                    let fb = p.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    list.innerHTML += `<div class="list-item"><span>${medals[i]} ${p.name}</span><span style="color: #4ade80;">${fb} $</span></div>`;
+                });
+            } catch (e) {}
+        }
+
+        async function loadRates() {
+            try {
+                const res = await fetch('https://got.de1.netrun.io/api/token_rates');
+                currentRates = await res.json();
+                const list = document.getElementById('exchange-list'); list.innerHTML = '';
+                const names = { silver: "🥈 Серебро", gold: "🥇 Золото", diamonds: "💎 Алмазы", bitcoin: "₿ Биткоин", tesla: "🚗 Tesla" };
+                
+                for (let key in currentRates) {
+                    let r = currentRates[key];
+                    let trendSymbol = r.trend === 'up' ? '▲' : '▼';
+                    let trendClass = r.trend === 'up' ? 'trend-up' : 'trend-down';
+                    list.innerHTML += `
+                    <div class="exchange-card">
+                        <div class="rate-info">
+                            <div class="rate-title">${names[key] || key}</div>
+                            <div class="rate-price">Цена: ${r.price} $</div>
+                        </div>
+                        <div class="exchange-buttons">
+                            <span class="rate-trend ${trendClass}">${trendSymbol}</span>
+                            <button class="btn-buy" onclick="tradeToken('${key}', 'buy')">Купить</button>
+                            <button class="btn-sell" onclick="tradeToken('${key}', 'sell')">Продать</button>
+                        </div>
+                    </div>`;
+                }
+            } catch (e) {}
+        }
+
+        async function loadCompanies() {
+            try {
+                const res = await fetch('https://got.de1.netrun.io/api/companies');
+                const data = await res.json();
+                companiesData = data.companies || [];
+            } catch(e) { console.log("Ошибка загрузки компаний", e); }
+        }
+
+        function renderApartments(apts) {
+            const list = document.getElementById('my-apartments-list'); list.innerHTML = '';
+            let totalInc = 0;
+            apts.forEach((apt, index) => {
+                totalInc += apt.income;
+                let fi = apt.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                list.innerHTML += `
+                <div class="my-apt-card">
+                    <div class="my-apt-info"><div class="my-apt-title">🏠 ${apt.name}</div><div class="my-apt-income">+ ${fi} $/ч</div></div>
+                    <button class="sell-btn" onclick="sellApt(${index}, ${apt.buy_price || 0})">Продать</button>
+                </div>`;
+            });
+            document.getElementById("total-income").innerText = `${totalInc} $/ч`;
+        }
+
+        function renderBusinesses(buses) {
+            const list = document.getElementById('my-businesses-list'); list.innerHTML = '';
+            if (buses.length === 0) list.innerHTML = '<div style="color:#8892b0; font-size:12px;">У тебя пока нет бизнесов.</div>';
+            buses.forEach(bus => {
+                let fi = bus.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                list.innerHTML += `
+                <div class="bus-card bus-${bus.rarity}">
+                    <div class="bus-title">${bus.name} <span style="font-size:12px; color:#a3c2ff;">(${bus.rarity})</span></div>
+                    <div class="bus-price">+ ${fi} $/ч</div>
+                </div>`;
+            });
+        }
+
+        async function loadDailyBusinesses() {
+            try {
+                const res = await fetch(`https://got.de1.netrun.io/api/businesses/${userId}`);
+                const data = await res.json();
+                const list = document.getElementById('daily-businesses-list'); list.innerHTML = '';
+                if (data.businesses.length === 0) list.innerHTML = '<div style="color:#8892b0; font-size:12px;">Жди следующего ролла через 24 часа.</div>';
+                
+                data.businesses.forEach((bus, index) => {
+                    let fp = bus.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    let fi = bus.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    list.innerHTML += `
+                    <div class="bus-card bus-${bus.rarity}">
+                        <div class="bus-title">${bus.name} <span style="font-size:12px; color:#a3c2ff;">(${bus.rarity})</span></div>
+                        <div class="bus-info">Доход: +${fi} $/ч | Нужно кв: ${bus.req}</div>
+                        <button class="buy-btn" style="margin-top:10px;" onclick="buyBusiness(${index})">Купить за ${fp} $</button>
+                    </div>`;
+                });
+            } catch(e) {}
+        }
+
+        // --- ДЕЙСТВИЯ ---
+        async function saveNickname() {
+            const newName = document.getElementById('nickname-input').value.trim();
+            if (!newName) return;
+            await fetch('https://got.de1.netrun.io/api/set_name', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, name: newName}) });
+            document.getElementById('user-name').innerText = newName;
+            tg.showAlert('Ник изменен!');
+        }
+
+        async function openTransferModal(targetId = null) {
+            openModal('transfer-modal');
+            const select = document.getElementById('transfer-user-select');
+            select.innerHTML = '<option value="">Загрузка...</option>';
+            try {
+                const res = await fetch('https://got.de1.netrun.io/api/all_users');
+                const data = await res.json();
+                select.innerHTML = '<option value="">Выбери получателя...</option>';
+                data.users.forEach(u => {
+                    if (u.id !== userId) {
+                        let isSelected = (u.id === targetId) ? "selected" : "";
+                        select.innerHTML += `<option value="${u.id}" ${isSelected}>${u.name}</option>`;
+                    }
+                });
+            } catch(e) { select.innerHTML = '<option value="">Ошибка загрузки</option>'; }
+        }
+
+        async function confirmTransfer() {
+            const recvId = document.getElementById('transfer-user-select').value;
+            const amt = parseInt(document.getElementById('transfer-amount').value);
+            if (!recvId || isNaN(amt) || amt <= 0) return tg.showAlert('Выбери получателя и сумму');
+            closeModal('transfer-modal');
+            const res = await fetch('https://got.de1.netrun.io/api/transfer', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: parseInt(recvId), amount: amt}) }).then(r=>r.json());
+            if (res.status === 'ok') { tg.showAlert(res.message); loadData(); loadLeaderboard(); } else tg.showAlert(res.message);
+        }
+
+        async function buyBusiness(index) {
+            const res = await fetch('https://got.de1.netrun.io/api/buy_business', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, business_index: index}) }).then(r=>r.json());
+            if (res.status === 'ok') { tg.showAlert(res.message); loadData(); } else tg.showAlert(res.message);
+        }
+
+        function tradeToken(token, action) {
+            const amtStr = prompt(`Сколько единиц ${token} ${action === 'buy' ? 'купить' : 'продать'}?`);
+            if (!amtStr) return;
+            const amt = parseInt(amtStr);
+            if (isNaN(amt) || amt <= 0) return;
+            fetch('https://got.de1.netrun.io/api/trade_token', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, token_type: token, amount: amt, action: action}) })
+            .then(r=>r.json()).then(res => { tg.showAlert(res.message); loadData(); });
+        }
+
+        // --- АДМИНКА ---
+        async function openAdminPanel() {
+            openModal('admin-modal');
+            const list = document.getElementById('admin-users-list'); list.innerHTML = 'Загрузка...';
+            try {
+                const data = await fetch(`https://got.de1.netrun.io/api/admin/users?admin_id=${userId}`).then(r=>r.json());
+                list.innerHTML = '';
+                data.users.forEach(u => {
+                    let fb = u.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    list.innerHTML += `
+                    <div class="user-row">
+                        <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                            <span>${u.name}</span> <span style="color:#4ade80">${fb} $</span>
+                        </div>
+                        <div style="font-size:12px; color:#8892b0;">ID: ${u.id} | Квартир: ${u.apts_count}</div>
+                        <div class="admin-btns">
+                            <button style="background:#4ade80; color:#000;" onclick="adminMoneyModal(${u.id}, '${u.name}')">💰 Деньги</button>
+                            <button style="background:#3b82f6; color:#fff;" onclick="adminViewApts(${u.id})">🏢 Квартиры</button>
+                            <button style="background:#a855f7; color:#fff;" onclick="openTransferModal(${u.id})">💸 Отправить</button>
+                        </div>
+                    </div>`;
+                });
+            } catch (e) { list.innerHTML = 'Ошибка загрузки'; }
+        }
+
+        let adminTargetId = null;
+        function adminMoneyModal(id, name) {
+            adminTargetId = id;
+            document.getElementById('admin-money-target').innerText = `Игрок: ${name}`;
+            document.getElementById('admin-money-amount').value = '';
+            openModal('admin-money-modal');
+        }
+
+        async function adminAddMoney() {
+            const amt = parseInt(document.getElementById('admin-money-amount').value);
+            if (!amt) return;
+            const res = await fetch('https://got.de1.netrun.io/api/admin/add_money', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: amt}) }).then(r=>r.json());
+            if(res.status==='error') tg.showAlert(res.message);
+            else { closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard(); }
+        }
+
+        async function adminRemoveMoney() {
+            const amt = parseInt(document.getElementById('admin-money-amount').value);
+            if (!amt) return;
+            await fetch('https://got.de1.netrun.io/api/admin/remove_money', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: amt}) });
+            closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard();
+        }
+
+        async function adminViewApts(id) {
+            const data = await fetch(`https://got.de1.netrun.io/api/admin/user_apartments/${id}`).then(r=>r.json());
+            let txt = data.apartments.map(a => `- ${a.name} (+${a.income}$/ч)`).join('\n');
+            tg.showAlert(txt || "Нет квартир");
+        }
+
+        async function resetAllUsers() {
+            if (!(await tg.showConfirm("Удалить ВСЕХ игроков и сбросить прогресс?"))) return;
+            const res = await fetch('https://got.de1.netrun.io/api/admin/reset_all', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id:0, amount:0}) }).then(r=>r.json());
+            tg.showAlert(res.message); loadData(); loadLeaderboard();
+        }
+
+        async function openAdminCompanies() {
+            openModal('admin-companies-modal');
+            const list = document.getElementById('admin-companies-list'); list.innerHTML = 'Загрузка...';
+            await loadCompanies();
+            list.innerHTML = '';
+            companiesData.forEach(c => {
+                list.innerHTML += `
+                <div class="user-row" style="border-left-color:#3b82f6;">
+                    <div style="font-weight:bold; font-size:16px;">${c.name}</div>
+                    <div style="font-size:12px; color:#8892b0;">Тарифов: ${c.tiers.length}</div>
+                    <div class="admin-btns">
+                        <button style="background:#4ade80; color:#000;" onclick="addTierPrompt(${c.id}, '${c.name}')">➕ Тариф</button>
+                        <button style="background:#f87171; color:white;" onclick="deleteCompany(${c.id})">🗑 Удалить</button>
+                    </div>
+                </div>`;
+            });
+        }
+
+        async function addCompanyPrompt() {
+            const name = prompt("Введите название новой компании (например: 'Элит-Строй'):");
+            if (!name) return;
+            await fetch('https://got.de1.netrun.io/api/admin/add_company', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: name}) });
+            openAdminCompanies();
+        }
+
+        async function addTierPrompt(companyId, companyName) {
+            const name = prompt(`Название квартиры (в ${companyName}):`);
+            if (!name) return;
+            const price = parseInt(prompt("Цена в $:"));
+            const income = parseInt(prompt("Доход в час $:"));
+            if (!price || !income) return;
             
-        new_amount = int(row['amount']) - bus['price']
-        owned.append({"name": bus['name'], "income": bus['income'], "rarity": bus['rarity']})
-        daily.pop(req.business_index)
-        cursor.execute("UPDATE users SET amount = %s, businesses = %s, daily_businesses = %s WHERE id = %s", (new_amount, json.dumps(owned), json.dumps(daily), req.user_id))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok", "message": "Куплено!"}
-    except Exception as e: return {"status": "error", "message": str(e)}
+            const tierData = { name: name, price: price, income: income };
+            await fetch(`https://got.de1.netrun.io/api/admin/add_tier/${companyId}`, { 
+                method:'POST', headers:{'Content-Type':'application/json'}, 
+                body: JSON.stringify({admin_id: userId, company_name: '', tier_data: tierData}) 
+            });
+            tg.showAlert("Тариф добавлен!"); openAdminCompanies();
+        }
 
-@app.get("/api/balance/{user_id}")
-def get_balance(user_id: int, name: str = "Игрок"):
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-        row = cursor.fetchone()
-        now = int(time.time())
-        
-        if not row:
-            card_num = "4" + "".join([str(random.randint(0, 9)) for _ in range(15)])
-            card_formatted = " ".join([card_num[i:i+4] for i in range(0, 16, 4)])
-            cvc = str(random.randint(100, 999))
-            cursor.execute("INSERT INTO users (id, name, amount, last_payout, card_number, card_cvc) VALUES (%s, %s, %s, %s, %s, %s)", (user_id, name, 220000, now, card_formatted, cvc))
-            conn.commit(); cursor.close(); conn.close()
-            return {"balance": 220000, "apartments": [], "businesses": [], "earned": 0, "card_number": card_formatted, "card_cvc": cvc, "name": name}
+        async function deleteCompany(id) {
+            if (!(await tg.showConfirm("Удалить компанию со всеми квартирами?"))) return;
+            await fetch(`https://got.de1.netrun.io/api/admin/delete_company/${id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name:''}) });
+            openAdminCompanies();
+        }
+
+        // --- МАГАЗИН (ИСПРАВЛЕНО) ---
+        async function openShop() {
+            openModal('shop-modal');
+            const list = document.getElementById('shop-list'); 
+            list.innerHTML = '<div style="text-align:center; padding:20px;">Загрузка...</div>';
             
-        current_balance = int(row['amount'])
-        user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
-        user_businesses = row['businesses'] if isinstance(row['businesses'], list) else (json.loads(row['businesses']) if row['businesses'] else [])
-        last_payout = int(row['last_payout']) if row['last_payout'] else now
-        
-        new_balance, new_last_payout, earned = calculate_income(current_balance, user_apartments, user_businesses, last_payout)
-        cursor.execute("UPDATE users SET amount = %s, last_payout = %s WHERE id = %s", (new_balance, new_last_payout, user_id))
-        conn.commit(); cursor.close(); conn.close()
-        return {"balance": new_balance, "apartments": user_apartments, "businesses": user_businesses, "earned": earned, "card_number": row['card_number'], "card_cvc": row['card_cvc'], "name": row['name']}
-    except Exception as e: return {"balance": 0, "error": str(e)}
+            // Если компании не загружены, ждем их загрузки
+            if (companiesData.length === 0) {
+                await loadCompanies();
+            }
 
-@app.post("/api/trade_token")
-def trade_token(req: TokenRequest):
-    rates = get_current_rates()
-    if req.token_type not in rates: return {"status": "error"}
-    cost = req.amount * rates[req.token_type]['price']
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount FROM users WHERE id = %s", (req.user_id,)); row = cursor.fetchone()
-        if req.action == "buy":
-            if int(row['amount']) < cost: return {"status": "error", "message": "Мало денег!"}
-            cursor.execute(f"UPDATE users SET amount = amount - %s WHERE id = %s", (cost, req.user_id))
-        elif req.action == "sell":
-            cursor.execute(f"UPDATE users SET amount = amount + %s WHERE id = %s", (cost, req.user_id))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok", "message": "Сделка успешна!"}
-    except: return {"status": "error"}
+            list.innerHTML = '';
+            if (companiesData.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding:20px; color:#f87171;">Ошибка: Компании не загружены с сервера. Проверьте базу данных.</div>';
+                return;
+            }
 
-@app.post("/api/buy")
-def buy_apartment(req: BuyRequest):
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount, apartments FROM users WHERE id = %s", (req.user_id,)); row = cursor.fetchone()
-        if int(row['amount']) < req.price: return {"status": "error", "message": "Мало средств!"}
-        new_balance = int(row['amount']) - req.price
-        user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
-        user_apartments.append({"name": req.apartment_name, "income": req.income, "buy_price": req.price})
-        cursor.execute("UPDATE users SET amount = %s, apartments = %s WHERE id = %s", (new_balance, json.dumps(user_apartments), req.user_id))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok", "message": "Куплено!"}
-    except: return {"status": "error"}
+            companiesData.forEach(group => {
+                let html = `<div class="class-group"><div class="class-title">${group.name}</div>`;
+                group.tiers.forEach((item) => {
+                    let fp = item.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    let fi = item.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    html += `
+                    <div class="apt-shop-item">
+                        <div class="apt-shop-info">
+                            <div class="apt-shop-title" style="font-weight:bold;">${item.name}</div>
+                            <div style="font-size:12px; color:#4ade80;">+ ${fi} $/ч</div>
+                        </div>
+                        <button class="buy-btn" onclick="prepareBuy('${item.name}', ${item.price}, ${item.income})">${fp} $</button>
+                    </div>`;
+                });
+                html += `</div>`; list.innerHTML += html;
+            });
+        }
 
-@app.post("/api/sell")
-def sell_apartment(req: SellRequest):
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount, apartments FROM users WHERE id = %s", (req.user_id,)); row = cursor.fetchone()
-        user_apartments = row['apartments'] if isinstance(row['apartments'], list) else (json.loads(row['apartments']) if row['apartments'] else [])
-        if req.apartment_index < 0 or req.apartment_index >= len(user_apartments): return {"status": "error"}
-        sell_price = int(req.price * 0.7)
-        new_balance = int(row['amount']) + sell_price
-        user_apartments.pop(req.apartment_index)
-        cursor.execute("UPDATE users SET amount = %s, apartments = %s WHERE id = %s", (new_balance, json.dumps(user_apartments), req.user_id))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok", "message": f"Продана за {sell_price} $"}
-    except: return {"status": "error"}
+        let buyItemData = null;
+        function prepareBuy(name, price, income) {
+            buyItemData = { name, price, income };
+            document.getElementById('buy-modal-title').innerText = "Покупка квартиры";
+            document.getElementById('buy-modal-text').innerHTML = `Купить <b>"${name}"</b> за <b>${price.toLocaleString()} $</b>?`;
+            openModal('buy-modal');
+        }
 
-@app.post("/api/transfer")
-def transfer_money(req: TransferRequest):
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount FROM users WHERE id = %s", (req.sender_id,)); sender = cursor.fetchone()
-        if not sender or int(sender['amount']) < req.amount: return {"status": "error", "message": "Мало средств"}
-        cursor.execute("SELECT id, name FROM users WHERE id = %s", (req.receiver_id,)); receiver = cursor.fetchone()
-        if not receiver: return {"status": "error", "message": "Игрок не найден"}
-        cursor.execute("UPDATE users SET amount = amount - %s WHERE id = %s", (req.amount, req.sender_id))
-        cursor.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, req.receiver_id))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok", "message": f"Переведено {req.amount} $ игроку {receiver['name']}"}
-    except: return {"status": "error"}
+        async function executeBuy() {
+            closeModal('buy-modal');
+            if (!buyItemData) return;
+            const res = await fetch('https://got.de1.netrun.io/api/buy', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, user_name: playerName, apartment_name: buyItemData.name, price: buyItemData.price, income: buyItemData.income}) }).then(r=>r.json());
+            if (res.status === 'ok') { tg.showAlert('✅ Куплено!'); closeModal('shop-modal'); loadData(); } else tg.showAlert(res.message);
+        }
 
-@app.get("/api/leaderboard")
-def get_leaderboard():
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT name, amount FROM users ORDER BY amount DESC LIMIT 5")
-        rows = cursor.fetchall(); cursor.close(); conn.close()
-        return {"leaders": [{"name": r['name'], "balance": int(r['amount'])} for r in rows]}
-    except: return {"leaders": []}
+        async function sellApt(index, price) {
+            if (!(await tg.showConfirm("Продать квартиру за 70% стоимости?"))) return;
+            const res = await fetch('https://got.de1.netrun.io/api/sell', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, apartment_index: index, price: price}) }).then(r=>r.json());
+            if (res.status === 'ok') { tg.showAlert(res.message); loadData(); } else tg.showAlert(res.message);
+        }
 
-@app.get("/api/admin/users")
-def admin_get_users(admin_id: int):
-    if admin_id != MAIN_ADMIN_ID: return {"users": []}
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT id, name, amount, apartments FROM users")
-        rows = cursor.fetchall(); cursor.close(); conn.close()
-        return {"users": [{"id": r['id'], "name": r['name'], "balance": int(r['amount']), "apts_count": len(json.loads(r['apartments'] or '[]'))} for r in rows]}
-    except: return {"users": []}
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; if (tg.BackButton) tg.BackButton.show(); }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; if (tg.BackButton) tg.BackButton.hide(); }
 
-@app.post("/api/admin/add_money")
-def admin_add_money(req: AdminMoneyRequest):
-    if req.admin_id != MAIN_ADMIN_ID: return {"status": "error", "message": "Нет прав"}
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount FROM users WHERE id = %s", (req.target_id,)); row = cursor.fetchone()
-        new_balance = int(row['amount']) + req.amount
-        cursor.execute("UPDATE users SET amount = %s WHERE id = %s", (new_balance, req.target_id))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok", "message": f"Выдано {req.amount} $"}
-    except: return {"status": "error", "message": "Ошибка"}
-
-@app.post("/api/admin/remove_money")
-def admin_remove_money(req: AdminMoneyRequest):
-    if req.admin_id != MAIN_ADMIN_ID: return {"status": "error", "message": "Нет прав"}
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT amount FROM users WHERE id = %s", (req.target_id,)); row = cursor.fetchone()
-        new_balance = max(0, int(row['amount']) - req.amount)
-        cursor.execute("UPDATE users SET amount = %s WHERE id = %s", (new_balance, req.target_id))
-        conn.commit(); cursor.close(); conn.close()
-        return {"status": "ok", "message": f"Списано {req.amount} $"}
-    except: return {"status": "error", "message": "Ошибка"}
-
-@app.get("/api/admin/user_apartments/{user_id}")
-def admin_get_user_apts(user_id: int):
-    try:
-        conn = get_db(); cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT apartments FROM users WHERE id = %s", (user_id,))
-        row = cursor.fetchone(); cursor.close(); conn.close()
-        return {"apartments": json.loads(row['apartments'] or '[]')}
-    except: return {"apartments": []}
+        loadData();
+        loadLeaderboard();
+    </script>
+</body>
+</html>
