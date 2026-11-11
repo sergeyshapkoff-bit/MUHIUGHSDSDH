@@ -17,7 +17,7 @@ app.add_middleware(
 )
 
 DATABASE_URL = "postgresql://postgres.zmfepxqnxcvkvdjonzhp:p0LwFeRg9NJ7Cusj@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require"
-MAIN_ADMIN_ID = 7127547836 
+MAIN_ADMIN_ID = 5634302903 
 
 def get_db():
     return psycopg2.connect(DATABASE_URL)
