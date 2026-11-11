@@ -6,110 +6,135 @@
     <title>Стройка</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --bg-color-1: #1e3c72; --bg-color-2: #6a11cb; --card-color: rgba(255, 255, 255, 0.15); }
+        :root { --bg-1: #1a1a2e; --bg-2: #16213e; --bg-3: #0f3460; --accent: #4ade80; --card-bg: rgba(255, 255, 255, 0.08); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; padding: 0; height: 100vh; background: linear-gradient(135deg, var(--bg-color-1) 0%, var(--bg-color-2) 100%); color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; overflow: hidden; user-select: none; transition: background 0.5s ease; }
+        body { margin: 0; padding: 0; height: 100vh; background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-3) 100%); color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; overflow: hidden; user-select: none; transition: background 0.5s ease; }
         
         header { display: flex; justify-content: space-between; align-items: center; padding: 20px; flex-shrink: 0; }
         .user-info { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
-        .avatar { width: 36px; height: 36px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 16px; }
-        .icons { font-size: 22px; display: flex; gap: 15px; opacity: 0.8; cursor: pointer; }
+        .avatar { width: 38px; height: 38px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .icons { font-size: 22px; display: flex; gap: 15px; opacity: 0.8; cursor: pointer; transition: transform 0.2s; }
+        .icons:active { transform: scale(0.9); }
         
         #swipe-container { flex: 1; position: relative; overflow: hidden; }
         main { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 0 20px 100px 20px; overflow-y: auto; display: none; }
-        main.active { display: block; animation: fadeIn 0.4s ease-out; }
+        main.active { display: block; animation: fadeIn 0.3s ease-out; }
         
-        .bank-card { background: var(--card-color); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 20px; padding: 20px; margin-bottom: 25px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); position: relative; }
-        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
-        .card-balance { font-size: 26px; font-weight: bold; color: #4ade80; }
-        .card-balance span { font-size: 16px; font-weight: normal; opacity: 0.8; color: white;}
-        .visa-logo { font-size: 22px; font-weight: 900; font-style: italic; letter-spacing: 2px; }
-        .card-number { font-size: 18px; letter-spacing: 1.5px; margin-bottom: 15px; font-family: monospace; white-space: nowrap; display: flex; align-items: center; cursor: pointer; }
-        .copy-icon { font-size: 12px; margin-left: 8px; opacity: 0.6; }
-        .card-bottom { display: flex; justify-content: space-between; font-size: 13px; opacity: 0.9; }
+        /* Стильная карта */
+        .bank-card { background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05)); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 24px; padding: 25px; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); position: relative; transition: all 0.3s ease; }
+        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
+        .card-balance { font-size: 32px; font-weight: 800; color: var(--accent); text-shadow: 0 2px 10px rgba(74, 222, 128, 0.3); }
+        .card-balance span { font-size: 18px; font-weight: normal; opacity: 0.8; color: white; }
+        .visa-logo { font-size: 24px; font-weight: 900; font-style: italic; letter-spacing: 2px; opacity: 0.9; }
+        .card-number { font-size: 19px; letter-spacing: 2px; margin-bottom: 15px; font-family: monospace; white-space: nowrap; display: flex; align-items: center; cursor: pointer; opacity: 0.9; }
+        .copy-icon { font-size: 14px; margin-left: 10px; opacity: 0.5; }
+        .card-bottom { display: flex; justify-content: space-between; font-size: 14px; opacity: 0.8; font-weight: 500; text-transform: uppercase; }
         .cvc-block { display: flex; align-items: center; cursor: pointer; }
 
-        .income-badge { position: absolute; top: -15px; right: 20px; background: #4ade80; color: #000; padding: 6px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4); animation: popIn 0.5s; display: none; z-index: 10; }
+        .income-badge { position: absolute; top: -15px; right: 25px; background: var(--accent); color: #000; padding: 8px 18px; border-radius: 30px; font-weight: bold; font-size: 15px; box-shadow: 0 6px 15px rgba(74, 222, 128, 0.4); animation: popIn 0.5s; display: none; z-index: 10; }
         
-        .section-title { font-size: 15px; font-weight: bold; margin-bottom: 10px; color: rgba(255,255,255,0.9); }
-        .list-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.15); padding: 15px; border-radius: 15px; margin-bottom: 10px; font-size: 14px; backdrop-filter: blur(5px); }
+        .section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: rgba(255,255,255,0.9); }
+        .list-item { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); padding: 16px; border-radius: 18px; margin-bottom: 10px; font-size: 15px; backdrop-filter: blur(5px); transition: transform 0.2s; }
+        .list-item:active { transform: scale(0.98); }
         
-        .btn-action { width: 100%; background: #4ade80; color: #000; border: none; padding: 15px; border-radius: 15px; font-weight: bold; font-size: 16px; margin-top: 10px; cursor: pointer; }
-        .btn-action:active { transform: scale(0.95); }
+        .btn-action { width: 100%; background: var(--accent); color: #000; border: none; padding: 18px; border-radius: 18px; font-weight: bold; font-size: 17px; margin-top: 10px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3); }
+        .btn-action:active { transform: scale(0.96); box-shadow: 0 2px 5px rgba(74, 222, 128, 0.3); }
 
-        .my-apt-card { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(5px); border-radius: 15px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .my-apt-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); border-left: 4px solid var(--accent); border-radius: 18px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; transition: transform 0.2s; }
+        .my-apt-card:active { transform: scale(0.98); }
         .my-apt-info { flex: 1; }
-        .my-apt-title { font-weight: bold; font-size: 15px; margin-bottom: 5px; }
-        .my-apt-income { font-size: 13px; color: #4ade80; font-weight: bold; }
-        .sell-btn { background: #f87171; color: white; border: none; padding: 8px 12px; border-radius: 10px; font-weight: bold; font-size: 12px; cursor: pointer; }
+        .my-apt-title { font-weight: 700; font-size: 16px; margin-bottom: 6px; }
+        .my-apt-income { font-size: 14px; color: var(--accent); font-weight: bold; }
+        .sell-btn { background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); padding: 10px 15px; border-radius: 12px; font-weight: bold; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        .sell-btn:active { background: rgba(248, 113, 113, 0.4); }
         
         .fab-container { position: absolute; bottom: 90px; left: 0; width: 100%; display: flex; justify-content: center; pointer-events: none; z-index: 10; }
-        .fab { width: 60px; height: 60px; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; box-shadow: 0 4px 15px rgba(106, 17, 203, 0.5); border: 2px solid rgba(255, 255, 255, 0.2); pointer-events: auto; cursor: pointer; }
+        .fab { width: 65px; height: 65px; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 34px; box-shadow: 0 8px 25px rgba(106, 17, 203, 0.6); border: 3px solid rgba(255, 255, 255, 0.2); pointer-events: auto; cursor: pointer; transition: transform 0.2s; }
         .fab:active { transform: scale(0.85); }
         
-        nav { display: flex; justify-content: space-between; background: rgba(15, 23, 42, 0.95); padding: 10px 5px calc(10px + env(safe-area-inset-bottom)) 5px; border-top-left-radius: 25px; border-top-right-radius: 25px; position: absolute; bottom: 0; width: 100%; z-index: 5; }
-        .nav-btn { background: none; border: none; color: #8892b0; font-size: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; flex: 1; }
-        .nav-btn span { font-size: 20px; margin-bottom: 2px; }
+        nav { display: flex; justify-content: space-between; background: rgba(15, 23, 42, 0.95); padding: 12px 10px calc(12px + env(safe-area-inset-bottom)) 10px; border-top-left-radius: 25px; border-top-right-radius: 25px; position: absolute; bottom: 0; width: 100%; z-index: 5; backdrop-filter: blur(10px); border-top: 1px solid rgba(255,255,255,0.05); }
+        .nav-btn { background: none; border: none; color: #8892b0; font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; flex: 1; transition: color 0.2s; }
+        .nav-btn span { font-size: 22px; margin-bottom: 2px; transition: transform 0.2s; }
         .nav-btn.active { color: #ffffff; }
+        .nav-btn.active span { transform: scale(1.15) translateY(-3px); }
         
-        .exchange-card { background: rgba(0,0,0,0.3); border-radius: 15px; padding: 15px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
-        .rate-info { display: flex; flex-direction: column; flex: 1; min-width: 120px; }
-        .rate-title { font-size: 16px; font-weight: bold; }
-        .rate-price { font-size: 12px; color: #a3c2ff; }
-        .exchange-buttons { display: flex; align-items: center; gap: 6px; }
-        .rate-trend { font-size: 16px; font-weight: bold; width: 15px; text-align: center; }
-        .trend-up { color: #4ade80; }
+        /* Улучшенная биржа */
+        .exchange-card { background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 18px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; transition: transform 0.2s; }
+        .exchange-header { display: flex; justify-content: space-between; align-items: center; }
+        .rate-title { font-size: 17px; font-weight: 700; }
+        .rate-price { font-size: 13px; color: #a3c2ff; font-weight: 500; }
+        .rate-trend { font-size: 18px; font-weight: bold; }
+        .trend-up { color: var(--accent); }
         .trend-down { color: #f87171; }
-        .exchange-buttons button { padding: 6px 10px; border-radius: 8px; border: none; font-weight: bold; font-size: 11px; cursor: pointer; white-space: nowrap; }
+        
+        .exchange-bottom { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; margin-top: 5px; }
+        .rate-owned { font-size: 14px; color: #ffd700; font-weight: bold; background: rgba(255, 215, 0, 0.1); padding: 5px 10px; border-radius: 8px; }
+        .exchange-buttons { display: flex; gap: 8px; }
+        .exchange-buttons button { padding: 8px 15px; border-radius: 10px; border: none; font-weight: bold; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        .exchange-buttons button:active { transform: scale(0.9); }
+        .btn-buy { background: var(--accent); color: #000; }
+        .btn-sell { background: rgba(248, 113, 113, 0.8); color: white; }
 
-        .bus-card { background: rgba(0,0,0,0.4); border-radius: 15px; padding: 15px; margin-bottom: 15px; border-left: 5px solid #ccc; display: flex; flex-direction: column; gap: 5px; }
-        .bus-Common { border-left-color: #9ca3af; }
-        .bus-Rare { border-left-color: #3b82f6; }
-        .bus-Epic { border-left-color: #a855f7; }
-        .bus-Mythic { border-left-color: #ef4444; }
-        .bus-Legendary { border-left-color: #f59e0b; }
-        .bus-Chromatic { border-left-color: transparent; border-image: linear-gradient(to bottom, #ff0000, #00ff00, #0000ff) 1; }
-        .bus-title { font-size: 16px; font-weight: bold; }
-        .bus-info { font-size: 12px; color: #a3c2ff; }
-        .bus-price { font-size: 14px; color: #4ade80; font-weight: bold; }
+        .bus-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 18px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px; transition: transform 0.2s; }
+        .bus-card:active { transform: scale(0.98); }
+        .bus-Common { border-left: 5px solid #9ca3af; }
+        .bus-Rare { border-left: 5px solid #3b82f6; }
+        .bus-Epic { border-left: 5px solid #a855f7; }
+        .bus-Mythic { border-left: 5px solid #ef4444; }
+        .bus-Legendary { border-left: 5px solid #f59e0b; }
+        .bus-Chromatic { border-left: 5px solid transparent; border-image: linear-gradient(to bottom, #ff0000, #00ff00, #0000ff) 1; }
+        .bus-title { font-size: 17px; font-weight: 700; }
+        .bus-info { font-size: 13px; color: #a3c2ff; }
+        .bus-price { font-size: 15px; color: var(--accent); font-weight: bold; }
 
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a24; z-index: 100; display: none; flex-direction: column; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #232333; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .modal-header h2 { margin: 0; font-size: 20px; }
-        .close-btn { background: rgba(255,255,255,0.1); border: none; color: white; font-size: 20px; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; }
+        /* Модальные окна */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 100; display: none; flex-direction: column; animation: slideUp 0.3s ease-out; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #1e293b; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .modal-header h2 { margin: 0; font-size: 20px; font-weight: 700; }
+        .close-btn { background: rgba(255,255,255,0.1); border: none; color: white; font-size: 20px; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
+        .close-btn:active { background: rgba(255,255,255,0.2); transform: scale(0.9); }
         .modal-content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 50px; }
 
         .class-group { margin-bottom: 25px; }
-        .class-title { font-size: 15px; font-weight: bold; color: #a3c2ff; margin-bottom: 10px; text-transform: uppercase; }
-        .apt-shop-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.06); padding: 15px; border-radius: 15px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); }
-        .buy-btn { background: #4ade80; color: #000; border: none; padding: 10px 15px; border-radius: 12px; font-weight: bold; font-size: 13px; cursor: pointer; }
+        .class-title { font-size: 16px; font-weight: 700; color: #a3c2ff; margin-bottom: 12px; }
+        .apt-shop-item { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 16px; border-radius: 16px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); transition: transform 0.2s; }
+        .apt-shop-item:active { transform: scale(0.98); }
+        .buy-btn { background: var(--accent); color: #000; border: none; padding: 12px 18px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; }
+        .buy-btn:active { transform: scale(0.9); }
 
-        .admin-btn { width: 100%; background: #ffaa00; color: #000; padding: 15px; border-radius: 15px; border: none; font-weight: bold; font-size: 16px; margin-top: 20px; cursor: pointer; }
-        .user-row { display: flex; flex-direction: column; gap: 5px; background: rgba(255,255,255,0.08); padding: 15px; border-radius: 15px; margin-bottom: 10px; border-left: 3px solid #ffaa00; }
-        .admin-btns { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap;}
-        .admin-btns button { flex: 1; padding: 8px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .admin-btn { width: 100%; background: #ffaa00; color: #000; padding: 16px; border-radius: 16px; border: none; font-weight: bold; font-size: 16px; margin-top: 20px; cursor: pointer; transition: 0.2s; }
+        .admin-btn:active { transform: scale(0.95); }
+        .user-row { display: flex; flex-direction: column; gap: 8px; background: var(--card-bg); padding: 16px; border-radius: 16px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.05); border-left: 4px solid #ffaa00; }
+        .admin-btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;}
+        .admin-btns button { flex: 1; padding: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 13px; transition: 0.2s; }
+        .admin-btns button:active { transform: scale(0.9); }
 
-        .custom-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; display: none; justify-content: center; align-items: center; }
-        .custom-box { background: #232333; padding: 25px; border-radius: 20px; width: 90%; max-width: 350px; text-align: center; }
-        .custom-box input, .custom-box select { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white; font-size: 16px; outline: none; }
+        .custom-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 999; display: none; justify-content: center; align-items: center; }
+        .custom-box { background: #1e293b; padding: 30px 25px; border-radius: 24px; width: 90%; max-width: 350px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .custom-box h3 { margin: 0 0 20px 0; font-size: 22px; color: #fff; }
+        .custom-box p { font-size: 15px; color: #a3c2ff; margin-bottom: 20px; }
+        .custom-box input, .custom-box select { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white; font-size: 16px; outline: none; transition: 0.2s; }
+        .custom-box input:focus, .custom-box select:focus { border-color: var(--accent); }
         
         /* Черный текст для выпадающего списка */
         select option { color: black; background-color: white; }
         
         .modal-actions { display: flex; gap: 10px; }
-        .modal-actions button { padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; flex: 1; }
+        .modal-actions button { padding: 14px; border-radius: 14px; border: none; font-weight: bold; font-size: 16px; cursor: pointer; flex: 1; transition: 0.2s; }
+        .modal-actions button:active { transform: scale(0.95); }
         .btn-cancel { background: rgba(255,255,255,0.1); color: white; }
-        .btn-confirm { background: #4ade80; color: #000; }
+        .btn-confirm { background: var(--accent); color: #000; }
         .btn-danger { background: #f87171; color: white; }
 
-        .color-inputs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .color-picker-wrapper { display: flex; flex-direction: column; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 15px; flex: 1; }
-        input[type="color"] { -webkit-appearance: none; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; padding: 0; background: none; }
+        .color-inputs { display: flex; gap: 15px; margin-bottom: 25px; }
+        .color-picker-wrapper { display: flex; flex-direction: column; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 18px; flex: 1; }
+        input[type="color"] { -webkit-appearance: none; border: none; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; padding: 0; background: none; }
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
         input[type="color"]::-webkit-color-swatch { border: 3px solid rgba(255,255,255,0.2); border-radius: 50%; }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body>
@@ -140,24 +165,24 @@
                 </div>
             </div>
             <button class="btn-action" onclick="openTransferModal()">💸 Перевести деньги</button>
-            <div class="section-title" style="margin-top:20px;">Топ по балансу</div>
+            <div class="section-title" style="margin-top:25px;">Топ по балансу</div>
             <div id="leaderboard-list"></div>
         </main>
 
         <main id="tab-apartments">
-            <div class="section-title">Твой доход: <span style="color:#4ade80" id="total-income">0 $/ч</span></div>
+            <div class="section-title">Твой доход: <span style="color:var(--accent)" id="total-income">0 $/ч</span></div>
             <div id="my-apartments-list"></div>
         </main>
 
         <main id="tab-businesses">
             <div class="section-title">Твои Бизнесы</div>
             <div id="my-businesses-list"></div>
-            <div class="section-title" style="margin-top:20px; color: #ffaa00;">Доступны сегодня (24ч):</div>
+            <div class="section-title" style="margin-top:25px; color: #ffaa00;">Доступны сегодня (24ч):</div>
             <div id="daily-businesses-list"></div>
         </main>
 
         <main id="tab-trades">
-            <div class="section-title">Курсы (меняются каждый час)</div>
+            <div class="section-title">📈 Биржа (Курсы меняются каждый час)</div>
             <div id="exchange-list"></div>
         </main>
     </div>
@@ -180,14 +205,18 @@
     <div id="settings-modal" class="modal-overlay">
         <div class="modal-header"><h2>⚙️ Настройки</h2><button class="close-btn" onclick="closeModal('settings-modal')">✕</button></div>
         <div class="modal-content">
-            <div class="list-item">
-                <span>Изменить ник:</span>
-                <input type="text" id="nickname-input" style="width: 50%; padding: 5px; border-radius: 5px; border: none;">
-                <button onclick="saveNickname()" style="background:#4ade80; border:none; border-radius:5px; padding:5px 10px; font-weight:bold;">ОК</button>
+            <div class="list-item" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                <span>Твой ID: <span id="settings-user-id" style="color:var(--accent); float: right;"></span></span>
             </div>
-            <div class="list-item"><span>Твой ID:</span><span id="settings-user-id" style="color:#4ade80;"></span></div>
+            <div class="list-item" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                <span>Изменить ник:</span>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="nickname-input" style="flex: 1; padding: 10px; border-radius: 10px; border: none; background: rgba(255,255,255,0.1); color: white;">
+                    <button onclick="saveNickname()" style="background:var(--accent); border:none; border-radius:10px; padding:0 15px; font-weight:bold;">ОК</button>
+                </div>
+            </div>
             
-            <div class="section-title" style="margin-top:20px;">Цвета интерфейса</div>
+            <div class="section-title" style="margin-top:25px;">Цвета интерфейса</div>
             <div class="color-inputs">
                 <div class="color-picker-wrapper"><span>Фон 1</span><input type="color" id="bg-color-1" oninput="setCustomColor('bg1', this.value)"></div>
                 <div class="color-picker-wrapper"><span>Фон 2</span><input type="color" id="bg-color-2" oninput="setCustomColor('bg2', this.value)"></div>
@@ -211,15 +240,14 @@
         </div>
     </div>
 
-    <!-- Модалка управления админами -->
     <div id="admin-admins-modal" class="modal-overlay">
         <div class="modal-header"><h2>👥 Админы</h2><button class="close-btn" onclick="closeModal('admin-admins-modal')">✕</button></div>
         <div class="modal-content">
-            <div class="list-item">
-                <input type="number" id="new-admin-id" placeholder="ID нового админа" style="width: 60%; padding: 5px; border-radius: 5px; border: none; margin-right: 10px;">
-                <button onclick="addAdmin()" style="background:#4ade80; border:none; border-radius:5px; padding:5px 10px; font-weight:bold;">Добавить</button>
+            <div class="list-item" style="gap: 10px;">
+                <input type="number" id="new-admin-id" placeholder="ID нового админа" style="flex: 1; padding: 10px; border-radius: 10px; border: none; background: rgba(255,255,255,0.1); color: white;">
+                <button onclick="addAdmin()" style="background:var(--accent); border:none; border-radius:10px; padding:0 15px; font-weight:bold;">Доб.</button>
             </div>
-            <div class="section-title" style="margin-top:20px;">Список админов</div>
+            <div class="section-title" style="margin-top:25px;">Список админов</div>
             <div id="admins-list"></div>
         </div>
     </div>
@@ -227,7 +255,7 @@
     <div id="admin-companies-modal" class="modal-overlay">
         <div class="modal-header"><h2>🏢 Компании</h2><button class="close-btn" onclick="closeModal('admin-companies-modal')">✕</button></div>
         <div class="modal-content">
-            <button class="btn-action" style="background:#4ade80; color:#000; margin-bottom:20px;" onclick="addCompanyPrompt()">➕ Добавить компанию</button>
+            <button class="btn-action" style="background:var(--accent); color:#000; margin-bottom:20px;" onclick="addCompanyPrompt()">➕ Добавить компанию</button>
             <div id="admin-companies-list"></div>
         </div>
     </div>
@@ -274,20 +302,17 @@
 
         let currentRates = {};
         let companiesData = [];
+        let userPortfolio = {}; // Портфель токенов
 
-        // --- ИНИЦИАЛИЗАЦИЯ И ПРОВЕРКА АДМИНА ---
         document.getElementById("settings-user-id").innerText = userId;
         
         async function checkAdmin() {
             try {
                 const res = await fetch(`${SERVER_URL}/api/check_admin/${userId}`);
                 const data = await res.json();
-                if (data.is_admin) {
-                    document.getElementById("admin-btn").style.display = "block";
-                }
-            } catch (e) { console.log("Ошибка проверки админа", e); }
+                if (data.is_admin) document.getElementById("admin-btn").style.display = "block";
+            } catch (e) {}
         }
-        
         checkAdmin();
 
         // --- СВАЙПЫ ---
@@ -312,21 +337,21 @@
 
         // --- ЦВЕТА ---
         function setCustomColor(type, color) {
-            if (type === 'bg1') { document.documentElement.style.setProperty('--bg-color-1', color); localStorage.setItem('customBg1', color); }
-            else if (type === 'bg2') { document.documentElement.style.setProperty('--bg-color-2', color); localStorage.setItem('customBg2', color); }
+            if (type === 'bg1') { document.documentElement.style.setProperty('--bg-1', color); localStorage.setItem('customBg1', color); }
+            else if (type === 'bg2') { document.documentElement.style.setProperty('--bg-3', color); localStorage.setItem('customBg2', color); }
             else if (type === 'card') { document.getElementById('main-card').style.background = color; localStorage.setItem('customCard', color); }
         }
         window.onload = () => {
-            const bg1 = localStorage.getItem('customBg1') || '#1e3c72';
-            const bg2 = localStorage.getItem('customBg2') || '#6a11cb';
-            const cardColor = localStorage.getItem('customCard') || 'rgba(255, 255, 255, 0.15)';
-            document.documentElement.style.setProperty('--bg-color-1', bg1);
-            document.documentElement.style.setProperty('--bg-color-2', bg2);
+            const bg1 = localStorage.getItem('customBg1') || '#1a1a2e';
+            const bg2 = localStorage.getItem('customBg2') || '#0f3460';
+            const cardColor = localStorage.getItem('customCard') || 'linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05))';
+            document.documentElement.style.setProperty('--bg-1', bg1);
+            document.documentElement.style.setProperty('--bg-3', bg2);
             document.getElementById('bg-color-1').value = bg1;
             document.getElementById('bg-color-2').value = bg2;
             if (localStorage.getItem('customCard')) {
                 document.getElementById('main-card').style.background = cardColor;
-                document.getElementById('card-color').value = cardColor === 'rgba(255, 255, 255, 0.15)' ? '#2a5298' : cardColor;
+                document.getElementById('card-color').value = cardColor.includes('gradient') ? '#2a5298' : cardColor;
             }
             loadRates();
             loadCompanies();
@@ -348,6 +373,10 @@
                 if (data.card_number) document.getElementById("card-number").innerText = data.card_number;
                 if (data.card_cvc) document.getElementById("card-cvc").innerText = "CVC: " + data.card_cvc;
 
+                // Сохраняем портфель токенов
+                userPortfolio = data.portfolio || {};
+                loadRates(); // Перерисовываем биржу с новыми данными
+
                 if (data.earned > 0) {
                     let badge = document.getElementById("income-badge");
                     badge.innerText = `+ ${data.earned} $`;
@@ -357,7 +386,7 @@
                 renderApartments(data.apartments || []);
                 renderBusinesses(data.businesses || []);
                 loadDailyBusinesses();
-            } catch (error) { tg.showAlert("Ошибка загрузки данных. Проверьте интернет."); }
+            } catch (error) { tg.showAlert("Ошибка загрузки данных."); }
         }
 
         async function loadLeaderboard() {
@@ -369,7 +398,7 @@
                 const medals = ["🥇", "🥈", "🥉", "🏅", "🏅"];
                 data.leaders.forEach((p, i) => {
                     let fb = p.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                    list.innerHTML += `<div class="list-item"><span>${medals[i]} ${p.name}</span><span style="color: #4ade80;">${fb} $</span></div>`;
+                    list.innerHTML += `<div class="list-item"><span>${medals[i]} ${p.name}</span><span style="color: var(--accent); font-weight: bold;">${fb} $</span></div>`;
                 });
             } catch (e) {}
         }
@@ -380,21 +409,29 @@
                 currentRates = await res.json();
                 const list = document.getElementById('exchange-list'); list.innerHTML = '';
                 const names = { silver: "🥈 Серебро", gold: "🥇 Золото", diamonds: "💎 Алмазы", bitcoin: "₿ Биткоин", tesla: "🚗 Tesla" };
+                const icons = { silver: "🥈", gold: "🥇", diamonds: "💎", bitcoin: "₿", tesla: "🚗" };
                 
                 for (let key in currentRates) {
                     let r = currentRates[key];
                     let trendSymbol = r.trend === 'up' ? '▲' : '▼';
                     let trendClass = r.trend === 'up' ? 'trend-up' : 'trend-down';
+                    let owned = userPortfolio[key] || 0;
+                    
                     list.innerHTML += `
                     <div class="exchange-card">
-                        <div class="rate-info">
-                            <div class="rate-title">${names[key] || key}</div>
-                            <div class="rate-price">Цена: ${r.price} $</div>
+                        <div class="exchange-header">
+                            <div>
+                                <div class="rate-title">${names[key] || key}</div>
+                                <div class="rate-price">Цена: ${r.price} $</div>
+                            </div>
+                            <div class="rate-trend ${trendClass}">${trendSymbol}</div>
                         </div>
-                        <div class="exchange-buttons">
-                            <span class="rate-trend ${trendClass}">${trendSymbol}</span>
-                            <button class="btn-buy" onclick="tradeToken('${key}', 'buy')">Купить</button>
-                            <button class="btn-sell" onclick="tradeToken('${key}', 'sell')">Продать</button>
+                        <div class="exchange-bottom">
+                            <div class="rate-owned">В наличии: ${owned} ${icons[key] || ''}</div>
+                            <div class="exchange-buttons">
+                                <button class="btn-buy" onclick="tradeToken('${key}', 'buy')">Купить</button>
+                                <button class="btn-sell" onclick="tradeToken('${key}', 'sell')">Продать</button>
+                            </div>
                         </div>
                     </div>`;
                 }
@@ -406,7 +443,7 @@
                 const res = await fetch(`${SERVER_URL}/api/companies`);
                 const data = await res.json();
                 companiesData = data.companies || [];
-            } catch(e) { console.log("Ошибка загрузки компаний", e); }
+            } catch(e) {}
         }
 
         function renderApartments(apts) {
@@ -426,12 +463,12 @@
 
         function renderBusinesses(buses) {
             const list = document.getElementById('my-businesses-list'); list.innerHTML = '';
-            if (buses.length === 0) list.innerHTML = '<div style="color:#8892b0; font-size:12px;">У тебя пока нет бизнесов.</div>';
+            if (buses.length === 0) list.innerHTML = '<div style="color:#8892b0; font-size:14px; text-align:center; padding: 20px;">У тебя пока нет бизнесов.</div>';
             buses.forEach(bus => {
                 let fi = bus.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
                 list.innerHTML += `
                 <div class="bus-card bus-${bus.rarity}">
-                    <div class="bus-title">${bus.name} <span style="font-size:12px; color:#a3c2ff;">(${bus.rarity})</span></div>
+                    <div class="bus-title">${bus.name} <span style="font-size:13px; color:#a3c2ff;">(${bus.rarity})</span></div>
                     <div class="bus-price">+ ${fi} $/ч</div>
                 </div>`;
             });
@@ -442,16 +479,16 @@
                 const res = await fetch(`${SERVER_URL}/api/businesses/${userId}`);
                 const data = await res.json();
                 const list = document.getElementById('daily-businesses-list'); list.innerHTML = '';
-                if (data.businesses.length === 0) list.innerHTML = '<div style="color:#8892b0; font-size:12px;">Жди следующего ролла через 24 часа.</div>';
+                if (data.businesses.length === 0) list.innerHTML = '<div style="color:#8892b0; font-size:14px; text-align:center; padding: 20px;">Жди следующего ролла через 24 часа.</div>';
                 
                 data.businesses.forEach((bus, index) => {
                     let fp = bus.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
                     let fi = bus.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
                     list.innerHTML += `
                     <div class="bus-card bus-${bus.rarity}">
-                        <div class="bus-title">${bus.name} <span style="font-size:12px; color:#a3c2ff;">(${bus.rarity})</span></div>
+                        <div class="bus-title">${bus.name} <span style="font-size:13px; color:#a3c2ff;">(${bus.rarity})</span></div>
                         <div class="bus-info">Доход: +${fi} $/ч | Нужно кв: ${bus.req}</div>
-                        <button class="buy-btn" style="margin-top:10px;" onclick="buyBusiness(${index})">Купить за ${fp} $</button>
+                        <button class="buy-btn" style="margin-top:10px; width: 100%;" onclick="buyBusiness(${index})">Купить за ${fp} $</button>
                     </div>`;
                 });
             } catch(e) {}
@@ -502,8 +539,12 @@
             if (!amtStr) return;
             const amt = parseInt(amtStr);
             if (isNaN(amt) || amt <= 0) return;
+            
             fetch(`${SERVER_URL}/api/trade_token`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, token_type: token, amount: amt, action: action}) })
-            .then(r=>r.json()).then(res => { tg.showAlert(res.message); loadData(); });
+            .then(r=>r.json()).then(res => { 
+                if(res.status === 'error') tg.showAlert('❌ ' + res.message);
+                else { tg.showAlert('✅ ' + res.message); loadData(); } 
+            });
         }
 
         // --- АДМИНКА ---
@@ -518,11 +559,11 @@
                     list.innerHTML += `
                     <div class="user-row">
                         <div style="display:flex; justify-content:space-between; font-weight:bold;">
-                            <span>${u.name}</span> <span style="color:#4ade80">${fb} $</span>
+                            <span>${u.name}</span> <span style="color:var(--accent)">${fb} $</span>
                         </div>
-                        <div style="font-size:12px; color:#8892b0;">ID: ${u.id} | Квартир: ${u.apts_count}</div>
+                        <div style="font-size:13px; color:#8892b0;">ID: ${u.id} | Квартир: ${u.apts_count}</div>
                         <div class="admin-btns">
-                            <button style="background:#4ade80; color:#000;" onclick="adminMoneyModal(${u.id}, '${u.name}')">💰 Деньги</button>
+                            <button style="background:var(--accent); color:#000;" onclick="adminMoneyModal(${u.id}, '${u.name}')">💰 Деньги</button>
                             <button style="background:#3b82f6; color:#fff;" onclick="adminViewApts(${u.id})">🏢 Квартиры</button>
                             <button style="background:#a855f7; color:#fff;" onclick="openTransferModal(${u.id})">💸 Отправить</button>
                         </div>
@@ -566,7 +607,6 @@
             tg.showAlert(res.message); loadData(); loadLeaderboard();
         }
 
-        // --- УПРАВЛЕНИЕ АДМИНАМИ ---
         async function openAdminAdmins() {
             openModal('admin-admins-modal');
             loadAdminsList();
@@ -580,9 +620,9 @@
                 data.admins.forEach(id => {
                     let isMain = (id === MAIN_ADMIN_ID);
                     list.innerHTML += `
-                    <div class="list-item" style="background: ${isMain ? 'rgba(74, 222, 128, 0.2)' : 'rgba(255,255,255,0.1)'};">
+                    <div class="list-item" style="background: ${isMain ? 'rgba(74, 222, 128, 0.15)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${isMain ? 'var(--accent)' : 'rgba(255,255,255,0.05)'};">
                         <span>${isMain ? '👑 Главный' : '🛡 Админ'} (ID: ${id})</span>
-                        ${isMain ? '' : `<button onclick="removeAdmin(${id})" style="background:#f87171; border:none; border-radius:5px; padding:5px 10px; font-weight:bold; color:white;">Удалить</button>`}
+                        ${isMain ? '' : `<button onclick="removeAdmin(${id})" style="background:#f87171; border:none; border-radius:8px; padding:6px 12px; font-weight:bold; color:white;">Удалить</button>`}
                     </div>`;
                 });
             } catch(e) { list.innerHTML = 'Ошибка'; }
@@ -618,9 +658,9 @@
                 list.innerHTML += `
                 <div class="user-row" style="border-left-color:#3b82f6;">
                     <div style="font-weight:bold; font-size:16px;">${c.name}</div>
-                    <div style="font-size:12px; color:#8892b0;">Тарифов: ${c.tiers.length}</div>
+                    <div style="font-size:13px; color:#8892b0;">Тарифов: ${c.tiers.length}</div>
                     <div class="admin-btns">
-                        <button style="background:#4ade80; color:#000;" onclick="addTierPrompt(${c.id}, '${c.name}')">➕ Тариф</button>
+                        <button style="background:var(--accent); color:#000;" onclick="addTierPrompt(${c.id}, '${c.name}')">➕ Тариф</button>
                         <button style="background:#f87171; color:white;" onclick="deleteCompany(${c.id})">🗑 Удалить</button>
                     </div>
                 </div>`;
@@ -668,8 +708,8 @@
                     html += `
                     <div class="apt-shop-item">
                         <div class="apt-shop-info">
-                            <div class="apt-shop-title" style="font-weight:bold;">${item.name}</div>
-                            <div style="font-size:12px; color:#4ade80;">+ ${fi} $/ч</div>
+                            <div class="apt-shop-title" style="font-weight:bold; font-size:16px; margin-bottom: 5px;">${item.name}</div>
+                            <div style="font-size:13px; color:var(--accent); font-weight: bold;">+ ${fi} $/ч</div>
                         </div>
                         <button class="buy-btn" onclick="prepareBuy('${item.name}', ${item.price}, ${item.income})">${fp} $</button>
                     </div>`;
