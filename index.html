@@ -202,10 +202,25 @@
         <div class="modal-header"><h2>👑 Админ-панель</h2><button class="close-btn" onclick="closeModal('admin-modal')">✕</button></div>
         <div class="modal-content">
             <div class="section-title">Управление</div>
-            <button class="btn-action" style="background:#3b82f6; color:#fff;" onclick="openAdminCompanies()">🏢 Настроить компании</button>
-            <div class="section-title" style="margin-top:20px;">Игроки</div>
+            <button class="btn-action" style="background:#3b82f6; color:#fff; margin-bottom: 10px;" onclick="openAdminCompanies()">🏢 Настроить компании</button>
+            <button class="btn-action" style="background:#a855f7; color:#fff; margin-bottom: 20px;" onclick="openAdminAdmins()">👥 Управление админами</button>
+            
+            <div class="section-title">Игроки</div>
             <div id="admin-users-list"></div>
             <button class="admin-btn" style="background:#f87171; margin-top:20px;" onclick="resetAllUsers()">⚠️ Сбросить ВСЕХ (220к)</button>
+        </div>
+    </div>
+
+    <!-- Модалка управления админами -->
+    <div id="admin-admins-modal" class="modal-overlay">
+        <div class="modal-header"><h2>👥 Админы</h2><button class="close-btn" onclick="closeModal('admin-admins-modal')">✕</button></div>
+        <div class="modal-content">
+            <div class="list-item">
+                <input type="number" id="new-admin-id" placeholder="ID нового админа" style="width: 60%; padding: 5px; border-radius: 5px; border: none; margin-right: 10px;">
+                <button onclick="addAdmin()" style="background:#4ade80; border:none; border-radius:5px; padding:5px 10px; font-weight:bold;">Добавить</button>
+            </div>
+            <div class="section-title" style="margin-top:20px;">Список админов</div>
+            <div id="admins-list"></div>
         </div>
     </div>
 
@@ -255,14 +270,25 @@
         let playerName = user ? (user.first_name + (user.last_name ? " " + user.last_name : "")) : "Гость";
         const MAIN_ADMIN_ID = 5634302903;
         
-        // НОВАЯ ССЫЛКА НА СЕРВЕР NETRUN
         const SERVER_URL = "https://mmiji.de1.netrun.io";
 
         let currentRates = {};
         let companiesData = [];
 
+        // --- ИНИЦИАЛИЗАЦИЯ И ПРОВЕРКА АДМИНА ---
         document.getElementById("settings-user-id").innerText = userId;
-        if (userId === MAIN_ADMIN_ID) document.getElementById("admin-btn").style.display = "block";
+        
+        async function checkAdmin() {
+            try {
+                const res = await fetch(`${SERVER_URL}/api/check_admin/${userId}`);
+                const data = await res.json();
+                if (data.is_admin) {
+                    document.getElementById("admin-btn").style.display = "block";
+                }
+            } catch (e) { console.log("Ошибка проверки админа", e); }
+        }
+        
+        checkAdmin();
 
         // --- СВАЙПЫ ---
         let tabs = ['apartments', 'balance', 'businesses', 'trades'];
@@ -540,6 +566,49 @@
             tg.showAlert(res.message); loadData(); loadLeaderboard();
         }
 
+        // --- УПРАВЛЕНИЕ АДМИНАМИ ---
+        async function openAdminAdmins() {
+            openModal('admin-admins-modal');
+            loadAdminsList();
+        }
+
+        async function loadAdminsList() {
+            const list = document.getElementById('admins-list'); list.innerHTML = 'Загрузка...';
+            try {
+                const data = await fetch(`${SERVER_URL}/api/admin/list_admins?admin_id=${userId}`).then(r=>r.json());
+                list.innerHTML = '';
+                data.admins.forEach(id => {
+                    let isMain = (id === MAIN_ADMIN_ID);
+                    list.innerHTML += `
+                    <div class="list-item" style="background: ${isMain ? 'rgba(74, 222, 128, 0.2)' : 'rgba(255,255,255,0.1)'};">
+                        <span>${isMain ? '👑 Главный' : '🛡 Админ'} (ID: ${id})</span>
+                        ${isMain ? '' : `<button onclick="removeAdmin(${id})" style="background:#f87171; border:none; border-radius:5px; padding:5px 10px; font-weight:bold; color:white;">Удалить</button>`}
+                    </div>`;
+                });
+            } catch(e) { list.innerHTML = 'Ошибка'; }
+        }
+
+        async function addAdmin() {
+            const newId = parseInt(document.getElementById('new-admin-id').value);
+            if (isNaN(newId)) return tg.showAlert('Введите корректный ID');
+            const res = await fetch(`${SERVER_URL}/api/admin/add_admin`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({admin_id: userId, target_id: newId})
+            }).then(r=>r.json());
+            if(res.status === 'ok') { tg.showAlert('✅ Админ добавлен'); document.getElementById('new-admin-id').value = ''; loadAdminsList(); }
+            else tg.showAlert('❌ ' + res.message);
+        }
+
+        async function removeAdmin(targetId) {
+            if (!(await tg.showConfirm("Удалить этого админа?"))) return;
+            const res = await fetch(`${SERVER_URL}/api/admin/remove_admin`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({admin_id: userId, target_id: targetId})
+            }).then(r=>r.json());
+            if(res.status === 'ok') { tg.showAlert('✅ Админ удален'); loadAdminsList(); }
+            else tg.showAlert('❌ ' + res.message);
+        }
+
         async function openAdminCompanies() {
             openModal('admin-companies-modal');
             const list = document.getElementById('admin-companies-list'); list.innerHTML = 'Загрузка...';
@@ -559,7 +628,7 @@
         }
 
         async function addCompanyPrompt() {
-            const name = prompt("Введите название новой компании (например: 'Элит-Строй'):");
+            const name = prompt("Введите название новой компании:");
             if (!name) return;
             await fetch(`${SERVER_URL}/api/admin/add_company`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: name}) });
             openAdminCompanies();
@@ -589,9 +658,8 @@
         // --- МАГАЗИН ---
         function openShop() {
             const list = document.getElementById('shop-list'); list.innerHTML = '';
-            if (companiesData.length === 0) {
-                list.innerHTML = '<div style="text-align:center; padding:20px;">Компании не загружены. Подождите.</div>';
-            }
+            if (companiesData.length === 0) list.innerHTML = '<div style="text-align:center; padding:20px;">Компании не загружены. Подождите.</div>';
+            
             companiesData.forEach(group => {
                 let html = `<div class="class-group"><div class="class-title">${group.name}</div>`;
                 group.tiers.forEach((item) => {
@@ -624,27 +692,12 @@
             if (!buyItemData) return;
             try {
                 const res = await fetch(`${SERVER_URL}/api/buy`, { 
-                    method:'POST', 
-                    headers:{'Content-Type':'application/json'}, 
-                    body: JSON.stringify({
-                        user_id: userId, 
-                        user_name: playerName, 
-                        apartment_name: buyItemData.name, 
-                        price: buyItemData.price, 
-                        income: buyItemData.income
-                    }) 
+                    method:'POST', headers:{'Content-Type':'application/json'}, 
+                    body: JSON.stringify({user_id: userId, user_name: playerName, apartment_name: buyItemData.name, price: buyItemData.price, income: buyItemData.income}) 
                 }).then(r=>r.json());
-                
-                if (res.status === 'ok') { 
-                    tg.showAlert('✅ Успешно куплено!'); 
-                    closeModal('shop-modal'); 
-                    loadData(); 
-                } else { 
-                    tg.showAlert("❌ Ошибка: " + res.message); 
-                }
-            } catch(e) {
-                tg.showAlert("⚠️ Ошибка соединения с сервером");
-            }
+                if (res.status === 'ok') { tg.showAlert('✅ Успешно куплено!'); closeModal('shop-modal'); loadData(); } 
+                else { tg.showAlert("❌ Ошибка: " + res.message); }
+            } catch(e) { tg.showAlert("⚠️ Ошибка соединения"); }
         }
 
         async function sellApt(index, price) {
