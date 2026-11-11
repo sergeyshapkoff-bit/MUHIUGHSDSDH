@@ -43,28 +43,24 @@
         .my-apt-income { font-size: 13px; color: #4ade80; font-weight: bold; }
         .sell-btn { background: #f87171; color: white; border: none; padding: 8px 12px; border-radius: 10px; font-weight: bold; font-size: 12px; cursor: pointer; }
         
-        /* Кнопка + поднята выше */
         .fab-container { position: absolute; bottom: 90px; left: 0; width: 100%; display: flex; justify-content: center; pointer-events: none; z-index: 10; }
         .fab { width: 60px; height: 60px; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; box-shadow: 0 4px 15px rgba(106, 17, 203, 0.5); border: 2px solid rgba(255, 255, 255, 0.2); pointer-events: auto; cursor: pointer; }
         .fab:active { transform: scale(0.85); }
         
-        /* Нижнее меню (4 кнопки) */
         nav { display: flex; justify-content: space-between; background: rgba(15, 23, 42, 0.95); padding: 10px 5px calc(10px + env(safe-area-inset-bottom)) 5px; border-top-left-radius: 25px; border-top-right-radius: 25px; position: absolute; bottom: 0; width: 100%; z-index: 5; }
         .nav-btn { background: none; border: none; color: #8892b0; font-size: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; flex: 1; }
         .nav-btn span { font-size: 20px; margin-bottom: 2px; }
         .nav-btn.active { color: #ffffff; }
         
-        /* Биржа */
         .exchange-card { background: rgba(0,0,0,0.3); border-radius: 15px; padding: 15px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
         .rate-info { display: flex; flex-direction: column; }
         .rate-title { font-size: 16px; font-weight: bold; }
         .rate-price { font-size: 12px; color: #a3c2ff; }
-        .rate-trend { font-size: 16px; margin-left: 5px; }
+        .rate-trend { font-size: 18px; font-weight: bold; margin-right: 10px; display: inline-block; width: 20px; text-align: center; }
         .trend-up { color: #4ade80; }
         .trend-down { color: #f87171; }
         .exchange-buttons button { padding: 8px 12px; border-radius: 8px; border: none; font-weight: bold; font-size: 12px; cursor: pointer; margin-left: 5px; }
 
-        /* Бизнесы */
         .bus-card { background: rgba(0,0,0,0.4); border-radius: 15px; padding: 15px; margin-bottom: 15px; border-left: 5px solid #ccc; display: flex; flex-direction: column; gap: 5px; }
         .bus-Common { border-left-color: #9ca3af; }
         .bus-Rare { border-left-color: #3b82f6; }
@@ -87,7 +83,6 @@
         .apt-shop-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.06); padding: 15px; border-radius: 15px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); }
         .buy-btn { background: #4ade80; color: #000; border: none; padding: 10px 15px; border-radius: 12px; font-weight: bold; font-size: 13px; cursor: pointer; }
 
-        /* Админка */
         .admin-btn { width: 100%; background: #ffaa00; color: #000; padding: 15px; border-radius: 15px; border: none; font-weight: bold; font-size: 16px; margin-top: 20px; cursor: pointer; }
         .user-row { display: flex; flex-direction: column; gap: 5px; background: rgba(255,255,255,0.08); padding: 15px; border-radius: 15px; margin-bottom: 10px; border-left: 3px solid #ffaa00; }
         .admin-btns { display: flex; gap: 5px; margin-top: 5px; }
@@ -133,7 +128,7 @@
                     </div>
                 </div>
             </div>
-            <button class="btn-action" onclick="openModal('transfer-modal')">💸 Перевести деньги</button>
+            <button class="btn-action" onclick="openTransferModal()">💸 Перевести деньги</button>
             <div class="section-title" style="margin-top:20px;">Топ по балансу</div>
             <div id="leaderboard-list"></div>
         </main>
@@ -146,7 +141,6 @@
         <main id="tab-businesses">
             <div class="section-title">Твои Бизнесы</div>
             <div id="my-businesses-list"></div>
-            
             <div class="section-title" style="margin-top:20px; color: #ffaa00;">Доступны сегодня (обновление раз в 24ч):</div>
             <div id="daily-businesses-list"></div>
         </main>
@@ -166,13 +160,11 @@
         <button class="nav-btn" onclick="switchTab(3, this)"><span>📈</span> Биржа</button>
     </nav>
 
-    <!-- Модалка Магазина -->
     <div id="shop-modal" class="modal-overlay">
         <div class="modal-header"><h2>🏢 Магазин</h2><button class="close-btn" onclick="closeModal('shop-modal')">✕</button></div>
         <div class="modal-content" id="shop-list"></div>
     </div>
 
-    <!-- Модалка Настроек -->
     <div id="settings-modal" class="modal-overlay">
         <div class="modal-header"><h2>⚙️ Настройки</h2><button class="close-btn" onclick="closeModal('settings-modal')">✕</button></div>
         <div class="modal-content">
@@ -186,7 +178,6 @@
         </div>
     </div>
 
-    <!-- Модалка Админа -->
     <div id="admin-modal" class="modal-overlay">
         <div class="modal-header"><h2>👑 Админ-панель</h2><button class="close-btn" onclick="closeModal('admin-modal')">✕</button></div>
         <div class="modal-content">
@@ -196,7 +187,6 @@
         </div>
     </div>
 
-    <!-- Модалки действий -->
     <div id="transfer-modal" class="custom-modal">
         <div class="custom-box">
             <h3>💸 Перевод по карте</h3>
@@ -268,7 +258,11 @@
             try {
                 const res = await fetch(`https://got.de1.netrun.io/api/balance/${userId}?name=${encodeURIComponent(playerName)}`);
                 const data = await res.json();
-                if(data.error) return;
+                
+                if(data.error) { 
+                    tg.showAlert("Ошибка сервера: " + data.error);
+                    return; 
+                }
 
                 document.getElementById("user-name").innerText = data.name || playerName;
                 document.getElementById("nickname-input").value = data.name || playerName;
@@ -288,7 +282,10 @@
                 renderApartments(data.apartments || []);
                 renderBusinesses(data.businesses || []);
                 loadDailyBusinesses();
-            } catch (error) { console.log(error); }
+            } catch (error) { 
+                console.error(error); 
+                tg.showAlert("Ошибка загрузки данных. Проверьте интернет.");
+            }
         }
 
         async function loadLeaderboard() {
@@ -315,8 +312,10 @@
                 
                 for (let key in currentRates) {
                     let r = currentRates[key];
-                    let trendSymbol = r.trend === 'up' ? '📈' : '📉';
+                    // Используем текстовые стрелочки вместо эмодзи
+                    let trendSymbol = r.trend === 'up' ? '▲' : '▼';
                     let trendClass = r.trend === 'up' ? 'trend-up' : 'trend-down';
+                    
                     list.innerHTML += `
                     <div class="exchange-card">
                         <div class="rate-info">
@@ -390,7 +389,6 @@
             tg.showAlert('Ник изменен!');
         }
 
-        // Перевод
         async function openTransferModal() {
             openModal('transfer-modal');
             const select = document.getElementById('transfer-user-select');
@@ -402,7 +400,7 @@
                 data.users.forEach(u => {
                     if (u.id !== userId) select.innerHTML += `<option value="${u.id}">${u.name}</option>`;
                 });
-            } catch(e) {}
+            } catch(e) { select.innerHTML = '<option value="">Ошибка загрузки</option>'; }
         }
 
         async function confirmTransfer() {
@@ -415,7 +413,6 @@
             if (res.status === 'ok') { tg.showAlert(res.message); loadData(); loadLeaderboard(); } else tg.showAlert(res.message);
         }
 
-        // Бизнесы
         async function buyBusiness(index) {
             const res = await fetch('https://got.de1.netrun.io/api/buy_business', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, business_index: index}) }).then(r=>r.json());
             if (res.status === 'ok') { tg.showAlert(res.message); loadData(); } else tg.showAlert(res.message);
@@ -430,26 +427,27 @@
             .then(r=>r.json()).then(res => { tg.showAlert(res.message); loadData(); });
         }
 
-        // Админка
         async function openAdminPanel() {
             openModal('admin-modal');
             const list = document.getElementById('admin-users-list'); list.innerHTML = 'Загрузка...';
-            const data = await fetch(`https://got.de1.netrun.io/api/admin/users?admin_id=${userId}`).then(r=>r.json());
-            list.innerHTML = '';
-            data.users.forEach(u => {
-                let fb = u.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                list.innerHTML += `
-                <div class="user-row">
-                    <div style="display:flex; justify-content:space-between; font-weight:bold;">
-                        <span>${u.name}</span> <span style="color:#4ade80">${fb} $</span>
-                    </div>
-                    <div style="font-size:12px; color:#8892b0;">ID: ${u.id} | Квартир: ${u.apts_count}</div>
-                    <div class="admin-btns">
-                        <button style="background:#4ade80; color:#000;" onclick="adminMoneyModal(${u.id}, '${u.name}')">💰 Деньги</button>
-                        <button style="background:#3b82f6; color:#fff;" onclick="adminViewApts(${u.id})">🏢 Квартиры</button>
-                    </div>
-                </div>`;
-            });
+            try {
+                const data = await fetch(`https://got.de1.netrun.io/api/admin/users?admin_id=${userId}`).then(r=>r.json());
+                list.innerHTML = '';
+                data.users.forEach(u => {
+                    let fb = u.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    list.innerHTML += `
+                    <div class="user-row">
+                        <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                            <span>${u.name}</span> <span style="color:#4ade80">${fb} $</span>
+                        </div>
+                        <div style="font-size:12px; color:#8892b0;">ID: ${u.id} | Квартир: ${u.apts_count}</div>
+                        <div class="admin-btns">
+                            <button style="background:#4ade80; color:#000;" onclick="adminMoneyModal(${u.id}, '${u.name}')">💰 Деньги</button>
+                            <button style="background:#3b82f6; color:#fff;" onclick="adminViewApts(${u.id})">🏢 Квартиры</button>
+                        </div>
+                    </div>`;
+                });
+            } catch (e) { list.innerHTML = 'Ошибка загрузки'; }
         }
 
         let adminTargetId = null;
@@ -486,11 +484,10 @@
             tg.showAlert(res.message); loadData(); loadLeaderboard();
         }
 
-        // Модалки
         function openModal(id) { document.getElementById(id).style.display = 'flex'; if (tg.BackButton) tg.BackButton.show(); }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; if (tg.BackButton) tg.BackButton.hide(); }
 
-        // Магазин Квартир (по документу)
+        // Квартиры строго по документу
         const shopData = [
             { class: "Эконом - Класс", items: [
                 { name: "«Заречный парк»", price: 25000, income: 210 },
@@ -565,7 +562,6 @@
             if (res.status === 'ok') { tg.showAlert(res.message); loadData(); } else tg.showAlert(res.message);
         }
 
-        // Запуск
         loadData();
         loadLeaderboard();
         loadRates();
