@@ -10,16 +10,16 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; padding: 0; height: 100vh; background: linear-gradient(135deg, var(--bg-color-1) 0%, var(--bg-color-2) 100%); color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; overflow: hidden; user-select: none; transition: background 0.5s ease; }
         
-        header { display: flex; justify-content: space-between; align-items: center; padding: 20px; flex-shrink: 0; animation: fadeInDown 0.5s; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px; flex-shrink: 0; }
         .user-info { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
         .avatar { width: 36px; height: 36px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 16px; }
         .icons { font-size: 22px; display: flex; gap: 15px; opacity: 0.8; cursor: pointer; }
         
         #swipe-container { flex: 1; position: relative; overflow: hidden; }
-        main { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 0 20px 100px 20px; overflow-y: auto; display: none; transition: transform 0.3s ease; }
+        main { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 0 20px 100px 20px; overflow-y: auto; display: none; }
         main.active { display: block; animation: fadeIn 0.4s ease-out; }
         
-        .bank-card { background: var(--card-color); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 20px; padding: 20px; margin-bottom: 25px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); position: relative; transition: all 0.3s ease; }
+        .bank-card { background: var(--card-color); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 20px; padding: 20px; margin-bottom: 25px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); position: relative; }
         .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
         .card-balance { font-size: 26px; font-weight: bold; color: #4ade80; }
         .card-balance span { font-size: 16px; font-weight: normal; opacity: 0.8; color: white;}
@@ -32,12 +32,12 @@
         .income-badge { position: absolute; top: -15px; right: 20px; background: #4ade80; color: #000; padding: 6px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4); animation: popIn 0.5s; display: none; z-index: 10; }
         
         .section-title { font-size: 15px; font-weight: bold; margin-bottom: 10px; color: rgba(255,255,255,0.9); }
-        .list-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.15); padding: 15px; border-radius: 15px; margin-bottom: 10px; font-size: 14px; backdrop-filter: blur(5px); animation: slideUp 0.3s ease-out backwards; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.15); padding: 15px; border-radius: 15px; margin-bottom: 10px; font-size: 14px; backdrop-filter: blur(5px); }
         
-        .btn-action { width: 100%; background: #4ade80; color: #000; border: none; padding: 15px; border-radius: 15px; font-weight: bold; font-size: 16px; margin-top: 10px; cursor: pointer; box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3); }
+        .btn-action { width: 100%; background: #4ade80; color: #000; border: none; padding: 15px; border-radius: 15px; font-weight: bold; font-size: 16px; margin-top: 10px; cursor: pointer; }
         .btn-action:active { transform: scale(0.95); }
 
-        .my-apt-card { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(5px); border-radius: 15px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; animation: slideUp 0.3s ease-out backwards; }
+        .my-apt-card { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(5px); border-radius: 15px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         .my-apt-info { flex: 1; }
         .my-apt-title { font-weight: bold; font-size: 15px; margin-bottom: 5px; }
         .my-apt-income { font-size: 13px; color: #4ade80; font-weight: bold; }
@@ -52,14 +52,15 @@
         .nav-btn span { font-size: 20px; margin-bottom: 2px; }
         .nav-btn.active { color: #ffffff; }
         
-        .exchange-card { background: rgba(0,0,0,0.3); border-radius: 15px; padding: 15px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
-        .rate-info { display: flex; flex-direction: column; }
+        .exchange-card { background: rgba(0,0,0,0.3); border-radius: 15px; padding: 15px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+        .rate-info { display: flex; flex-direction: column; flex: 1; min-width: 120px; }
         .rate-title { font-size: 16px; font-weight: bold; }
         .rate-price { font-size: 12px; color: #a3c2ff; }
-        .rate-trend { font-size: 18px; font-weight: bold; margin-right: 10px; display: inline-block; width: 20px; text-align: center; }
+        .exchange-buttons { display: flex; align-items: center; gap: 6px; }
+        .rate-trend { font-size: 16px; font-weight: bold; width: 15px; text-align: center; }
         .trend-up { color: #4ade80; }
         .trend-down { color: #f87171; }
-        .exchange-buttons button { padding: 8px 12px; border-radius: 8px; border: none; font-weight: bold; font-size: 12px; cursor: pointer; margin-left: 5px; }
+        .exchange-buttons button { padding: 6px 10px; border-radius: 8px; border: none; font-weight: bold; font-size: 11px; cursor: pointer; white-space: nowrap; }
 
         .bus-card { background: rgba(0,0,0,0.4); border-radius: 15px; padding: 15px; margin-bottom: 15px; border-left: 5px solid #ccc; display: flex; flex-direction: column; gap: 5px; }
         .bus-Common { border-left-color: #9ca3af; }
@@ -85,17 +86,27 @@
 
         .admin-btn { width: 100%; background: #ffaa00; color: #000; padding: 15px; border-radius: 15px; border: none; font-weight: bold; font-size: 16px; margin-top: 20px; cursor: pointer; }
         .user-row { display: flex; flex-direction: column; gap: 5px; background: rgba(255,255,255,0.08); padding: 15px; border-radius: 15px; margin-bottom: 10px; border-left: 3px solid #ffaa00; }
-        .admin-btns { display: flex; gap: 5px; margin-top: 5px; }
+        .admin-btns { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap;}
         .admin-btns button { flex: 1; padding: 8px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; }
 
         .custom-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; display: none; justify-content: center; align-items: center; }
         .custom-box { background: #232333; padding: 25px; border-radius: 20px; width: 90%; max-width: 350px; text-align: center; }
         .custom-box input, .custom-box select { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white; font-size: 16px; outline: none; }
+        
+        /* ИСПРАВЛЕН ЦВЕТ ДЛЯ ВЫПАДАЮЩЕГО СПИСКА */
+        select option { color: black; background-color: white; }
+        
         .modal-actions { display: flex; gap: 10px; }
         .modal-actions button { padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; flex: 1; }
         .btn-cancel { background: rgba(255,255,255,0.1); color: white; }
         .btn-confirm { background: #4ade80; color: #000; }
         .btn-danger { background: #f87171; color: white; }
+
+        .color-inputs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .color-picker-wrapper { display: flex; flex-direction: column; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 15px; flex: 1; }
+        input[type="color"] { -webkit-appearance: none; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; padding: 0; background: none; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: 3px solid rgba(255,255,255,0.2); border-radius: 50%; }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -141,7 +152,7 @@
         <main id="tab-businesses">
             <div class="section-title">Твои Бизнесы</div>
             <div id="my-businesses-list"></div>
-            <div class="section-title" style="margin-top:20px; color: #ffaa00;">Доступны сегодня (обновление раз в 24ч):</div>
+            <div class="section-title" style="margin-top:20px; color: #ffaa00;">Доступны сегодня (24ч):</div>
             <div id="daily-businesses-list"></div>
         </main>
 
@@ -174,6 +185,14 @@
                 <button onclick="saveNickname()" style="background:#4ade80; border:none; border-radius:5px; padding:5px 10px; font-weight:bold;">ОК</button>
             </div>
             <div class="list-item"><span>Твой ID:</span><span id="settings-user-id" style="color:#4ade80;"></span></div>
+            
+            <div class="section-title" style="margin-top:20px;">Цвета интерфейса</div>
+            <div class="color-inputs">
+                <div class="color-picker-wrapper"><span>Фон 1</span><input type="color" id="bg-color-1" oninput="setCustomColor('bg1', this.value)"></div>
+                <div class="color-picker-wrapper"><span>Фон 2</span><input type="color" id="bg-color-2" oninput="setCustomColor('bg2', this.value)"></div>
+                <div class="color-picker-wrapper"><span>Карта</span><input type="color" id="card-color" oninput="setCustomColor('card', this.value)"></div>
+            </div>
+
             <button id="admin-btn" class="admin-btn" style="display:none;" onclick="openAdminPanel()">👑 Панель Админа</button>
         </div>
     </div>
@@ -181,18 +200,26 @@
     <div id="admin-modal" class="modal-overlay">
         <div class="modal-header"><h2>👑 Админ-панель</h2><button class="close-btn" onclick="closeModal('admin-modal')">✕</button></div>
         <div class="modal-content">
-            <div class="section-title">Игроки</div>
+            <div class="section-title">Управление</div>
+            <button class="btn-action" style="background:#3b82f6; color:#fff;" onclick="openAdminCompanies()">🏢 Настроить компании</button>
+            <div class="section-title" style="margin-top:20px;">Игроки</div>
             <div id="admin-users-list"></div>
             <button class="admin-btn" style="background:#f87171; margin-top:20px;" onclick="resetAllUsers()">⚠️ Сбросить ВСЕХ (220к)</button>
         </div>
     </div>
 
+    <div id="admin-companies-modal" class="modal-overlay">
+        <div class="modal-header"><h2>🏢 Компании</h2><button class="close-btn" onclick="closeModal('admin-companies-modal')">✕</button></div>
+        <div class="modal-content">
+            <button class="btn-action" style="background:#4ade80; color:#000; margin-bottom:20px;" onclick="addCompanyPrompt()">➕ Добавить компанию</button>
+            <div id="admin-companies-list"></div>
+        </div>
+    </div>
+
     <div id="transfer-modal" class="custom-modal">
         <div class="custom-box">
-            <h3>💸 Перевод по карте</h3>
-            <select id="transfer-user-select">
-                <option value="">Выбери получателя...</option>
-            </select>
+            <h3>💸 Перевод</h3>
+            <select id="transfer-user-select"><option value="">Загрузка...</option></select>
             <input type="number" id="transfer-amount" placeholder="Сумма в $" inputmode="numeric">
             <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('transfer-modal')">Отмена</button><button class="btn-confirm" onclick="confirmTransfer()">Отправить</button></div>
         </div>
@@ -228,6 +255,7 @@
         const MAIN_ADMIN_ID = 5634302903;
         
         let currentRates = {};
+        let companiesData = [];
 
         document.getElementById("settings-user-id").innerText = userId;
         if (userId === MAIN_ADMIN_ID) document.getElementById("admin-btn").style.display = "block";
@@ -235,7 +263,7 @@
         // --- СВАЙПЫ ---
         let tabs = ['apartments', 'balance', 'businesses', 'trades'];
         let currentTabIndex = 1;
-        let touchStartX = 0, touchEndX = 0;
+        let touchStartX = 0;
         function updateTabs() {
             document.querySelectorAll('main').forEach(m => m.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -244,7 +272,6 @@
         }
         function switchTab(index, btnElement) { currentTabIndex = index; updateTabs(); }
         document.getElementById('swipe-container').addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
-        document.getElementById('swipe-container').addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; });
         document.getElementById('swipe-container').addEventListener('touchmove', e => {
             const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > 70) {
@@ -253,16 +280,34 @@
             }
         });
 
-        // --- ДАННЫЕ ---
+        // --- ЦВЕТА ---
+        function setCustomColor(type, color) {
+            if (type === 'bg1') { document.documentElement.style.setProperty('--bg-color-1', color); localStorage.setItem('customBg1', color); }
+            else if (type === 'bg2') { document.documentElement.style.setProperty('--bg-color-2', color); localStorage.setItem('customBg2', color); }
+            else if (type === 'card') { document.getElementById('main-card').style.background = color; localStorage.setItem('customCard', color); }
+        }
+        window.onload = () => {
+            const bg1 = localStorage.getItem('customBg1') || '#1e3c72';
+            const bg2 = localStorage.getItem('customBg2') || '#6a11cb';
+            const cardColor = localStorage.getItem('customCard') || 'rgba(255, 255, 255, 0.15)';
+            document.documentElement.style.setProperty('--bg-color-1', bg1);
+            document.documentElement.style.setProperty('--bg-color-2', bg2);
+            document.getElementById('bg-color-1').value = bg1;
+            document.getElementById('bg-color-2').value = bg2;
+            if (localStorage.getItem('customCard')) {
+                document.getElementById('main-card').style.background = cardColor;
+                document.getElementById('card-color').value = cardColor === 'rgba(255, 255, 255, 0.15)' ? '#2a5298' : cardColor;
+            }
+            loadRates();
+            loadCompanies();
+        };
+
+        // --- ЗАГРУЗКА ДАННЫХ ---
         async function loadData() {
             try {
                 const res = await fetch(`https://got.de1.netrun.io/api/balance/${userId}?name=${encodeURIComponent(playerName)}`);
                 const data = await res.json();
-                
-                if(data.error) { 
-                    tg.showAlert("Ошибка сервера: " + data.error);
-                    return; 
-                }
+                if(data.error) { tg.showAlert("Ошибка сервера: " + data.error); return; }
 
                 document.getElementById("user-name").innerText = data.name || playerName;
                 document.getElementById("nickname-input").value = data.name || playerName;
@@ -282,10 +327,7 @@
                 renderApartments(data.apartments || []);
                 renderBusinesses(data.businesses || []);
                 loadDailyBusinesses();
-            } catch (error) { 
-                console.error(error); 
-                tg.showAlert("Ошибка загрузки данных. Проверьте интернет.");
-            }
+            } catch (error) { tg.showAlert("Ошибка загрузки данных"); }
         }
 
         async function loadLeaderboard() {
@@ -307,15 +349,12 @@
                 const res = await fetch('https://got.de1.netrun.io/api/token_rates');
                 currentRates = await res.json();
                 const list = document.getElementById('exchange-list'); list.innerHTML = '';
-                
-                const names = { silver: "🥈 Серебро", gold: "🥇 Золото", diamonds: "💎 Алмазы", bitcoin: "₿ Биткоин", tesla: "🚗 Акции Tesla" };
+                const names = { silver: "🥈 Серебро", gold: "🥇 Золото", diamonds: "💎 Алмазы", bitcoin: "₿ Биткоин", tesla: "🚗 Tesla" };
                 
                 for (let key in currentRates) {
                     let r = currentRates[key];
-                    // Используем текстовые стрелочки вместо эмодзи
                     let trendSymbol = r.trend === 'up' ? '▲' : '▼';
                     let trendClass = r.trend === 'up' ? 'trend-up' : 'trend-down';
-                    
                     list.innerHTML += `
                     <div class="exchange-card">
                         <div class="rate-info">
@@ -330,6 +369,14 @@
                     </div>`;
                 }
             } catch (e) {}
+        }
+
+        async function loadCompanies() {
+            try {
+                const res = await fetch('https://got.de1.netrun.io/api/companies');
+                const data = await res.json();
+                companiesData = data.companies || [];
+            } catch(e) { console.log("Ошибка загрузки компаний", e); }
         }
 
         function renderApartments(apts) {
@@ -389,7 +436,8 @@
             tg.showAlert('Ник изменен!');
         }
 
-        async function openTransferModal() {
+        // Открытие окна перевода. Если передан targetId (из админки), выбирает его.
+        async function openTransferModal(targetId = null) {
             openModal('transfer-modal');
             const select = document.getElementById('transfer-user-select');
             select.innerHTML = '<option value="">Загрузка...</option>';
@@ -398,7 +446,10 @@
                 const data = await res.json();
                 select.innerHTML = '<option value="">Выбери получателя...</option>';
                 data.users.forEach(u => {
-                    if (u.id !== userId) select.innerHTML += `<option value="${u.id}">${u.name}</option>`;
+                    if (u.id !== userId) {
+                        let isSelected = (u.id === targetId) ? "selected" : "";
+                        select.innerHTML += `<option value="${u.id}" ${isSelected}>${u.name}</option>`;
+                    }
                 });
             } catch(e) { select.innerHTML = '<option value="">Ошибка загрузки</option>'; }
         }
@@ -407,7 +458,6 @@
             const recvId = document.getElementById('transfer-user-select').value;
             const amt = parseInt(document.getElementById('transfer-amount').value);
             if (!recvId || isNaN(amt) || amt <= 0) return tg.showAlert('Выбери получателя и сумму');
-            
             closeModal('transfer-modal');
             const res = await fetch('https://got.de1.netrun.io/api/transfer', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: parseInt(recvId), amount: amt}) }).then(r=>r.json());
             if (res.status === 'ok') { tg.showAlert(res.message); loadData(); loadLeaderboard(); } else tg.showAlert(res.message);
@@ -427,6 +477,7 @@
             .then(r=>r.json()).then(res => { tg.showAlert(res.message); loadData(); });
         }
 
+        // --- АДМИНКА ---
         async function openAdminPanel() {
             openModal('admin-modal');
             const list = document.getElementById('admin-users-list'); list.innerHTML = 'Загрузка...';
@@ -444,6 +495,7 @@
                         <div class="admin-btns">
                             <button style="background:#4ade80; color:#000;" onclick="adminMoneyModal(${u.id}, '${u.name}')">💰 Деньги</button>
                             <button style="background:#3b82f6; color:#fff;" onclick="adminViewApts(${u.id})">🏢 Квартиры</button>
+                            <button style="background:#a855f7; color:#fff;" onclick="openTransferModal(${u.id})">💸 Отправить</button>
                         </div>
                     </div>`;
                 });
@@ -461,8 +513,9 @@
         async function adminAddMoney() {
             const amt = parseInt(document.getElementById('admin-money-amount').value);
             if (!amt) return;
-            await fetch('https://got.de1.netrun.io/api/admin/add_money', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: amt}) });
-            closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard();
+            const res = await fetch('https://got.de1.netrun.io/api/admin/add_money', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: amt}) }).then(r=>r.json());
+            if(res.status==='error') tg.showAlert(res.message);
+            else { closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard(); }
         }
 
         async function adminRemoveMoney() {
@@ -484,47 +537,61 @@
             tg.showAlert(res.message); loadData(); loadLeaderboard();
         }
 
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; if (tg.BackButton) tg.BackButton.show(); }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; if (tg.BackButton) tg.BackButton.hide(); }
+        async function openAdminCompanies() {
+            openModal('admin-companies-modal');
+            const list = document.getElementById('admin-companies-list'); list.innerHTML = 'Загрузка...';
+            await loadCompanies();
+            list.innerHTML = '';
+            companiesData.forEach(c => {
+                list.innerHTML += `
+                <div class="user-row" style="border-left-color:#3b82f6;">
+                    <div style="font-weight:bold; font-size:16px;">${c.name}</div>
+                    <div style="font-size:12px; color:#8892b0;">Тарифов: ${c.tiers.length}</div>
+                    <div class="admin-btns">
+                        <button style="background:#4ade80; color:#000;" onclick="addTierPrompt(${c.id}, '${c.name}')">➕ Тариф</button>
+                        <button style="background:#f87171; color:white;" onclick="deleteCompany(${c.id})">🗑 Удалить</button>
+                    </div>
+                </div>`;
+            });
+        }
 
-        // Квартиры строго по документу
-        const shopData = [
-            { class: "Эконом - Класс", items: [
-                { name: "«Заречный парк»", price: 25000, income: 210 },
-                { name: "«Соколиный край»", price: 55000, income: 600 },
-                { name: "Остров «Фарбс»", price: 100000, income: 1000 }
-            ]},
-            { class: "Комфорт - Класс", items: [
-                { name: "«Панелька»", price: 155000, income: 1350 },
-                { name: "ЖК «Мапид»", price: 300000, income: 3000 },
-                { name: "ЖК «Ясно.Янино»", price: 660000, income: 5700 },
-                { name: "«Алма Сити»", price: 1150000, income: 12000 }
-            ]},
-            { class: "Премиум - Комфорт", items: [
-                { name: "ЖК «Солнечный»", price: 3000000, income: 32000 },
-                { name: "«Кирпичный Дом»", price: 8000000, income: 55500 },
-                { name: "ЖК «Новая Боровая»", price: 12500000, income: 140000 }
-            ]},
-            { class: "Бизнес - Класс", items: [
-                { name: "ЖК «DEPO»", price: 50000000, income: 1345600 },
-                { name: "ЖК «Минск-Мир»", price: 100000000, income: 3000000 }
-            ]},
-            { class: "Люкс", items: [
-                { name: "Пентхаус", price: 125500555, income: 6000007 }
-            ]},
-            { class: "Бизнес - Люкс", items: [
-                { name: "ЖК «Малиновка»", price: 222200000, income: 8000000 },
-                { name: "ЖК «Небосреб 2.0»", price: 500000000, income: 10500000 },
-                { name: "ЖК «Клевер парк»", price: 1000000000, income: 25550975 },
-                { name: "ЖК «Последняя Слеза»", price: 5000000000, income: 100000000 }
-            ]}
-        ];
+        async function addCompanyPrompt() {
+            const name = prompt("Введите название новой компании (например: 'Элит-Строй'):");
+            if (!name) return;
+            await fetch('https://got.de1.netrun.io/api/admin/add_company', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: name}) });
+            openAdminCompanies();
+        }
 
+        async function addTierPrompt(companyId, companyName) {
+            const name = prompt(`Название квартиры (в ${companyName}):`);
+            if (!name) return;
+            const price = parseInt(prompt("Цена в $:"));
+            const income = parseInt(prompt("Доход в час $:"));
+            if (!price || !income) return;
+            
+            const tierData = { name: name, price: price, income: income };
+            await fetch(`https://got.de1.netrun.io/api/admin/add_tier/${companyId}`, { 
+                method:'POST', headers:{'Content-Type':'application/json'}, 
+                body: JSON.stringify({admin_id: userId, company_name: '', tier_data: tierData}) 
+            });
+            tg.showAlert("Тариф добавлен!"); openAdminCompanies();
+        }
+
+        async function deleteCompany(id) {
+            if (!(await tg.showConfirm("Удалить компанию со всеми квартирами?"))) return;
+            await fetch(`https://got.de1.netrun.io/api/admin/delete_company/${id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name:''}) });
+            openAdminCompanies();
+        }
+
+        // --- МАГАЗИН ---
         function openShop() {
             const list = document.getElementById('shop-list'); list.innerHTML = '';
-            shopData.forEach(group => {
-                let html = `<div class="class-group"><div class="class-title">${group.class}</div>`;
-                group.items.forEach((item) => {
+            if (companiesData.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding:20px;">Компании не загружены. Подождите.</div>';
+            }
+            companiesData.forEach(group => {
+                let html = `<div class="class-group"><div class="class-title">${group.name}</div>`;
+                group.tiers.forEach((item) => {
                     let fp = item.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
                     let fi = item.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
                     html += `
@@ -562,9 +629,11 @@
             if (res.status === 'ok') { tg.showAlert(res.message); loadData(); } else tg.showAlert(res.message);
         }
 
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; if (tg.BackButton) tg.BackButton.show(); }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; if (tg.BackButton) tg.BackButton.hide(); }
+
         loadData();
         loadLeaderboard();
-        loadRates();
     </script>
 </body>
 </html>
