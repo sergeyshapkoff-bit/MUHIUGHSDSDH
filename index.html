@@ -93,7 +93,6 @@
         .custom-box { background: #232333; padding: 25px; border-radius: 20px; width: 90%; max-width: 350px; text-align: center; }
         .custom-box input, .custom-box select { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white; font-size: 16px; outline: none; }
         
-        /* ИСПРАВЛЕН ЦВЕТ ДЛЯ ВЫПАДАЮЩЕГО СПИСКА */
         select option { color: black; background-color: white; }
         
         .modal-actions { display: flex; gap: 10px; }
@@ -171,6 +170,7 @@
         <button class="nav-btn" onclick="switchTab(3, this)"><span>📈</span> Биржа</button>
     </nav>
 
+    <!-- Модалки -->
     <div id="shop-modal" class="modal-overlay">
         <div class="modal-header"><h2>🏢 Магазин</h2><button class="close-btn" onclick="closeModal('shop-modal')">✕</button></div>
         <div class="modal-content" id="shop-list"></div>
@@ -254,6 +254,9 @@
         let playerName = user ? (user.first_name + (user.last_name ? " " + user.last_name : "")) : "Гость";
         const MAIN_ADMIN_ID = 5634302903;
         
+        // НОВАЯ ССЫЛКА НА СЕРВЕР NETRUN
+        const SERVER_URL = "https://mmiji.de1.netrun.io";
+
         let currentRates = {};
         let companiesData = [];
 
@@ -305,7 +308,7 @@
         // --- ЗАГРУЗКА ДАННЫХ ---
         async function loadData() {
             try {
-                const res = await fetch(`https://got.de1.netrun.io/api/balance/${userId}?name=${encodeURIComponent(playerName)}`);
+                const res = await fetch(`${SERVER_URL}/api/balance/${userId}?name=${encodeURIComponent(playerName)}`);
                 const data = await res.json();
                 if(data.error) { tg.showAlert("Ошибка сервера: " + data.error); return; }
 
@@ -327,12 +330,12 @@
                 renderApartments(data.apartments || []);
                 renderBusinesses(data.businesses || []);
                 loadDailyBusinesses();
-            } catch (error) { tg.showAlert("Ошибка загрузки данных"); }
+            } catch (error) { tg.showAlert("Ошибка загрузки данных. Проверьте интернет."); }
         }
 
         async function loadLeaderboard() {
             try {
-                const res = await fetch(`https://got.de1.netrun.io/api/leaderboard`);
+                const res = await fetch(`${SERVER_URL}/api/leaderboard`);
                 const data = await res.json();
                 const list = document.getElementById('leaderboard-list'); list.innerHTML = '';
                 if (!data.leaders) return;
@@ -346,7 +349,7 @@
 
         async function loadRates() {
             try {
-                const res = await fetch('https://got.de1.netrun.io/api/token_rates');
+                const res = await fetch(`${SERVER_URL}/api/token_rates`);
                 currentRates = await res.json();
                 const list = document.getElementById('exchange-list'); list.innerHTML = '';
                 const names = { silver: "🥈 Серебро", gold: "🥇 Золото", diamonds: "💎 Алмазы", bitcoin: "₿ Биткоин", tesla: "🚗 Tesla" };
@@ -373,7 +376,7 @@
 
         async function loadCompanies() {
             try {
-                const res = await fetch('https://got.de1.netrun.io/api/companies');
+                const res = await fetch(`${SERVER_URL}/api/companies`);
                 const data = await res.json();
                 companiesData = data.companies || [];
             } catch(e) { console.log("Ошибка загрузки компаний", e); }
@@ -409,7 +412,7 @@
 
         async function loadDailyBusinesses() {
             try {
-                const res = await fetch(`https://got.de1.netrun.io/api/businesses/${userId}`);
+                const res = await fetch(`${SERVER_URL}/api/businesses/${userId}`);
                 const data = await res.json();
                 const list = document.getElementById('daily-businesses-list'); list.innerHTML = '';
                 if (data.businesses.length === 0) list.innerHTML = '<div style="color:#8892b0; font-size:12px;">Жди следующего ролла через 24 часа.</div>';
@@ -431,18 +434,17 @@
         async function saveNickname() {
             const newName = document.getElementById('nickname-input').value.trim();
             if (!newName) return;
-            await fetch('https://got.de1.netrun.io/api/set_name', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, name: newName}) });
+            await fetch(`${SERVER_URL}/api/set_name`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, name: newName}) });
             document.getElementById('user-name').innerText = newName;
             tg.showAlert('Ник изменен!');
         }
 
-        // Открытие окна перевода. Если передан targetId (из админки), выбирает его.
         async function openTransferModal(targetId = null) {
             openModal('transfer-modal');
             const select = document.getElementById('transfer-user-select');
             select.innerHTML = '<option value="">Загрузка...</option>';
             try {
-                const res = await fetch('https://got.de1.netrun.io/api/all_users');
+                const res = await fetch(`${SERVER_URL}/api/all_users`);
                 const data = await res.json();
                 select.innerHTML = '<option value="">Выбери получателя...</option>';
                 data.users.forEach(u => {
@@ -459,12 +461,12 @@
             const amt = parseInt(document.getElementById('transfer-amount').value);
             if (!recvId || isNaN(amt) || amt <= 0) return tg.showAlert('Выбери получателя и сумму');
             closeModal('transfer-modal');
-            const res = await fetch('https://got.de1.netrun.io/api/transfer', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: parseInt(recvId), amount: amt}) }).then(r=>r.json());
+            const res = await fetch(`${SERVER_URL}/api/transfer`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: parseInt(recvId), amount: amt}) }).then(r=>r.json());
             if (res.status === 'ok') { tg.showAlert(res.message); loadData(); loadLeaderboard(); } else tg.showAlert(res.message);
         }
 
         async function buyBusiness(index) {
-            const res = await fetch('https://got.de1.netrun.io/api/buy_business', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, business_index: index}) }).then(r=>r.json());
+            const res = await fetch(`${SERVER_URL}/api/buy_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, business_index: index}) }).then(r=>r.json());
             if (res.status === 'ok') { tg.showAlert(res.message); loadData(); } else tg.showAlert(res.message);
         }
 
@@ -473,7 +475,7 @@
             if (!amtStr) return;
             const amt = parseInt(amtStr);
             if (isNaN(amt) || amt <= 0) return;
-            fetch('https://got.de1.netrun.io/api/trade_token', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, token_type: token, amount: amt, action: action}) })
+            fetch(`${SERVER_URL}/api/trade_token`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, token_type: token, amount: amt, action: action}) })
             .then(r=>r.json()).then(res => { tg.showAlert(res.message); loadData(); });
         }
 
@@ -482,7 +484,7 @@
             openModal('admin-modal');
             const list = document.getElementById('admin-users-list'); list.innerHTML = 'Загрузка...';
             try {
-                const data = await fetch(`https://got.de1.netrun.io/api/admin/users?admin_id=${userId}`).then(r=>r.json());
+                const data = await fetch(`${SERVER_URL}/api/admin/users?admin_id=${userId}`).then(r=>r.json());
                 list.innerHTML = '';
                 data.users.forEach(u => {
                     let fb = u.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
@@ -513,7 +515,7 @@
         async function adminAddMoney() {
             const amt = parseInt(document.getElementById('admin-money-amount').value);
             if (!amt) return;
-            const res = await fetch('https://got.de1.netrun.io/api/admin/add_money', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: amt}) }).then(r=>r.json());
+            const res = await fetch(`${SERVER_URL}/api/admin/add_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: amt}) }).then(r=>r.json());
             if(res.status==='error') tg.showAlert(res.message);
             else { closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard(); }
         }
@@ -521,19 +523,19 @@
         async function adminRemoveMoney() {
             const amt = parseInt(document.getElementById('admin-money-amount').value);
             if (!amt) return;
-            await fetch('https://got.de1.netrun.io/api/admin/remove_money', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: amt}) });
+            await fetch(`${SERVER_URL}/api/admin/remove_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: amt}) });
             closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard();
         }
 
         async function adminViewApts(id) {
-            const data = await fetch(`https://got.de1.netrun.io/api/admin/user_apartments/${id}`).then(r=>r.json());
+            const data = await fetch(`${SERVER_URL}/api/admin/user_apartments/${id}`).then(r=>r.json());
             let txt = data.apartments.map(a => `- ${a.name} (+${a.income}$/ч)`).join('\n');
             tg.showAlert(txt || "Нет квартир");
         }
 
         async function resetAllUsers() {
             if (!(await tg.showConfirm("Удалить ВСЕХ игроков и сбросить прогресс?"))) return;
-            const res = await fetch('https://got.de1.netrun.io/api/admin/reset_all', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id:0, amount:0}) }).then(r=>r.json());
+            const res = await fetch(`${SERVER_URL}/api/admin/reset_all`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id:0, amount:0}) }).then(r=>r.json());
             tg.showAlert(res.message); loadData(); loadLeaderboard();
         }
 
@@ -558,7 +560,7 @@
         async function addCompanyPrompt() {
             const name = prompt("Введите название новой компании (например: 'Элит-Строй'):");
             if (!name) return;
-            await fetch('https://got.de1.netrun.io/api/admin/add_company', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: name}) });
+            await fetch(`${SERVER_URL}/api/admin/add_company`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: name}) });
             openAdminCompanies();
         }
 
@@ -570,7 +572,7 @@
             if (!price || !income) return;
             
             const tierData = { name: name, price: price, income: income };
-            await fetch(`https://got.de1.netrun.io/api/admin/add_tier/${companyId}`, { 
+            await fetch(`${SERVER_URL}/api/admin/add_tier/${companyId}`, { 
                 method:'POST', headers:{'Content-Type':'application/json'}, 
                 body: JSON.stringify({admin_id: userId, company_name: '', tier_data: tierData}) 
             });
@@ -579,7 +581,7 @@
 
         async function deleteCompany(id) {
             if (!(await tg.showConfirm("Удалить компанию со всеми квартирами?"))) return;
-            await fetch(`https://got.de1.netrun.io/api/admin/delete_company/${id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name:''}) });
+            await fetch(`${SERVER_URL}/api/admin/delete_company/${id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name:''}) });
             openAdminCompanies();
         }
 
@@ -619,13 +621,13 @@
         async function executeBuy() {
             closeModal('buy-modal');
             if (!buyItemData) return;
-            const res = await fetch('https://got.de1.netrun.io/api/buy', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, user_name: playerName, apartment_name: buyItemData.name, price: buyItemData.price, income: buyItemData.income}) }).then(r=>r.json());
+            const res = await fetch(`${SERVER_URL}/api/buy`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, user_name: playerName, apartment_name: buyItemData.name, price: buyItemData.price, income: buyItemData.income}) }).then(r=>r.json());
             if (res.status === 'ok') { tg.showAlert('✅ Куплено!'); closeModal('shop-modal'); loadData(); } else tg.showAlert(res.message);
         }
 
         async function sellApt(index, price) {
             if (!(await tg.showConfirm("Продать квартиру за 70% стоимости?"))) return;
-            const res = await fetch('https://got.de1.netrun.io/api/sell', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, apartment_index: index, price: price}) }).then(r=>r.json());
+            const res = await fetch(`${SERVER_URL}/api/sell`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, apartment_index: index, price: price}) }).then(r=>r.json());
             if (res.status === 'ok') { tg.showAlert(res.message); loadData(); } else tg.showAlert(res.message);
         }
 
