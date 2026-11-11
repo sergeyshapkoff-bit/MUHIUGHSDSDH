@@ -34,7 +34,6 @@ def get_current_rates():
         rates[token] = {"price": price, "trend": trend}
     return rates
 
-# Начальные компании из твоего документа
 DEFAULT_COMPANIES = [
     {"name": "Эконом - Класс", "tiers": [
         {"name": "«Заречный парк»", "price": 25000, "income": 210},
@@ -81,14 +80,11 @@ def init_db():
         """)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS companies (
-                id serial primary key,
-                name text,
-                tiers jsonb default '[]'::jsonb
+                id serial primary key, name text, tiers jsonb default '[]'::jsonb
             );
         """)
         conn.commit()
         
-        # Заполняем компании, если таблица пуста
         cursor.execute("SELECT COUNT(*) FROM companies")
         if cursor.fetchone()[0] == 0:
             for comp in DEFAULT_COMPANIES:
@@ -101,45 +97,21 @@ def init_db():
 init_db()
 
 class BuyRequest(BaseModel):
-    user_id: int
-    user_name: str
-    apartment_name: str
-    price: int
-    income: int
-
+    user_id: int; user_name: str; apartment_name: str; price: int; income: int
 class SellRequest(BaseModel):
-    user_id: int
-    apartment_index: int
-    price: int
-
+    user_id: int; apartment_index: int; price: int
 class TransferRequest(BaseModel):
-    sender_id: int
-    receiver_id: int
-    amount: int
-
+    sender_id: int; receiver_id: int; amount: int
 class TokenRequest(BaseModel):
-    user_id: int
-    token_type: str
-    amount: int
-    action: str
-
+    user_id: int; token_type: str; amount: int; action: str
 class BusinessBuyRequest(BaseModel):
-    user_id: int
-    business_index: int
-
+    user_id: int; business_index: int
 class SetNameRequest(BaseModel):
-    user_id: int
-    name: str
-
+    user_id: int; name: str
 class AdminMoneyRequest(BaseModel):
-    admin_id: int
-    target_id: int
-    amount: int
-
+    admin_id: int; target_id: int; amount: int
 class AdminCompanyRequest(BaseModel):
-    admin_id: int
-    company_name: str
-    tier_data: dict = None
+    admin_id: int; company_name: str; tier_data: dict = None
 
 def calculate_income(amount, apartments, businesses, last_payout):
     now = int(time.time())
@@ -174,7 +146,6 @@ def get_all_users_for_transfer():
         return {"users": [{"id": r['id'], "name": r['name']} for r in rows]}
     except: return {"users": []}
 
-# --- КОМПАНИИ ---
 @app.get("/api/companies")
 def get_companies():
     try:
@@ -218,15 +189,25 @@ def delete_company(company_id: int, req: AdminCompanyRequest):
         return {"status": "ok", "message": "Компания удалена!"}
     except: return {"status": "error"}
 
-# --- БИЗНЕСЫ ---
+# --- БИЗНЕСЫ С ШАНСАМИ ---
 BUSINESS_POOL = [
-    {"name": "Киоск", "rarity": "Common", "price": 50000, "income": 1000, "req": 1},
-    {"name": "Кофейня", "rarity": "Rare", "price": 250000, "income": 6000, "req": 2},
-    {"name": "Автосервис", "rarity": "Epic", "price": 1500000, "income": 40000, "req": 3},
-    {"name": "Завод", "rarity": "Mythic", "price": 15000000, "income": 450000, "req": 5},
-    {"name": "Нефтевышка", "rarity": "Legendary", "price": 150000000, "income": 5000000, "req": 8},
-    {"name": "Космопорт", "rarity": "Chromatic", "price": 2000000000, "income": 80000000, "req": 12}
+    {"name": "Киоск", "rarity": "Common", "price": 50000, "income": 1000, "req": 1, "weight": 50},
+    {"name": "Кофейня", "rarity": "Rare", "price": 250000, "income": 6000, "req": 2, "weight": 25},
+    {"name": "Автосервис", "rarity": "Epic", "price": 1500000, "income": 40000, "req": 3, "weight": 15},
+    {"name": "Завод", "rarity": "Mythic", "price": 15000000, "income": 450000, "req": 5, "weight": 7},
+    {"name": "Нефтевышка", "rarity": "Legendary", "price": 150000000, "income": 5000000, "req": 8, "weight": 2.5},
+    {"name": "Космопорт", "rarity": "Chromatic", "price": 2000000000, "income": 80000000, "req": 12, "weight": 0.5}
 ]
+
+def get_weighted_business():
+    total_weight = sum(b['weight'] for b in BUSINESS_POOL)
+    r = random.uniform(0, total_weight)
+    upto = 0
+    for b in BUSINESS_POOL:
+        if upto + b['weight'] >= r:
+            return b
+        upto += b['weight']
+    return BUSINESS_POOL[0]
 
 @app.get("/api/businesses/{user_id}")
 def get_businesses(user_id: int):
@@ -236,7 +217,12 @@ def get_businesses(user_id: int):
         row = cursor.fetchone()
         now = int(time.time())
         if now - int(row['last_roll'] or 0) > 86400:
-            rolled = random.sample(BUSINESS_POOL, 2)
+            # Роллим 2 УНИКАЛЬНЫХ бизнеса по шансам
+            rolled = []
+            while len(rolled) < 2:
+                b = get_weighted_business()
+                if b not in rolled:
+                    rolled.append(b)
             cursor.execute("UPDATE users SET last_roll = %s, daily_businesses = %s WHERE id = %s", (now, json.dumps(rolled), user_id))
             conn.commit(); daily = rolled
         else:
@@ -364,7 +350,6 @@ def get_leaderboard():
         return {"leaders": [{"name": r['name'], "balance": int(r['amount'])} for r in rows]}
     except: return {"leaders": []}
 
-# --- АДМИНКА ---
 @app.get("/api/admin/users")
 def admin_get_users(admin_id: int):
     if admin_id != MAIN_ADMIN_ID: return {"users": []}
@@ -375,7 +360,6 @@ def admin_get_users(admin_id: int):
         return {"users": [{"id": r['id'], "name": r['name'], "balance": int(r['amount']), "apts_count": len(json.loads(r['apartments'] or '[]'))} for r in rows]}
     except: return {"users": []}
 
-# Я добавил этот эндпоинт обратно (он был потерян)
 @app.post("/api/admin/add_money")
 def admin_add_money(req: AdminMoneyRequest):
     if req.admin_id != MAIN_ADMIN_ID: return {"status": "error", "message": "Нет прав"}
