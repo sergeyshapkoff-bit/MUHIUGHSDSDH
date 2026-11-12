@@ -6,143 +6,132 @@
     <title>Стройка</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --bg-1: #1a1a2e; --bg-2: #16213e; --bg-3: #0f3460; --accent: #4ade80; --card-bg: rgba(255, 255, 255, 0.08); }
+        :root { --bg-1: #1a1a2e; --bg-3: #0f3460; --accent: #4ade80; --card-bg: rgba(255,255,255,0.08); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; padding: 0; height: 100vh; background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-3) 100%); color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; overflow: hidden; user-select: none; transition: background 0.5s ease; }
-        
+        body { margin: 0; padding: 0; height: 100vh; background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-3) 100%); color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
         header { display: flex; justify-content: space-between; align-items: center; padding: 20px; flex-shrink: 0; }
         .user-info { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
-        .avatar { width: 38px; height: 38px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        .icons { font-size: 22px; display: flex; gap: 15px; opacity: 0.8; cursor: pointer; transition: transform 0.2s; }
-        .icons:active { transform: scale(0.9); }
-        
+        .avatar { width: 38px; height: 38px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 18px; }
+        .icons { font-size: 22px; opacity: 0.8; cursor: pointer; }
         #swipe-container { flex: 1; position: relative; overflow: hidden; }
         main { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 0 20px 100px 20px; overflow-y: auto; display: none; }
-        main.active { display: block; animation: fadeIn 0.3s ease-out; }
-        
-        /* Стильная карта */
-        .bank-card { background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05)); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 24px; padding: 25px; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); position: relative; transition: all 0.3s ease; }
-        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
-        .card-balance { font-size: 32px; font-weight: 800; color: var(--accent); text-shadow: 0 2px 10px rgba(74, 222, 128, 0.3); }
-        .card-balance span { font-size: 18px; font-weight: normal; opacity: 0.8; color: white; }
-        .visa-logo { font-size: 24px; font-weight: 900; font-style: italic; letter-spacing: 2px; opacity: 0.9; }
-        .card-number { font-size: 19px; letter-spacing: 2px; margin-bottom: 15px; font-family: monospace; white-space: nowrap; display: flex; align-items: center; cursor: pointer; opacity: 0.9; }
+        main.active { display: block; animation: fadeIn 0.3s; }
+        .bank-card { background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05)); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.2); border-radius: 24px; padding: 25px; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); position: relative; }
+        .card-top { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .card-balance { font-size: 32px; font-weight: 800; color: var(--accent); }
+        .card-balance span { font-size: 18px; opacity: 0.8; color: white; }
+        .visa-logo { font-size: 24px; font-weight: 900; font-style: italic; opacity: 0.9; }
+        .card-number { font-size: 19px; letter-spacing: 2px; margin-bottom: 15px; font-family: monospace; cursor: pointer; opacity: 0.9; }
         .copy-icon { font-size: 14px; margin-left: 10px; opacity: 0.5; }
-        .card-bottom { display: flex; justify-content: space-between; font-size: 14px; opacity: 0.8; font-weight: 500; text-transform: uppercase; }
-        .cvc-block { display: flex; align-items: center; cursor: pointer; }
-
-        .income-badge { position: absolute; top: -15px; right: 25px; background: var(--accent); color: #000; padding: 8px 18px; border-radius: 30px; font-weight: bold; font-size: 15px; box-shadow: 0 6px 15px rgba(74, 222, 128, 0.4); animation: popIn 0.5s; display: none; z-index: 10; }
-        
-        .section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: rgba(255,255,255,0.9); }
-        .list-item { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); padding: 16px; border-radius: 18px; margin-bottom: 10px; font-size: 15px; backdrop-filter: blur(5px); transition: transform 0.2s; }
-        .list-item:active { transform: scale(0.98); }
-        
-        .btn-action { width: 100%; background: var(--accent); color: #000; border: none; padding: 18px; border-radius: 18px; font-weight: bold; font-size: 17px; margin-top: 10px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3); }
-        .btn-action:active { transform: scale(0.96); box-shadow: 0 2px 5px rgba(74, 222, 128, 0.3); }
-
-        .my-apt-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); border-left: 4px solid var(--accent); border-radius: 18px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; transition: transform 0.2s; }
-        .my-apt-card:active { transform: scale(0.98); }
-        .my-apt-info { flex: 1; }
+        .card-bottom { display: flex; justify-content: space-between; font-size: 14px; opacity: 0.8; text-transform: uppercase; }
+        .income-badge { position: absolute; top: -15px; right: 25px; background: var(--accent); color: #000; padding: 8px 18px; border-radius: 30px; font-weight: bold; font-size: 15px; box-shadow: 0 6px 15px rgba(74,222,128,0.4); display: none; z-index: 10; }
+        .section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); padding: 16px; border-radius: 18px; margin-bottom: 10px; font-size: 15px; }
+        .btn-action { width: 100%; background: var(--accent); color: #000; border: none; padding: 18px; border-radius: 18px; font-weight: bold; font-size: 17px; margin-top: 10px; cursor: pointer; transition: 0.2s; }
+        .btn-action:active { transform: scale(0.96); }
+        .my-apt-card { background: var(--card-bg); border-left: 4px solid var(--accent); border-radius: 18px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
         .my-apt-title { font-weight: 700; font-size: 16px; margin-bottom: 6px; }
         .my-apt-income { font-size: 14px; color: var(--accent); font-weight: bold; }
-        .sell-btn { background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); padding: 10px 15px; border-radius: 12px; font-weight: bold; font-size: 13px; cursor: pointer; transition: 0.2s; }
-        .sell-btn:active { background: rgba(248, 113, 113, 0.4); }
-        
+        .sell-btn { background: rgba(248,113,113,0.2); color: #f87171; border: 1px solid rgba(248,113,113,0.3); padding: 10px 15px; border-radius: 12px; font-weight: bold; font-size: 13px; cursor: pointer; }
         .fab-container { position: absolute; bottom: 90px; left: 0; width: 100%; display: flex; justify-content: center; pointer-events: none; z-index: 10; }
-        .fab { width: 65px; height: 65px; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 34px; box-shadow: 0 8px 25px rgba(106, 17, 203, 0.6); border: 3px solid rgba(255, 255, 255, 0.2); pointer-events: auto; cursor: pointer; transition: transform 0.2s; }
+        .fab { width: 65px; height: 65px; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 34px; box-shadow: 0 8px 25px rgba(106,17,203,0.6); border: 3px solid rgba(255,255,255,0.2); pointer-events: auto; cursor: pointer; }
         .fab:active { transform: scale(0.85); }
-        
-        nav { display: flex; justify-content: space-between; background: rgba(15, 23, 42, 0.95); padding: 12px 10px calc(12px + env(safe-area-inset-bottom)) 10px; border-top-left-radius: 25px; border-top-right-radius: 25px; position: absolute; bottom: 0; width: 100%; z-index: 5; backdrop-filter: blur(10px); border-top: 1px solid rgba(255,255,255,0.05); }
-        .nav-btn { background: none; border: none; color: #8892b0; font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; flex: 1; transition: color 0.2s; }
-        .nav-btn span { font-size: 22px; margin-bottom: 2px; transition: transform 0.2s; }
+        nav { display: flex; justify-content: space-between; background: rgba(15,23,42,0.95); padding: 12px 10px calc(12px + env(safe-area-inset-bottom)) 10px; border-top-left-radius: 25px; border-top-right-radius: 25px; position: absolute; bottom: 0; width: 100%; z-index: 5; backdrop-filter: blur(10px); }
+        .nav-btn { background: none; border: none; color: #8892b0; font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; flex: 1; }
+        .nav-btn span { font-size: 22px; }
         .nav-btn.active { color: #ffffff; }
         .nav-btn.active span { transform: scale(1.15) translateY(-3px); }
-        
-        /* Улучшенная биржа */
-        .exchange-card { background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 18px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; transition: transform 0.2s; }
-        .exchange-header { display: flex; justify-content: space-between; align-items: center; }
+        .chest-card { background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; margin-bottom: 15px; text-align: center; }
+        .chest-title { font-size: 20px; font-weight: 800; margin-bottom: 5px; }
+        .chest-price { font-size: 14px; color: var(--accent); font-weight: bold; margin-bottom: 15px; }
+        .chest-btn { width: 100%; padding: 15px; border-radius: 15px; border: none; font-weight: bold; font-size: 16px; cursor: pointer; color: #000; }
+        .chest-card-buttons { display: flex; gap: 8px; }
+        .chest-card-buttons button { flex: 1; padding: 13px; border-radius: 14px; border: none; font-weight: bold; font-size: 14px; cursor: pointer; }
+        .chances-btn { background: rgba(255,255,255,0.1); color: white; }
+        .item-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .item-info { flex: 1; }
+        .item-name { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+        .item-desc { font-size: 12px; color: #a3c2ff; font-style: italic; margin-bottom: 6px; line-height: 1.3; }
+        .item-price { font-size: 13px; color: #ffd700; font-weight: bold; }
+        .item-actions { display: flex; flex-direction: column; gap: 6px; }
+        .item-sell-btn { background: #4ade80; color: #000; border: none; padding: 9px 14px; border-radius: 10px; font-weight: bold; font-size: 12px; cursor: pointer; }
+        .item-auction-btn { background: #a855f7; color: #fff; border: none; padding: 9px 14px; border-radius: 10px; font-weight: bold; font-size: 12px; cursor: pointer; }
+        .auction-card { background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.1); border-radius: 18px; padding: 16px; margin-bottom: 12px; }
+        .auction-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 10px; }
+        .auction-item-name { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
+        .auction-seller { font-size: 11px; color: #8892b0; }
+        .auction-price { font-size: 18px; font-weight: 800; color: #ffd700; white-space: nowrap; }
+        .auction-desc { font-size: 12px; color: #a3c2ff; margin-bottom: 10px; font-style: italic; }
+        .auction-effect { font-size: 12px; color: #4ade80; font-weight: 600; margin-bottom: 8px; }
+        .auction-actions { display: flex; justify-content: flex-end; gap: 8px; }
+        .auction-buy-btn { background: var(--accent); color: #000; border: none; padding: 9px 20px; border-radius: 10px; font-weight: bold; font-size: 13px; cursor: pointer; }
+        .auction-cancel-btn { background: rgba(248,113,113,0.3); color: #f87171; border: 1px solid rgba(248,113,113,0.3); padding: 9px 20px; border-radius: 10px; font-weight: bold; font-size: 13px; cursor: pointer; }
+        .exchange-card { background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 18px; margin-bottom: 15px; }
+        .exchange-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
         .rate-title { font-size: 17px; font-weight: 700; }
-        .rate-price { font-size: 13px; color: #a3c2ff; font-weight: 500; }
+        .rate-price { font-size: 13px; color: #a3c2ff; }
         .rate-trend { font-size: 18px; font-weight: bold; }
-        .trend-up { color: var(--accent); }
-        .trend-down { color: #f87171; }
-        
-        .exchange-bottom { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; margin-top: 5px; }
-        .rate-owned { font-size: 14px; color: #ffd700; font-weight: bold; background: rgba(255, 215, 0, 0.1); padding: 5px 10px; border-radius: 8px; }
+        .trend-up { color: var(--accent); } .trend-down { color: #f87171; }
+        .exchange-bottom { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; }
+        .rate-owned { font-size: 14px; color: #ffd700; font-weight: bold; background: rgba(255,215,0,0.1); padding: 5px 10px; border-radius: 8px; }
         .exchange-buttons { display: flex; gap: 8px; }
-        .exchange-buttons button { padding: 8px 15px; border-radius: 10px; border: none; font-weight: bold; font-size: 13px; cursor: pointer; transition: 0.2s; }
-        .exchange-buttons button:active { transform: scale(0.9); }
+        .exchange-buttons button { padding: 8px 15px; border-radius: 10px; border: none; font-weight: bold; font-size: 13px; cursor: pointer; }
         .btn-buy { background: var(--accent); color: #000; }
-        .btn-sell { background: rgba(248, 113, 113, 0.8); color: white; }
-
-        .bus-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 18px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px; transition: transform 0.2s; }
-        .bus-card:active { transform: scale(0.98); }
-        .bus-Common { border-left: 5px solid #9ca3af; }
-        .bus-Rare { border-left: 5px solid #3b82f6; }
-        .bus-Epic { border-left: 5px solid #a855f7; }
-        .bus-Mythic { border-left: 5px solid #ef4444; }
-        .bus-Legendary { border-left: 5px solid #f59e0b; }
-        .bus-Chromatic { border-left: 5px solid transparent; border-image: linear-gradient(to bottom, #ff0000, #00ff00, #0000ff) 1; }
+        .btn-sell { background: rgba(248,113,113,0.8); color: white; }
+        .bus-card { background: var(--card-bg); border-radius: 18px; padding: 18px; margin-bottom: 15px; }
+        .bus-Common { border-left: 5px solid #9ca3af; } .bus-Rare { border-left: 5px solid #3b82f6; }
+        .bus-Epic { border-left: 5px solid #a855f7; } .bus-Mythic { border-left: 5px solid #ef4444; }
+        .bus-Legendary { border-left: 5px solid #f59e0b; } .bus-Chromatic { border-left: 5px solid transparent; border-image: linear-gradient(to bottom, #ff0000, #00ff00, #0000ff) 1; }
         .bus-title { font-size: 17px; font-weight: 700; }
         .bus-info { font-size: 13px; color: #a3c2ff; }
         .bus-price { font-size: 15px; color: var(--accent); font-weight: bold; }
-
-        /* Модальные окна */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 100; display: none; flex-direction: column; animation: slideUp 0.3s ease-out; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #1e293b; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .modal-header h2 { margin: 0; font-size: 20px; font-weight: 700; }
-        .close-btn { background: rgba(255,255,255,0.1); border: none; color: white; font-size: 20px; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
-        .close-btn:active { background: rgba(255,255,255,0.2); transform: scale(0.9); }
+        .buy-btn { background: var(--accent); color: #000; border: none; padding: 12px 18px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 100; display: none; flex-direction: column; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #1e293b; }
+        .modal-header h2 { margin: 0; font-size: 20px; }
+        .close-btn { background: rgba(255,255,255,0.1); border: none; color: white; font-size: 20px; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
         .modal-content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 50px; }
-
         .class-group { margin-bottom: 25px; }
         .class-title { font-size: 16px; font-weight: 700; color: #a3c2ff; margin-bottom: 12px; }
-        .apt-shop-item { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 16px; border-radius: 16px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); transition: transform 0.2s; }
-        .apt-shop-item:active { transform: scale(0.98); }
-        .buy-btn { background: var(--accent); color: #000; border: none; padding: 12px 18px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; }
-        .buy-btn:active { transform: scale(0.9); }
-
-        .admin-btn { width: 100%; background: #ffaa00; color: #000; padding: 16px; border-radius: 16px; border: none; font-weight: bold; font-size: 16px; margin-top: 20px; cursor: pointer; transition: 0.2s; }
-        .admin-btn:active { transform: scale(0.95); }
-        .user-row { display: flex; flex-direction: column; gap: 8px; background: var(--card-bg); padding: 16px; border-radius: 16px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.05); border-left: 4px solid #ffaa00; }
-        .admin-btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;}
-        .admin-btns button { flex: 1; padding: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 13px; transition: 0.2s; }
-        .admin-btns button:active { transform: scale(0.9); }
-
+        .apt-shop-item { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 16px; border-radius: 16px; margin-bottom: 10px; }
+        .admin-btn { width: 100%; background: #ffaa00; color: #000; padding: 16px; border-radius: 16px; border: none; font-weight: bold; font-size: 16px; margin-top: 20px; cursor: pointer; }
+        .user-row { display: flex; flex-direction: column; gap: 8px; background: var(--card-bg); padding: 16px; border-radius: 16px; margin-bottom: 12px; border-left: 4px solid #ffaa00; }
+        .admin-btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+        .admin-btns button { flex: 1; padding: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 13px; }
         .custom-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 999; display: none; justify-content: center; align-items: center; }
-        .custom-box { background: #1e293b; padding: 30px 25px; border-radius: 24px; width: 90%; max-width: 350px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .custom-box h3 { margin: 0 0 20px 0; font-size: 22px; color: #fff; }
-        .custom-box p { font-size: 15px; color: #a3c2ff; margin-bottom: 20px; }
-        .custom-box input, .custom-box select { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white; font-size: 16px; outline: none; transition: 0.2s; }
-        .custom-box input:focus, .custom-box select:focus { border-color: var(--accent); }
-        
-        /* Черный текст для выпадающего списка */
+        .custom-box { background: #1e293b; padding: 25px 22px; border-radius: 24px; width: 90%; max-width: 350px; max-height: 85vh; overflow-y: auto; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+        .custom-box h3 { margin: 0 0 18px 0; font-size: 22px; }
+        .custom-box p { font-size: 15px; color: #a3c2ff; margin-bottom: 15px; }
+        .custom-box input, .custom-box select { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white; font-size: 16px; outline: none; }
         select option { color: black; background-color: white; }
-        
         .modal-actions { display: flex; gap: 10px; }
-        .modal-actions button { padding: 14px; border-radius: 14px; border: none; font-weight: bold; font-size: 16px; cursor: pointer; flex: 1; transition: 0.2s; }
-        .modal-actions button:active { transform: scale(0.95); }
+        .modal-actions button { padding: 14px; border-radius: 14px; border: none; font-weight: bold; font-size: 16px; cursor: pointer; flex: 1; }
         .btn-cancel { background: rgba(255,255,255,0.1); color: white; }
         .btn-confirm { background: var(--accent); color: #000; }
         .btn-danger { background: #f87171; color: white; }
-
         .color-inputs { display: flex; gap: 15px; margin-bottom: 25px; }
         .color-picker-wrapper { display: flex; flex-direction: column; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 18px; flex: 1; }
         input[type="color"] { -webkit-appearance: none; border: none; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; padding: 0; background: none; }
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
         input[type="color"]::-webkit-color-swatch { border: 3px solid rgba(255,255,255,0.2); border-radius: 50%; }
-
+        .menu-btn { width: 100%; padding: 15px; border-radius: 14px; border: none; font-weight: bold; font-size: 16px; margin-bottom: 10px; cursor: pointer; }
+        .chance-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; background: rgba(255,255,255,0.05); border-radius: 12px; margin-bottom: 6px; font-size: 13px; gap: 10px; }
+        .chance-row .lbl { flex: 1; text-align: left; }
+        .chance-row .pct { font-weight: 800; color: #4ade80; font-size: 15px; white-space: nowrap; }
+        .chance-section { margin-bottom: 22px; }
+        .chance-section-title { font-size: 12px; font-weight: 700; color: #a3c2ff; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; }
+        .chance-item-card { background: rgba(168,85,247,0.08); border: 1px solid rgba(168,85,247,0.2); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+        .chance-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 10px; }
+        .chance-item-name { font-weight: 700; font-size: 14px; }
+        .chance-item-pct { font-weight: 800; color: #a855f7; font-size: 14px; white-space: nowrap; }
+        .chance-item-effect { font-size: 12px; color: #4ade80; font-weight: 600; margin-bottom: 4px; text-align: left; }
+        .chance-item-price { font-size: 11px; color: #ffd700; text-align: left; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body>
     <header>
-        <div class="user-info">
-            <div class="avatar">👤</div>
-            <span id="user-name">Загрузка...</span>
-        </div>
+        <div class="user-info"><div class="avatar">👤</div><span id="user-name">Загрузка...</span></div>
         <div class="icons" onclick="openModal('settings-modal')"><span>⚙️</span></div>
     </header>
 
@@ -154,12 +143,14 @@
                     <div class="card-balance" id="user-balance">0 <span>$</span></div>
                     <div class="visa-logo">VISA</div>
                 </div>
+                <div id="bonuses-bar" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;"></div>
+                <div id="income-per-hour" style="font-size:13px;color:#4ade80;font-weight:bold;margin-bottom:10px;"></div>
                 <div class="card-number" onclick="copyText(document.getElementById('card-number').innerText)">
                     <span id="card-number">**** **** **** ****</span> <span class="copy-icon">📋</span>
                 </div>
                 <div class="card-bottom">
                     <div id="card-holder">NAME</div>
-                    <div class="cvc-block" onclick="copyText(document.getElementById('card-cvc').innerText.replace('CVC: ', ''))">
+                    <div onclick="copyText(document.getElementById('card-cvc').innerText.replace('CVC: ', ''))">
                         <span id="card-cvc">CVC: ***</span> <span class="copy-icon">📋</span>
                     </div>
                 </div>
@@ -169,15 +160,10 @@
             <div id="leaderboard-list"></div>
         </main>
 
-        <main id="tab-apartments">
-            <div class="section-title">Твой доход: <span style="color:var(--accent)" id="total-income">0 $/ч</span></div>
-            <div id="my-apartments-list"></div>
-        </main>
-
         <main id="tab-businesses">
             <div class="section-title">Твои Бизнесы</div>
             <div id="my-businesses-list"></div>
-            <div class="section-title" style="margin-top:25px; color: #ffaa00;">Доступны сегодня (24ч):</div>
+            <div class="section-title" style="margin-top:25px; color:#ffaa00;">Доступны сегодня (24ч):</div>
             <div id="daily-businesses-list"></div>
         </main>
 
@@ -187,88 +173,128 @@
         </main>
     </div>
 
-    <div class="fab-container"><div class="fab" onclick="openShop()">+</div></div>
+    <div class="fab-container"><div class="fab" onclick="openModal('city-menu-modal')">+</div></div>
 
     <nav>
-        <button class="nav-btn" onclick="switchTab(0, this)"><span>🏢</span> Квартиры</button>
-        <button class="nav-btn active" onclick="switchTab(1, this)"><span>💰</span> Баланс</button>
-        <button class="nav-btn" onclick="switchTab(2, this)"><span>🏭</span> Бизнесы</button>
-        <button class="nav-btn" onclick="switchTab(3, this)"><span>📈</span> Биржа</button>
+        <button class="nav-btn active" onclick="switchTab(0,this)"><span>💰</span>Баланс</button>
+        <button class="nav-btn" onclick="switchTab(1,this)"><span>🏭</span>Бизнесы</button>
+        <button class="nav-btn" onclick="switchTab(2,this)"><span>📈</span>Биржа</button>
     </nav>
 
-    <!-- Модалки -->
+    <!-- Меню "+" -->
+    <div id="city-menu-modal" class="custom-modal">
+        <div class="custom-box">
+            <h3>📋 Меню</h3>
+            <button class="menu-btn" style="background:#3b82f6;color:#fff;" onclick="openMyApts()">🏢 Мои квартиры</button>
+            <button class="menu-btn" style="background:var(--accent);color:#000;" onclick="openShop()">🛒 Купить квартиру</button>
+            <button class="menu-btn" style="background:#f59e0b;color:#000;" onclick="openChests()">📦 Сундуки</button>
+            <button class="menu-btn" style="background:#a855f7;color:#fff;" onclick="openInventory()">🎒 Инвентарь</button>
+            <button class="menu-btn" style="background:#ef4444;color:#fff;" onclick="openAuction()">🔨 Аукцион</button>
+            <button class="btn-cancel" style="width:100%;padding:13px;border-radius:14px;border:none;font-weight:bold;font-size:15px;" onclick="closeModal('city-menu-modal')">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Сундуки -->
+    <div id="chests-modal" class="modal-overlay">
+        <div class="modal-header"><h2>📦 Сундуки</h2><button class="close-btn" onclick="closeModal('chests-modal')">✕</button></div>
+        <div class="modal-content"><div id="chests-list"></div></div>
+    </div>
+
+    <!-- Инвентарь -->
+    <div id="inventory-modal" class="modal-overlay">
+        <div class="modal-header"><h2>🎒 Инвентарь</h2><button class="close-btn" onclick="closeModal('inventory-modal')">✕</button></div>
+        <div class="modal-content"><div id="inventory-list"></div></div>
+    </div>
+
+    <!-- Аукцион -->
+    <div id="auction-modal" class="modal-overlay">
+        <div class="modal-header"><h2>🔨 Аукцион</h2><button class="close-btn" onclick="closeModal('auction-modal')">✕</button></div>
+        <div class="modal-content">
+            <button class="btn-action" style="margin-top:0;margin-bottom:15px;" onclick="loadAuctions()">🔄 Обновить</button>
+            <div id="auction-list"></div>
+        </div>
+    </div>
+
+    <!-- Квартиры -->
+    <div id="my-apts-modal" class="modal-overlay">
+        <div class="modal-header"><h2>🏢 Мои квартиры</h2><button class="close-btn" onclick="closeModal('my-apts-modal')">✕</button></div>
+        <div class="modal-content">
+            <div class="section-title">Доход: <span style="color:var(--accent)" id="modal-total-income">0 $/ч</span></div>
+            <div id="my-apartments-list-modal"></div>
+        </div>
+    </div>
     <div id="shop-modal" class="modal-overlay">
-        <div class="modal-header"><h2>🏢 Магазин</h2><button class="close-btn" onclick="closeModal('shop-modal')">✕</button></div>
+        <div class="modal-header"><h2>🛒 Магазин квартир</h2><button class="close-btn" onclick="closeModal('shop-modal')">✕</button></div>
         <div class="modal-content" id="shop-list"></div>
     </div>
 
+    <!-- Шансы сундука -->
+    <div id="chances-modal" class="modal-overlay">
+        <div class="modal-header"><h2 id="chances-title">🎲 Шансы</h2><button class="close-btn" onclick="closeModal('chances-modal')">✕</button></div>
+        <div class="modal-content" id="chances-content"></div>
+    </div>
+
+    <!-- Настройки -->
     <div id="settings-modal" class="modal-overlay">
         <div class="modal-header"><h2>⚙️ Настройки</h2><button class="close-btn" onclick="closeModal('settings-modal')">✕</button></div>
         <div class="modal-content">
-            <div class="list-item" style="flex-direction: column; align-items: stretch; gap: 10px;">
-                <span>Твой ID: <span id="settings-user-id" style="color:var(--accent); float: right;"></span></span>
-            </div>
-            <div class="list-item" style="flex-direction: column; align-items: stretch; gap: 10px;">
+            <div class="list-item"><span>Твой ID: <span id="settings-user-id" style="color:var(--accent);float:right;"></span></span></div>
+            <div class="list-item" style="flex-direction:column;align-items:stretch;gap:10px;">
                 <span>Изменить ник:</span>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="nickname-input" style="flex: 1; padding: 10px; border-radius: 10px; border: none; background: rgba(255,255,255,0.1); color: white;">
-                    <button onclick="saveNickname()" style="background:var(--accent); border:none; border-radius:10px; padding:0 15px; font-weight:bold;">ОК</button>
+                <div style="display:flex;gap:10px;">
+                    <input type="text" id="nickname-input" style="flex:1;padding:10px;border-radius:10px;border:none;background:rgba(255,255,255,0.1);color:white;">
+                    <button onclick="saveNickname()" style="background:var(--accent);border:none;border-radius:10px;padding:0 15px;font-weight:bold;">ОК</button>
                 </div>
             </div>
-            
-            <div class="section-title" style="margin-top:25px;">Цвета интерфейса</div>
+            <div class="section-title" style="margin-top:25px;">Цвета</div>
             <div class="color-inputs">
-                <div class="color-picker-wrapper"><span>Фон 1</span><input type="color" id="bg-color-1" oninput="setCustomColor('bg1', this.value)"></div>
-                <div class="color-picker-wrapper"><span>Фон 2</span><input type="color" id="bg-color-2" oninput="setCustomColor('bg2', this.value)"></div>
-                <div class="color-picker-wrapper"><span>Карта</span><input type="color" id="card-color" oninput="setCustomColor('card', this.value)"></div>
+                <div class="color-picker-wrapper"><span>Фон 1</span><input type="color" id="bg-color-1" oninput="setCustomColor('bg1',this.value)"></div>
+                <div class="color-picker-wrapper"><span>Фон 2</span><input type="color" id="bg-color-2" oninput="setCustomColor('bg2',this.value)"></div>
+                <div class="color-picker-wrapper"><span>Карта</span><input type="color" id="card-color" oninput="setCustomColor('card',this.value)"></div>
             </div>
-
             <button id="admin-btn" class="admin-btn" style="display:none;" onclick="openAdminPanel()">👑 Панель Админа</button>
         </div>
     </div>
 
+    <!-- Админка -->
     <div id="admin-modal" class="modal-overlay">
-        <div class="modal-header"><h2>👑 Админ-панель</h2><button class="close-btn" onclick="closeModal('admin-modal')">✕</button></div>
+        <div class="modal-header"><h2>👑 Админ</h2><button class="close-btn" onclick="closeModal('admin-modal')">✕</button></div>
         <div class="modal-content">
-            <div class="section-title">Управление</div>
-            <button class="btn-action" style="background:#3b82f6; color:#fff; margin-bottom: 10px;" onclick="openAdminCompanies()">🏢 Настроить компании</button>
-            <button class="btn-action" style="background:#a855f7; color:#fff; margin-bottom: 20px;" onclick="openAdminAdmins()">👥 Управление админами</button>
-            
+            <button class="btn-action" style="background:#3b82f6;color:#fff;margin-bottom:10px;" onclick="openAdminCompanies()">🏢 Компании</button>
+            <button class="btn-action" style="background:#a855f7;color:#fff;margin-bottom:20px;" onclick="openAdminAdmins()">👥 Админы</button>
             <div class="section-title">Игроки</div>
             <div id="admin-users-list"></div>
-            <button class="admin-btn" style="background:#f87171; margin-top:20px;" onclick="resetAllUsers()">⚠️ Сбросить ВСЕХ (220к)</button>
+            <button class="admin-btn" style="background:#f87171;margin-top:20px;" onclick="resetAllUsers()">⚠️ Сбросить ВСЕХ</button>
         </div>
     </div>
-
     <div id="admin-admins-modal" class="modal-overlay">
         <div class="modal-header"><h2>👥 Админы</h2><button class="close-btn" onclick="closeModal('admin-admins-modal')">✕</button></div>
         <div class="modal-content">
-            <div class="list-item" style="gap: 10px;">
-                <input type="number" id="new-admin-id" placeholder="ID нового админа" style="flex: 1; padding: 10px; border-radius: 10px; border: none; background: rgba(255,255,255,0.1); color: white;">
-                <button onclick="addAdmin()" style="background:var(--accent); border:none; border-radius:10px; padding:0 15px; font-weight:bold;">Доб.</button>
+            <div class="list-item" style="gap:10px;">
+                <input type="number" id="new-admin-id" placeholder="ID" style="flex:1;padding:10px;border-radius:10px;border:none;background:rgba(255,255,255,0.1);color:white;">
+                <button onclick="addAdmin()" style="background:var(--accent);border:none;border-radius:10px;padding:0 15px;font-weight:bold;">Доб.</button>
             </div>
-            <div class="section-title" style="margin-top:25px;">Список админов</div>
+            <div class="section-title" style="margin-top:25px;">Админы</div>
             <div id="admins-list"></div>
         </div>
     </div>
-
     <div id="admin-companies-modal" class="modal-overlay">
         <div class="modal-header"><h2>🏢 Компании</h2><button class="close-btn" onclick="closeModal('admin-companies-modal')">✕</button></div>
         <div class="modal-content">
-            <button class="btn-action" style="background:var(--accent); color:#000; margin-bottom:20px;" onclick="addCompanyPrompt()">➕ Добавить компанию</button>
+            <button class="btn-action" style="background:var(--accent);color:#000;margin-bottom:20px;" onclick="addCompanyPrompt()">➕ Добавить</button>
             <div id="admin-companies-list"></div>
         </div>
     </div>
 
+    <!-- Действия -->
     <div id="transfer-modal" class="custom-modal">
         <div class="custom-box">
             <h3>💸 Перевод</h3>
-            <select id="transfer-user-select"><option value="">Загрузка...</option></select>
-            <input type="number" id="transfer-amount" placeholder="Сумма в $" inputmode="numeric">
+            <select id="transfer-user-select"></select>
+            <input type="number" id="transfer-amount" placeholder="Сумма">
             <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('transfer-modal')">Отмена</button><button class="btn-confirm" onclick="confirmTransfer()">Отправить</button></div>
         </div>
     </div>
-
     <div id="buy-modal" class="custom-modal">
         <div class="custom-box">
             <h3 id="buy-modal-title">Купить?</h3>
@@ -276,10 +302,9 @@
             <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('buy-modal')">Отмена</button><button class="btn-confirm" onclick="executeBuy()">Купить</button></div>
         </div>
     </div>
-
     <div id="admin-money-modal" class="custom-modal">
         <div class="custom-box">
-            <h3>Управление деньгами</h3>
+            <h3>Деньги</h3>
             <p id="admin-money-target"></p>
             <input type="number" id="admin-money-amount" placeholder="Сумма">
             <div class="modal-actions">
@@ -289,44 +314,66 @@
             </div>
         </div>
     </div>
+    <div id="auction-price-modal" class="custom-modal">
+        <div class="custom-box">
+            <h3>🔨 Выставить на аукцион</h3>
+            <p id="auction-price-item-name"></p>
+            <input type="number" id="auction-price-input" placeholder="Цена в $">
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal('auction-price-modal')">Отмена</button>
+                <button class="btn-confirm" onclick="confirmAuctionList()">Выставить</button>
+            </div>
+        </div>
+    </div>
+    <div id="loot-modal" class="custom-modal">
+        <div class="custom-box" style="border:2px solid #ffd700;">
+            <h3 style="color:#ffd700;text-shadow:0 0 10px #ffd700;">🎉 ПОЗДРАВЛЯЕМ! 🎉</h3>
+            <div id="loot-icon" style="font-size:50px;margin:20px 0;">🎁</div>
+            <p id="loot-text" style="font-size:15px;font-weight:bold;color:#fff;margin-bottom:25px;white-space:pre-line;"></p>
+            <button class="btn-confirm" style="width:100%;" onclick="closeModal('loot-modal')">Забрать</button>
+        </div>
+    </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
         const user = tg.initDataUnsafe?.user;
-        let userId = user ? user.id : 123456789; 
+        let userId = user ? user.id : 123456789;
         let playerName = user ? (user.first_name + (user.last_name ? " " + user.last_name : "")) : "Гость";
         const MAIN_ADMIN_ID = 5634302903;
-        
         const SERVER_URL = "https://mmiji.de1.netrun.io";
 
-        let currentRates = {};
-        let companiesData = [];
-        let userPortfolio = {}; // Портфель токенов
+        let currentRates = {}, companiesData = [], userPortfolio = {}, userInventory = [];
+        let playerBonuses = { apt_pct: 0, bus_pct: 0, total_pct: 0, chest_discount: 0 };
+        let playerIncomePerHour = 0;
+        const CHESTS_DATA = {
+            common:    { name: "Ржавый ящик",      price: 15000,   color: "#9ca3af", icon: "📦" },
+            rare:      { name: "Деревянный ларец", price: 75000,   color: "#3b82f6", icon: "🎁" },
+            epic:      { name: "Кованый сундук",   price: 300000,  color: "#a855f7", icon: "🧰" },
+            legendary: { name: "Сундук Дракона",   price: 2000000, color: "#f59e0b", icon: "🐉" }
+        };
 
         document.getElementById("settings-user-id").innerText = userId;
-        
+
         async function checkAdmin() {
             try {
-                const res = await fetch(`${SERVER_URL}/api/check_admin/${userId}`);
-                const data = await res.json();
-                if (data.is_admin) document.getElementById("admin-btn").style.display = "block";
-            } catch (e) {}
+                const d = await fetch(`${SERVER_URL}/api/check_admin/${userId}`).then(r => r.json());
+                if (d.is_admin) document.getElementById("admin-btn").style.display = "block";
+            } catch(e) {}
         }
         checkAdmin();
 
-        // --- СВАЙПЫ ---
-        let tabs = ['apartments', 'balance', 'businesses', 'trades'];
-        let currentTabIndex = 1;
-        let touchStartX = 0;
+        // Свайпы
+        let tabs = ['balance', 'businesses', 'trades'];
+        let currentTabIndex = 0, touchStartX = 0;
         function updateTabs() {
             document.querySelectorAll('main').forEach(m => m.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('tab-' + tabs[currentTabIndex]).classList.add('active');
             document.querySelectorAll('.nav-btn')[currentTabIndex].classList.add('active');
         }
-        function switchTab(index, btnElement) { currentTabIndex = index; updateTabs(); }
-        document.getElementById('swipe-container').addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
+        function switchTab(i) { currentTabIndex = i; updateTabs(); }
+        document.getElementById('swipe-container').addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX);
         document.getElementById('swipe-container').addEventListener('touchmove', e => {
             const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > 70) {
@@ -335,7 +382,20 @@
             }
         });
 
-        // --- ЦВЕТА ---
+        function copyText(t) {
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(t).then(() => tg.showAlert('📋 Скопировано'));
+                } else {
+                    const ta = document.createElement('textarea'); ta.value = t;
+                    ta.style.position = 'fixed'; ta.style.opacity = '0';
+                    document.body.appendChild(ta); ta.select();
+                    document.execCommand('copy'); document.body.removeChild(ta);
+                    tg.showAlert('📋 Скопировано');
+                }
+            } catch(e) { tg.showAlert('Не удалось'); }
+        }
+
         function setCustomColor(type, color) {
             if (type === 'bg1') { document.documentElement.style.setProperty('--bg-1', color); localStorage.setItem('customBg1', color); }
             else if (type === 'bg2') { document.documentElement.style.setProperty('--bg-3', color); localStorage.setItem('customBg2', color); }
@@ -344,377 +404,363 @@
         window.onload = () => {
             const bg1 = localStorage.getItem('customBg1') || '#1a1a2e';
             const bg2 = localStorage.getItem('customBg2') || '#0f3460';
-            const cardColor = localStorage.getItem('customCard') || 'linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05))';
             document.documentElement.style.setProperty('--bg-1', bg1);
             document.documentElement.style.setProperty('--bg-3', bg2);
             document.getElementById('bg-color-1').value = bg1;
             document.getElementById('bg-color-2').value = bg2;
-            if (localStorage.getItem('customCard')) {
-                document.getElementById('main-card').style.background = cardColor;
-                document.getElementById('card-color').value = cardColor.includes('gradient') ? '#2a5298' : cardColor;
-            }
-            loadRates();
-            loadCompanies();
+            const cardColor = localStorage.getItem('customCard');
+            if (cardColor) document.getElementById('main-card').style.background = cardColor;
+            loadCompanies(); renderChests();
         };
 
-        // --- ЗАГРУЗКА ДАННЫХ ---
         async function loadData() {
             try {
-                const res = await fetch(`${SERVER_URL}/api/balance/${userId}?name=${encodeURIComponent(playerName)}`);
-                const data = await res.json();
-                if(data.error) { tg.showAlert("Ошибка сервера: " + data.error); return; }
-
+                const data = await fetch(`${SERVER_URL}/api/balance/${userId}?name=${encodeURIComponent(playerName)}`).then(r => r.json());
+                if (data.error) return tg.showAlert("Ошибка: " + data.error);
                 document.getElementById("user-name").innerText = data.name || playerName;
                 document.getElementById("nickname-input").value = data.name || playerName;
-
-                let fb = data.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                document.getElementById("user-balance").innerHTML = `${fb} <span>$</span>`;
-                
+                document.getElementById("user-balance").innerHTML = `${data.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} <span>$</span>`;
                 if (data.card_number) document.getElementById("card-number").innerText = data.card_number;
                 if (data.card_cvc) document.getElementById("card-cvc").innerText = "CVC: " + data.card_cvc;
-
-                // Сохраняем портфель токенов
                 userPortfolio = data.portfolio || {};
-                loadRates(); // Перерисовываем биржу с новыми данными
-
+                userInventory = data.inventory || [];
+                playerBonuses = data.bonuses || { apt_pct: 0, bus_pct: 0, total_pct: 0, chest_discount: 0 };
+                playerIncomePerHour = data.income_per_hour || 0;
+                renderBonuses();
+                loadRates();
+                renderInventory();
+                renderChests();
                 if (data.earned > 0) {
-                    let badge = document.getElementById("income-badge");
-                    badge.innerText = `+ ${data.earned} $`;
-                    badge.style.display = 'block';
-                    setTimeout(() => { badge.style.display = 'none'; }, 5000);
+                    const b = document.getElementById("income-badge");
+                    b.innerText = `+ ${data.earned} $`; b.style.display = 'block';
+                    setTimeout(() => b.style.display = 'none', 5000);
                 }
                 renderApartments(data.apartments || []);
                 renderBusinesses(data.businesses || []);
                 loadDailyBusinesses();
-            } catch (error) { tg.showAlert("Ошибка загрузки данных."); }
+            } catch(e) { tg.showAlert("Ошибка загрузки"); }
+        }
+
+        function renderBonuses() {
+            const bar = document.getElementById('bonuses-bar');
+            if (!bar) return;
+            const b = playerBonuses || {};
+            const chips = [];
+            if (b.apt_pct > 0) chips.push(`🏢 +${b.apt_pct}% к квартирам`);
+            if (b.bus_pct > 0) chips.push(`🏭 +${b.bus_pct}% к бизнесам`);
+            if (b.total_pct > 0) chips.push(`🔥 +${b.total_pct}% ко всему`);
+            if (b.chest_discount > 0) chips.push(`📦 −${Math.min(b.chest_discount, 50)}% сундуки`);
+            if (chips.length === 0) {
+                bar.innerHTML = `<div style="font-size:12px;color:#8892b0;font-style:italic;">Собери предметы из сундуков — они дают бонусы</div>`;
+            } else {
+                bar.innerHTML = chips.map(c =>
+                    `<div style="font-size:11px;font-weight:bold;background:rgba(74,222,128,0.15);color:#4ade80;padding:4px 10px;border-radius:20px;border:1px solid rgba(74,222,128,0.3);">${c}</div>`
+                ).join('');
+            }
+            const incomeLabel = document.getElementById('income-per-hour');
+            if (incomeLabel) {
+                incomeLabel.innerHTML = playerIncomePerHour > 0
+                    ? `📈 ${playerIncomePerHour.toLocaleString()} $/ч` : '';
+            }
         }
 
         async function loadLeaderboard() {
             try {
-                const res = await fetch(`${SERVER_URL}/api/leaderboard`);
-                const data = await res.json();
+                const d = await fetch(`${SERVER_URL}/api/leaderboard`).then(r => r.json());
                 const list = document.getElementById('leaderboard-list'); list.innerHTML = '';
-                if (!data.leaders) return;
+                if (!d.leaders) return;
                 const medals = ["🥇", "🥈", "🥉", "🏅", "🏅"];
-                data.leaders.forEach((p, i) => {
-                    let fb = p.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                    list.innerHTML += `<div class="list-item"><span>${medals[i]} ${p.name}</span><span style="color: var(--accent); font-weight: bold;">${fb} $</span></div>`;
+                d.leaders.forEach((p, i) => {
+                    const fb = p.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    list.innerHTML += `<div class="list-item"><span>${medals[i]} ${p.name}</span><span style="color:var(--accent);font-weight:bold;">${fb} $</span></div>`;
                 });
-            } catch (e) {}
+            } catch(e) {}
         }
 
         async function loadRates() {
             try {
-                const res = await fetch(`${SERVER_URL}/api/token_rates`);
-                currentRates = await res.json();
+                currentRates = await fetch(`${SERVER_URL}/api/token_rates`).then(r => r.json());
                 const list = document.getElementById('exchange-list'); list.innerHTML = '';
                 const names = { silver: "🥈 Серебро", gold: "🥇 Золото", diamonds: "💎 Алмазы", bitcoin: "₿ Биткоин", tesla: "🚗 Tesla" };
-                const icons = { silver: "🥈", gold: "🥇", diamonds: "💎", bitcoin: "₿", tesla: "🚗" };
-                
-                for (let key in currentRates) {
-                    let r = currentRates[key];
-                    let trendSymbol = r.trend === 'up' ? '▲' : '▼';
-                    let trendClass = r.trend === 'up' ? 'trend-up' : 'trend-down';
-                    let owned = userPortfolio[key] || 0;
-                    
+                for (const key in currentRates) {
+                    const r = currentRates[key];
+                    const cls = r.trend === 'up' ? 'trend-up' : 'trend-down';
+                    const sym = r.trend === 'up' ? '▲' : '▼';
+                    const owned = userPortfolio[key] || 0;
                     list.innerHTML += `
-                    <div class="exchange-card">
-                        <div class="exchange-header">
-                            <div>
-                                <div class="rate-title">${names[key] || key}</div>
-                                <div class="rate-price">Цена: ${r.price} $</div>
+                        <div class="exchange-card">
+                            <div class="exchange-header">
+                                <div><div class="rate-title">${names[key]}</div><div class="rate-price">Цена: ${r.price} $</div></div>
+                                <div class="rate-trend ${cls}">${sym}</div>
                             </div>
-                            <div class="rate-trend ${trendClass}">${trendSymbol}</div>
-                        </div>
-                        <div class="exchange-bottom">
-                            <div class="rate-owned">В наличии: ${owned} ${icons[key] || ''}</div>
-                            <div class="exchange-buttons">
-                                <button class="btn-buy" onclick="tradeToken('${key}', 'buy')">Купить</button>
-                                <button class="btn-sell" onclick="tradeToken('${key}', 'sell')">Продать</button>
+                            <div class="exchange-bottom">
+                                <div class="rate-owned">В наличии: ${owned}</div>
+                                <div class="exchange-buttons">
+                                    <button class="btn-buy" onclick="tradeToken('${key}','buy')">Купить</button>
+                                    <button class="btn-sell" onclick="tradeToken('${key}','sell')">Продать</button>
+                                </div>
                             </div>
-                        </div>
-                    </div>`;
+                        </div>`;
                 }
-            } catch (e) {}
-        }
-
-        async function loadCompanies() {
-            try {
-                const res = await fetch(`${SERVER_URL}/api/companies`);
-                const data = await res.json();
-                companiesData = data.companies || [];
             } catch(e) {}
         }
 
+        async function loadCompanies() {
+            try { companiesData = (await fetch(`${SERVER_URL}/api/companies`).then(r => r.json())).companies || []; } catch(e) {}
+        }
+
         function renderApartments(apts) {
-            const list = document.getElementById('my-apartments-list'); list.innerHTML = '';
-            let totalInc = 0;
-            apts.forEach((apt, index) => {
-                totalInc += apt.income;
-                let fi = apt.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+            const list = document.getElementById('my-apartments-list-modal'); list.innerHTML = '';
+            let total = 0;
+            if (apts.length === 0) list.innerHTML = '<div style="text-align:center;color:#8892b0;padding:20px;">Нет квартир</div>';
+            apts.forEach((apt, i) => {
+                total += apt.income;
+                const fi = apt.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
                 list.innerHTML += `
-                <div class="my-apt-card">
-                    <div class="my-apt-info"><div class="my-apt-title">🏠 ${apt.name}</div><div class="my-apt-income">+ ${fi} $/ч</div></div>
-                    <button class="sell-btn" onclick="sellApt(${index}, ${apt.buy_price || 0})">Продать</button>
-                </div>`;
+                    <div class="my-apt-card">
+                        <div><div class="my-apt-title">🏠 ${apt.name}</div><div class="my-apt-income">+ ${fi} $/ч</div></div>
+                        <button class="sell-btn" onclick="sellApt(${i},${apt.buy_price||0})">Продать</button>
+                    </div>`;
             });
-            document.getElementById("total-income").innerText = `${totalInc} $/ч`;
+            document.getElementById("modal-total-income").innerText = `${total} $/ч`;
         }
 
         function renderBusinesses(buses) {
             const list = document.getElementById('my-businesses-list'); list.innerHTML = '';
-            if (buses.length === 0) list.innerHTML = '<div style="color:#8892b0; font-size:14px; text-align:center; padding: 20px;">У тебя пока нет бизнесов.</div>';
-            buses.forEach(bus => {
-                let fi = bus.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                list.innerHTML += `
-                <div class="bus-card bus-${bus.rarity}">
-                    <div class="bus-title">${bus.name} <span style="font-size:13px; color:#a3c2ff;">(${bus.rarity})</span></div>
-                    <div class="bus-price">+ ${fi} $/ч</div>
-                </div>`;
+            if (buses.length === 0) list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Нет бизнесов</div>';
+            buses.forEach(b => {
+                const fi = b.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                list.innerHTML += `<div class="bus-card bus-${b.rarity}"><div class="bus-title">${b.name} <span style="font-size:13px;color:#a3c2ff;">(${b.rarity})</span></div><div class="bus-price">+ ${fi} $/ч</div></div>`;
             });
         }
 
         async function loadDailyBusinesses() {
             try {
-                const res = await fetch(`${SERVER_URL}/api/businesses/${userId}`);
-                const data = await res.json();
+                const d = await fetch(`${SERVER_URL}/api/businesses/${userId}`).then(r => r.json());
                 const list = document.getElementById('daily-businesses-list'); list.innerHTML = '';
-                if (data.businesses.length === 0) list.innerHTML = '<div style="color:#8892b0; font-size:14px; text-align:center; padding: 20px;">Жди следующего ролла через 24 часа.</div>';
-                
-                data.businesses.forEach((bus, index) => {
-                    let fp = bus.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                    let fi = bus.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                if (d.businesses.length === 0) list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Жди 24ч</div>';
+                d.businesses.forEach((b, i) => {
+                    const fp = b.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    const fi = b.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
                     list.innerHTML += `
-                    <div class="bus-card bus-${bus.rarity}">
-                        <div class="bus-title">${bus.name} <span style="font-size:13px; color:#a3c2ff;">(${bus.rarity})</span></div>
-                        <div class="bus-info">Доход: +${fi} $/ч | Нужно кв: ${bus.req}</div>
-                        <button class="buy-btn" style="margin-top:10px; width: 100%;" onclick="buyBusiness(${index})">Купить за ${fp} $</button>
-                    </div>`;
+                        <div class="bus-card bus-${b.rarity}">
+                            <div class="bus-title">${b.name} <span style="font-size:13px;color:#a3c2ff;">(${b.rarity})</span></div>
+                            <div class="bus-info">+${fi} $/ч | Нужно кв: ${b.req}</div>
+                            <button class="buy-btn" style="margin-top:10px;width:100%;" onclick="buyBusiness(${i})">Купить за ${fp} $</button>
+                        </div>`;
                 });
             } catch(e) {}
         }
 
-        // --- ДЕЙСТВИЯ ---
-        async function saveNickname() {
-            const newName = document.getElementById('nickname-input').value.trim();
-            if (!newName) return;
-            await fetch(`${SERVER_URL}/api/set_name`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, name: newName}) });
-            document.getElementById('user-name').innerText = newName;
-            tg.showAlert('Ник изменен!');
+        function renderChests() {
+            const list = document.getElementById('chests-list'); list.innerHTML = '';
+            const discount = Math.min((playerBonuses && playerBonuses.chest_discount) || 0, 50);
+            for (const key in CHESTS_DATA) {
+                const c = CHESTS_DATA[key];
+                const finalPrice = Math.floor(c.price * (1 - discount / 100));
+                const fp = finalPrice.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                const oldPriceHtml = discount > 0
+                    ? `<span style="text-decoration:line-through;color:#666;font-size:12px;margin-right:6px;">${c.price.toLocaleString()} $</span>`
+                    : '';
+                list.innerHTML += `
+                    <div class="chest-card" style="border-color:${c.color};box-shadow:0 0 15px ${c.color}40;">
+                        <div style="font-size:50px;margin-bottom:10px;">${c.icon}</div>
+                        <div class="chest-title" style="color:${c.color};">${c.name}</div>
+                        <div class="chest-price">${oldPriceHtml}${fp} $</div>
+                        <div class="chest-card-buttons">
+                            <button class="chest-btn" style="background:${c.color};" onclick="openChest('${key}')">Открыть</button>
+                            <button class="chances-btn" onclick="openChances('${key}')">🎲 Шансы</button>
+                        </div>
+                    </div>`;
+            }
         }
 
-        async function openTransferModal(targetId = null) {
-            openModal('transfer-modal');
-            const select = document.getElementById('transfer-user-select');
-            select.innerHTML = '<option value="">Загрузка...</option>';
+        async function openChest(type) {
+            const discount = Math.min((playerBonuses && playerBonuses.chest_discount) || 0, 50);
+            const finalPrice = Math.floor(CHESTS_DATA[type].price * (1 - discount / 100));
+            if (!(await tg.showConfirm(`Открыть ${CHESTS_DATA[type].name} за ${finalPrice.toLocaleString()} $?`))) return;
+            const r = await fetch(`${SERVER_URL}/api/open_chest`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({user_id: userId, chest_type: type})
+            }).then(x => x.json());
+            if (r.status === 'ok') {
+                document.getElementById('loot-icon').innerText = CHESTS_DATA[type].icon;
+                document.getElementById('loot-text').innerText = r.loot;
+                openModal('loot-modal');
+                loadData();
+            } else tg.showAlert('❌ ' + r.message);
+        }
+
+        async function openChances(chestType) {
+            const content = document.getElementById('chances-content');
+            const title = document.getElementById('chances-title');
+            content.innerHTML = '<div style="text-align:center;color:#8892b0;padding:20px;">Загрузка...</div>';
+            openModal('chances-modal');
             try {
-                const res = await fetch(`${SERVER_URL}/api/all_users`);
-                const data = await res.json();
-                select.innerHTML = '<option value="">Выбери получателя...</option>';
-                data.users.forEach(u => {
-                    if (u.id !== userId) {
-                        let isSelected = (u.id === targetId) ? "selected" : "";
-                        select.innerHTML += `<option value="${u.id}" ${isSelected}>${u.name}</option>`;
-                    }
+                const d = await fetch(`${SERVER_URL}/api/chest_info/${chestType}`).then(r => r.json());
+                if (d.status === 'error') { content.innerHTML = '<div style="color:#f87171;text-align:center;padding:20px;">Ошибка</div>'; return; }
+                title.innerText = `🎲 ${d.name}`;
+                let html = `<div style="text-align:center;margin-bottom:20px;">
+                    <div style="font-size:14px;color:#8892b0;">Стоимость: <b style="color:var(--accent);">${d.price.toLocaleString()} $</b></div>
+                </div>`;
+                html += `<div class="chance-section"><div class="chance-section-title">📊 Общий дроп</div>`;
+                d.main.forEach(m => {
+                    html += `<div class="chance-row"><span class="lbl">${m.label}</span><span class="pct">${m.chance}%</span></div>`;
                 });
-            } catch(e) { select.innerHTML = '<option value="">Ошибка загрузки</option>'; }
+                html += `</div>`;
+                if (d.items && d.items.length > 0) {
+                    html += `<div class="chance-section"><div class="chance-section-title">🎁 Возможные предметы (${d.item_chance}% шанс дропа)</div>`;
+                    d.items.forEach(it => {
+                        html += `<div class="chance-item-card">
+                            <div class="chance-item-top">
+                                <span class="chance-item-name">${it.name}</span>
+                                <span class="chance-item-pct">${it.chance}%</span>
+                            </div>
+                            <div class="chance-item-effect">${it.effect_label}</div>
+                            <div class="chance-item-price">💰 ${it.price.toLocaleString()} $</div>
+                        </div>`;
+                    });
+                    html += `</div>`;
+                }
+                html += `<div style="text-align:center;color:#8892b0;font-size:12px;font-style:italic;margin-top:20px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.1);">Шансы суммируются в 100%. Каждый сундук — независимый бросок.</div>`;
+                content.innerHTML = html;
+            } catch(e) {
+                content.innerHTML = '<div style="color:#f87171;text-align:center;padding:20px;">Ошибка сети</div>';
+            }
         }
 
-        async function confirmTransfer() {
-            const recvId = document.getElementById('transfer-user-select').value;
-            const amt = parseInt(document.getElementById('transfer-amount').value);
-            if (!recvId || isNaN(amt) || amt <= 0) return tg.showAlert('Выбери получателя и сумму');
-            closeModal('transfer-modal');
-            const res = await fetch(`${SERVER_URL}/api/transfer`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: parseInt(recvId), amount: amt}) }).then(r=>r.json());
-            if (res.status === 'ok') { tg.showAlert(res.message); loadData(); loadLeaderboard(); } else tg.showAlert(res.message);
-        }
-
-        async function buyBusiness(index) {
-            const res = await fetch(`${SERVER_URL}/api/buy_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, business_index: index}) }).then(r=>r.json());
-            if (res.status === 'ok') { tg.showAlert(res.message); loadData(); } else tg.showAlert(res.message);
-        }
-
-        function tradeToken(token, action) {
-            const amtStr = prompt(`Сколько единиц ${token} ${action === 'buy' ? 'купить' : 'продать'}?`);
-            if (!amtStr) return;
-            const amt = parseInt(amtStr);
-            if (isNaN(amt) || amt <= 0) return;
-            
-            fetch(`${SERVER_URL}/api/trade_token`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, token_type: token, amount: amt, action: action}) })
-            .then(r=>r.json()).then(res => { 
-                if(res.status === 'error') tg.showAlert('❌ ' + res.message);
-                else { tg.showAlert('✅ ' + res.message); loadData(); } 
+        function renderInventory() {
+            const list = document.getElementById('inventory-list'); list.innerHTML = '';
+            if (userInventory.length === 0) {
+                list.innerHTML = '<div style="text-align:center;color:#8892b0;padding:20px;">Пусто. Открывай сундуки!</div>';
+                return;
+            }
+            userInventory.forEach((item, i) => {
+                const fp = item.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                const desc = item.desc || 'Загадочный предмет';
+                const effect = item.effect_label || '—';
+                list.innerHTML += `
+                    <div class="item-card">
+                        <div class="item-info">
+                            <div class="item-name">🎁 ${item.name}</div>
+                            <div class="item-desc">${desc}</div>
+                            <div style="font-size:13px;font-weight:bold;color:#4ade80;margin:6px 0;">${effect}</div>
+                            <div class="item-price">💰 ${fp} $</div>
+                        </div>
+                        <div class="item-actions">
+                            <button class="item-sell-btn" onclick="sellItem(${i})">Продать</button>
+                            <button class="item-auction-btn" onclick="askAuctionPrice(${i})">Аукцион</button>
+                        </div>
+                    </div>`;
             });
         }
 
-        // --- АДМИНКА ---
-        async function openAdminPanel() {
-            openModal('admin-modal');
-            const list = document.getElementById('admin-users-list'); list.innerHTML = 'Загрузка...';
+        async function sellItem(i) {
+            if (!(await tg.showConfirm("Продать этот предмет?"))) return;
+            const r = await fetch(`${SERVER_URL}/api/sell_item`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({user_id: userId, item_index: i})
+            }).then(x => x.json());
+            if (r.status === 'ok') { tg.showAlert('✅ ' + r.message); loadData(); }
+            else tg.showAlert('❌ ' + r.message);
+        }
+
+        let auctionItemIndex = null;
+        function askAuctionPrice(i) {
+            auctionItemIndex = i;
+            document.getElementById('auction-price-item-name').innerText = userInventory[i].name;
+            document.getElementById('auction-price-input').value = '';
+            openModal('auction-price-modal');
+        }
+        async function confirmAuctionList() {
+            const price = parseInt(document.getElementById('auction-price-input').value);
+            if (isNaN(price) || price <= 0) return tg.showAlert('Введи цену');
+            closeModal('auction-price-modal');
+            const r = await fetch(`${SERVER_URL}/api/auction/list`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({user_id: userId, item_index: auctionItemIndex, price})
+            }).then(x => x.json());
+            if (r.status === 'ok') { tg.showAlert('✅ ' + r.message); loadData(); }
+            else tg.showAlert('❌ ' + r.message);
+        }
+
+        async function loadAuctions() {
+            const list = document.getElementById('auction-list');
+            list.innerHTML = 'Загрузка...';
             try {
-                const data = await fetch(`${SERVER_URL}/api/admin/users?admin_id=${userId}`).then(r=>r.json());
+                const d = await fetch(`${SERVER_URL}/api/auction`).then(r => r.json());
+                if (!d.listings || d.listings.length === 0) {
+                    list.innerHTML = '<div style="text-align:center;color:#8892b0;padding:20px;">Аукцион пуст. Выстави предмет из инвентаря!</div>';
+                    return;
+                }
                 list.innerHTML = '';
-                data.users.forEach(u => {
-                    let fb = u.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                d.listings.forEach(l => {
+                    const isOwn = l.seller_id === userId;
+                    const price = parseInt(l.item_price).toLocaleString();
+                    const desc = (l.item_data && l.item_data.desc) || 'Без описания';
+                    const effect = (l.item_data && l.item_data.effect_label) || '—';
                     list.innerHTML += `
-                    <div class="user-row">
-                        <div style="display:flex; justify-content:space-between; font-weight:bold;">
-                            <span>${u.name}</span> <span style="color:var(--accent)">${fb} $</span>
-                        </div>
-                        <div style="font-size:13px; color:#8892b0;">ID: ${u.id} | Квартир: ${u.apts_count}</div>
-                        <div class="admin-btns">
-                            <button style="background:var(--accent); color:#000;" onclick="adminMoneyModal(${u.id}, '${u.name}')">💰 Деньги</button>
-                            <button style="background:#3b82f6; color:#fff;" onclick="adminViewApts(${u.id})">🏢 Квартиры</button>
-                            <button style="background:#a855f7; color:#fff;" onclick="openTransferModal(${u.id})">💸 Отправить</button>
-                        </div>
-                    </div>`;
-                });
-            } catch (e) { list.innerHTML = 'Ошибка загрузки'; }
-        }
-
-        let adminTargetId = null;
-        function adminMoneyModal(id, name) {
-            adminTargetId = id;
-            document.getElementById('admin-money-target').innerText = `Игрок: ${name}`;
-            document.getElementById('admin-money-amount').value = '';
-            openModal('admin-money-modal');
-        }
-
-        async function adminAddMoney() {
-            const amt = parseInt(document.getElementById('admin-money-amount').value);
-            if (!amt) return;
-            const res = await fetch(`${SERVER_URL}/api/admin/add_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: amt}) }).then(r=>r.json());
-            if(res.status==='error') tg.showAlert(res.message);
-            else { closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard(); }
-        }
-
-        async function adminRemoveMoney() {
-            const amt = parseInt(document.getElementById('admin-money-amount').value);
-            if (!amt) return;
-            await fetch(`${SERVER_URL}/api/admin/remove_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: amt}) });
-            closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard();
-        }
-
-        async function adminViewApts(id) {
-            const data = await fetch(`${SERVER_URL}/api/admin/user_apartments/${id}`).then(r=>r.json());
-            let txt = data.apartments.map(a => `- ${a.name} (+${a.income}$/ч)`).join('\n');
-            tg.showAlert(txt || "Нет квартир");
-        }
-
-        async function resetAllUsers() {
-            if (!(await tg.showConfirm("Удалить ВСЕХ игроков и сбросить прогресс?"))) return;
-            const res = await fetch(`${SERVER_URL}/api/admin/reset_all`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id:0, amount:0}) }).then(r=>r.json());
-            tg.showAlert(res.message); loadData(); loadLeaderboard();
-        }
-
-        async function openAdminAdmins() {
-            openModal('admin-admins-modal');
-            loadAdminsList();
-        }
-
-        async function loadAdminsList() {
-            const list = document.getElementById('admins-list'); list.innerHTML = 'Загрузка...';
-            try {
-                const data = await fetch(`${SERVER_URL}/api/admin/list_admins?admin_id=${userId}`).then(r=>r.json());
-                list.innerHTML = '';
-                data.admins.forEach(id => {
-                    let isMain = (id === MAIN_ADMIN_ID);
-                    list.innerHTML += `
-                    <div class="list-item" style="background: ${isMain ? 'rgba(74, 222, 128, 0.15)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${isMain ? 'var(--accent)' : 'rgba(255,255,255,0.05)'};">
-                        <span>${isMain ? '👑 Главный' : '🛡 Админ'} (ID: ${id})</span>
-                        ${isMain ? '' : `<button onclick="removeAdmin(${id})" style="background:#f87171; border:none; border-radius:8px; padding:6px 12px; font-weight:bold; color:white;">Удалить</button>`}
-                    </div>`;
+                        <div class="auction-card">
+                            <div class="auction-header">
+                                <div>
+                                    <div class="auction-item-name">🎁 ${l.item_name}</div>
+                                    <div class="auction-seller">Продавец: ${l.seller_name}${isOwn ? ' (вы)' : ''}</div>
+                                </div>
+                                <div class="auction-price">${price} $</div>
+                            </div>
+                            <div class="auction-desc">${desc}</div>
+                            <div class="auction-effect">${effect}</div>
+                            <div class="auction-actions">
+                                ${isOwn
+                                    ? `<button class="auction-cancel-btn" onclick="cancelAuction(${l.id})">Снять лот</button>`
+                                    : `<button class="auction-buy-btn" onclick="buyAuction(${l.id},${l.item_price})">Купить</button>`}
+                            </div>
+                        </div>`;
                 });
             } catch(e) { list.innerHTML = 'Ошибка'; }
         }
 
-        async function addAdmin() {
-            const newId = parseInt(document.getElementById('new-admin-id').value);
-            if (isNaN(newId)) return tg.showAlert('Введите корректный ID');
-            const res = await fetch(`${SERVER_URL}/api/admin/add_admin`, {
-                method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({admin_id: userId, target_id: newId})
-            }).then(r=>r.json());
-            if(res.status === 'ok') { tg.showAlert('✅ Админ добавлен'); document.getElementById('new-admin-id').value = ''; loadAdminsList(); }
-            else tg.showAlert('❌ ' + res.message);
+        async function buyAuction(id, price) {
+            if (!(await tg.showConfirm(`Купить за ${price.toLocaleString()} $?`))) return;
+            const r = await fetch(`${SERVER_URL}/api/auction/buy`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({user_id: userId, auction_id: id})
+            }).then(x => x.json());
+            if (r.status === 'ok') { tg.showAlert('✅ ' + r.message); loadData(); loadAuctions(); }
+            else tg.showAlert('❌ ' + r.message);
+        }
+        async function cancelAuction(id) {
+            if (!(await tg.showConfirm("Снять лот с продажи?"))) return;
+            const r = await fetch(`${SERVER_URL}/api/auction/cancel`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({user_id: userId, auction_id: id})
+            }).then(x => x.json());
+            if (r.status === 'ok') { tg.showAlert('✅ ' + r.message); loadData(); loadAuctions(); }
+            else tg.showAlert('❌ ' + r.message);
         }
 
-        async function removeAdmin(targetId) {
-            if (!(await tg.showConfirm("Удалить этого админа?"))) return;
-            const res = await fetch(`${SERVER_URL}/api/admin/remove_admin`, {
-                method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({admin_id: userId, target_id: targetId})
-            }).then(r=>r.json());
-            if(res.status === 'ok') { tg.showAlert('✅ Админ удален'); loadAdminsList(); }
-            else tg.showAlert('❌ ' + res.message);
-        }
+        function openMyApts()   { closeModal('city-menu-modal'); openModal('my-apts-modal'); }
+        function openInventory() { closeModal('city-menu-modal'); renderInventory(); openModal('inventory-modal'); }
+        function openChests()   { closeModal('city-menu-modal'); renderChests(); openModal('chests-modal'); }
+        function openAuction()  { closeModal('city-menu-modal'); loadAuctions(); openModal('auction-modal'); }
 
-        async function openAdminCompanies() {
-            openModal('admin-companies-modal');
-            const list = document.getElementById('admin-companies-list'); list.innerHTML = 'Загрузка...';
-            await loadCompanies();
-            list.innerHTML = '';
-            companiesData.forEach(c => {
-                list.innerHTML += `
-                <div class="user-row" style="border-left-color:#3b82f6;">
-                    <div style="font-weight:bold; font-size:16px;">${c.name}</div>
-                    <div style="font-size:13px; color:#8892b0;">Тарифов: ${c.tiers.length}</div>
-                    <div class="admin-btns">
-                        <button style="background:var(--accent); color:#000;" onclick="addTierPrompt(${c.id}, '${c.name}')">➕ Тариф</button>
-                        <button style="background:#f87171; color:white;" onclick="deleteCompany(${c.id})">🗑 Удалить</button>
-                    </div>
-                </div>`;
-            });
-        }
-
-        async function addCompanyPrompt() {
-            const name = prompt("Введите название новой компании:");
-            if (!name) return;
-            await fetch(`${SERVER_URL}/api/admin/add_company`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: name}) });
-            openAdminCompanies();
-        }
-
-        async function addTierPrompt(companyId, companyName) {
-            const name = prompt(`Название квартиры (в ${companyName}):`);
-            if (!name) return;
-            const price = parseInt(prompt("Цена в $:"));
-            const income = parseInt(prompt("Доход в час $:"));
-            if (!price || !income) return;
-            
-            const tierData = { name: name, price: price, income: income };
-            await fetch(`${SERVER_URL}/api/admin/add_tier/${companyId}`, { 
-                method:'POST', headers:{'Content-Type':'application/json'}, 
-                body: JSON.stringify({admin_id: userId, company_name: '', tier_data: tierData}) 
-            });
-            tg.showAlert("Тариф добавлен!"); openAdminCompanies();
-        }
-
-        async function deleteCompany(id) {
-            if (!(await tg.showConfirm("Удалить компанию со всеми квартирами?"))) return;
-            await fetch(`${SERVER_URL}/api/admin/delete_company/${id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name:''}) });
-            openAdminCompanies();
-        }
-
-        // --- МАГАЗИН ---
         function openShop() {
+            closeModal('city-menu-modal');
             const list = document.getElementById('shop-list'); list.innerHTML = '';
-            if (companiesData.length === 0) list.innerHTML = '<div style="text-align:center; padding:20px;">Компании не загружены. Подождите.</div>';
-            
-            companiesData.forEach(group => {
-                let html = `<div class="class-group"><div class="class-title">${group.name}</div>`;
-                group.tiers.forEach((item) => {
-                    let fp = item.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                    let fi = item.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+            if (companiesData.length === 0) list.innerHTML = '<div style="text-align:center;padding:20px;">Компании не загружены</div>';
+            companiesData.forEach(g => {
+                let html = `<div class="class-group"><div class="class-title">${g.name}</div>`;
+                g.tiers.forEach(item => {
+                    const fp = item.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    const fi = item.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
                     html += `
-                    <div class="apt-shop-item">
-                        <div class="apt-shop-info">
-                            <div class="apt-shop-title" style="font-weight:bold; font-size:16px; margin-bottom: 5px;">${item.name}</div>
-                            <div style="font-size:13px; color:var(--accent); font-weight: bold;">+ ${fi} $/ч</div>
-                        </div>
-                        <button class="buy-btn" onclick="prepareBuy('${item.name}', ${item.price}, ${item.income})">${fp} $</button>
-                    </div>`;
+                        <div class="apt-shop-item">
+                            <div><div style="font-weight:bold;font-size:15px;margin-bottom:5px;">${item.name}</div>
+                            <div style="font-size:13px;color:var(--accent);font-weight:bold;">+ ${fi} $/ч</div></div>
+                            <button class="buy-btn" onclick="prepareBuy('${item.name}',${item.price},${item.income})">${fp} $</button>
+                        </div>`;
                 });
-                html += `</div>`; list.innerHTML += html;
+                list.innerHTML += html + '</div>';
             });
             openModal('shop-modal');
         }
@@ -722,28 +768,187 @@
         let buyItemData = null;
         function prepareBuy(name, price, income) {
             buyItemData = { name, price, income };
-            document.getElementById('buy-modal-title').innerText = "Покупка квартиры";
+            document.getElementById('buy-modal-title').innerText = "Покупка";
             document.getElementById('buy-modal-text').innerHTML = `Купить <b>"${name}"</b> за <b>${price.toLocaleString()} $</b>?`;
             openModal('buy-modal');
         }
-
         async function executeBuy() {
             closeModal('buy-modal');
             if (!buyItemData) return;
-            try {
-                const res = await fetch(`${SERVER_URL}/api/buy`, { 
-                    method:'POST', headers:{'Content-Type':'application/json'}, 
-                    body: JSON.stringify({user_id: userId, user_name: playerName, apartment_name: buyItemData.name, price: buyItemData.price, income: buyItemData.income}) 
-                }).then(r=>r.json());
-                if (res.status === 'ok') { tg.showAlert('✅ Успешно куплено!'); closeModal('shop-modal'); loadData(); } 
-                else { tg.showAlert("❌ Ошибка: " + res.message); }
-            } catch(e) { tg.showAlert("⚠️ Ошибка соединения"); }
+            const r = await fetch(`${SERVER_URL}/api/buy`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({user_id: userId, user_name: playerName, apartment_name: buyItemData.name, price: buyItemData.price, income: buyItemData.income})
+            }).then(x => x.json());
+            if (r.status === 'ok') { tg.showAlert('✅ Куплено'); closeModal('shop-modal'); loadData(); }
+            else tg.showAlert('❌ ' + r.message);
+        }
+        async function sellApt(i, p) {
+            if (!(await tg.showConfirm("Продать за 70%?"))) return;
+            const r = await fetch(`${SERVER_URL}/api/sell`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({user_id: userId, apartment_index: i, price: p})
+            }).then(x => x.json());
+            if (r.status === 'ok') { tg.showAlert(r.message); loadData(); }
+            else tg.showAlert(r.message);
         }
 
-        async function sellApt(index, price) {
-            if (!(await tg.showConfirm("Продать квартиру за 70% стоимости?"))) return;
-            const res = await fetch(`${SERVER_URL}/api/sell`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, apartment_index: index, price: price}) }).then(r=>r.json());
-            if (res.status === 'ok') { tg.showAlert(res.message); loadData(); } else tg.showAlert(res.message);
+        async function saveNickname() {
+            const n = document.getElementById('nickname-input').value.trim();
+            if (!n) return;
+            await fetch(`${SERVER_URL}/api/set_name`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, name: n}) });
+            document.getElementById('user-name').innerText = n;
+            tg.showAlert('Ок');
+        }
+
+        async function openTransferModal(tid = null) {
+            openModal('transfer-modal');
+            const sel = document.getElementById('transfer-user-select');
+            sel.innerHTML = '<option>Загрузка...</option>';
+            try {
+                const d = await fetch(`${SERVER_URL}/api/all_users`).then(r => r.json());
+                sel.innerHTML = '<option value="">Выбери...</option>';
+                d.users.forEach(u => {
+                    if (u.id !== userId) sel.innerHTML += `<option value="${u.id}" ${u.id===tid?'selected':''}>${u.name}</option>`;
+                });
+            } catch(e) { sel.innerHTML = '<option>Ошибка</option>'; }
+        }
+        async function confirmTransfer() {
+            const rid = document.getElementById('transfer-user-select').value;
+            const amt = parseInt(document.getElementById('transfer-amount').value);
+            if (!rid || isNaN(amt) || amt <= 0) return tg.showAlert('Заполни');
+            closeModal('transfer-modal');
+            const r = await fetch(`${SERVER_URL}/api/transfer`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({sender_id: userId, receiver_id: parseInt(rid), amount: amt})
+            }).then(x => x.json());
+            if (r.status === 'ok') { tg.showAlert(r.message); loadData(); loadLeaderboard(); }
+            else tg.showAlert(r.message);
+        }
+        async function buyBusiness(i) {
+            const r = await fetch(`${SERVER_URL}/api/buy_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, business_index: i}) }).then(x => x.json());
+            if (r.status === 'ok') { tg.showAlert(r.message); loadData(); }
+            else tg.showAlert(r.message);
+        }
+        function tradeToken(tok, act) {
+            const a = prompt(`Сколько ${tok} ${act === 'buy' ? 'купить' : 'продать'}?`);
+            if (!a) return;
+            const amt = parseInt(a);
+            if (isNaN(amt) || amt <= 0) return;
+            fetch(`${SERVER_URL}/api/trade_token`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({user_id: userId, token_type: tok, amount: amt, action: act})
+            }).then(r => r.json()).then(r => {
+                if (r.status === 'error') tg.showAlert('❌ ' + r.message);
+                else { tg.showAlert('✅ ' + r.message); loadData(); }
+            });
+        }
+
+        // Админка
+        async function openAdminPanel() {
+            openModal('admin-modal');
+            const list = document.getElementById('admin-users-list'); list.innerHTML = 'Загрузка...';
+            try {
+                const d = await fetch(`${SERVER_URL}/api/admin/users?admin_id=${userId}`).then(r => r.json());
+                list.innerHTML = '';
+                d.users.forEach(u => {
+                    const fb = u.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    list.innerHTML += `
+                        <div class="user-row">
+                            <div style="display:flex;justify-content:space-between;font-weight:bold;"><span>${u.name}</span><span style="color:var(--accent)">${fb} $</span></div>
+                            <div style="font-size:13px;color:#8892b0;">ID: ${u.id} | Кв: ${u.apts_count}</div>
+                            <div class="admin-btns">
+                                <button style="background:var(--accent);color:#000;" onclick="adminMoneyModal(${u.id},'${u.name}')">💰</button>
+                                <button style="background:#3b82f6;color:#fff;" onclick="adminViewApts(${u.id})">🏢</button>
+                                <button style="background:#a855f7;color:#fff;" onclick="openTransferModal(${u.id})">💸</button>
+                            </div>
+                        </div>`;
+                });
+            } catch(e) { list.innerHTML = 'Ошибка'; }
+        }
+        let adminTargetId = null;
+        function adminMoneyModal(id, name) {
+            adminTargetId = id;
+            document.getElementById('admin-money-target').innerText = `Игрок: ${name}`;
+            document.getElementById('admin-money-amount').value = '';
+            openModal('admin-money-modal');
+        }
+        async function adminAddMoney() {
+            const a = parseInt(document.getElementById('admin-money-amount').value); if (!a) return;
+            const r = await fetch(`${SERVER_URL}/api/admin/add_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: a}) }).then(x => x.json());
+            if (r.status === 'error') tg.showAlert(r.message);
+            else { closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard(); }
+        }
+        async function adminRemoveMoney() {
+            const a = parseInt(document.getElementById('admin-money-amount').value); if (!a) return;
+            await fetch(`${SERVER_URL}/api/admin/remove_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: a}) });
+            closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard();
+        }
+        async function adminViewApts(id) {
+            const d = await fetch(`${SERVER_URL}/api/admin/user_apartments/${id}`).then(r => r.json());
+            tg.showAlert(d.apartments.map(a => `- ${a.name} (+${a.income}$/ч)`).join('\n') || "Нет квартир");
+        }
+        async function resetAllUsers() {
+            if (!(await tg.showConfirm("Удалить ВСЕХ?"))) return;
+            const r = await fetch(`${SERVER_URL}/api/admin/reset_all`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id:0, amount:0}) }).then(x => x.json());
+            tg.showAlert(r.message); loadData(); loadLeaderboard();
+        }
+        async function openAdminAdmins() { openModal('admin-admins-modal'); loadAdminsList(); }
+        async function loadAdminsList() {
+            const list = document.getElementById('admins-list'); list.innerHTML = 'Загрузка...';
+            const d = await fetch(`${SERVER_URL}/api/admin/list_admins?admin_id=${userId}`).then(r => r.json());
+            list.innerHTML = '';
+            d.admins.forEach(id => {
+                const m = id === MAIN_ADMIN_ID;
+                list.innerHTML += `<div class="list-item" style="background:${m?'rgba(74,222,128,0.15)':'rgba(255,255,255,0.05)'};"><span>${m?'👑':'🛡'} ${id}</span>${m?'':`<button onclick="removeAdmin(${id})" style="background:#f87171;border:none;border-radius:8px;padding:6px 12px;font-weight:bold;color:white;">✕</button>`}</div>`;
+            });
+        }
+        async function addAdmin() {
+            const n = parseInt(document.getElementById('new-admin-id').value);
+            if (isNaN(n)) return tg.showAlert('Неверный ID');
+            const r = await fetch(`${SERVER_URL}/api/admin/add_admin`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: n}) }).then(x => x.json());
+            if (r.status === 'ok') { tg.showAlert('✅'); document.getElementById('new-admin-id').value = ''; loadAdminsList(); }
+            else tg.showAlert('❌ ' + r.message);
+        }
+        async function removeAdmin(tid) {
+            if (!(await tg.showConfirm("Удалить?"))) return;
+            const r = await fetch(`${SERVER_URL}/api/admin/remove_admin`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: tid}) }).then(x => x.json());
+            if (r.status === 'ok') { tg.showAlert('✅'); loadAdminsList(); }
+            else tg.showAlert('❌ ' + r.message);
+        }
+        async function openAdminCompanies() {
+            openModal('admin-companies-modal');
+            const list = document.getElementById('admin-companies-list'); list.innerHTML = 'Загрузка...';
+            await loadCompanies();
+            list.innerHTML = '';
+            companiesData.forEach(c => {
+                list.innerHTML += `
+                    <div class="user-row" style="border-left-color:#3b82f6;">
+                        <div style="font-weight:bold;">${c.name}</div>
+                        <div style="font-size:13px;color:#8892b0;">Тарифов: ${c.tiers.length}</div>
+                        <div class="admin-btns">
+                            <button style="background:var(--accent);color:#000;" onclick="addTierPrompt(${c.id},'${c.name}')">➕</button>
+                            <button style="background:#f87171;color:white;" onclick="deleteCompany(${c.id})">🗑</button>
+                        </div>
+                    </div>`;
+            });
+        }
+        async function addCompanyPrompt() {
+            const n = prompt("Название компании:");
+            if (!n) return;
+            await fetch(`${SERVER_URL}/api/admin/add_company`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: n}) });
+            openAdminCompanies();
+        }
+        async function addTierPrompt(cid, cname) {
+            const n = prompt(`Квартира в ${cname}:`); if (!n) return;
+            const p = parseInt(prompt("Цена $:")); const i = parseInt(prompt("Доход $/ч:"));
+            if (!p || !i) return;
+            await fetch(`${SERVER_URL}/api/admin/add_tier/${cid}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: '', tier_data: {name:n,price:p,income:i}}) });
+            tg.showAlert("Добавлено!"); openAdminCompanies();
+        }
+        async function deleteCompany(id) {
+            if (!(await tg.showConfirm("Удалить компанию?"))) return;
+            await fetch(`${SERVER_URL}/api/admin/delete_company/${id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name:''}) });
+            openAdminCompanies();
         }
 
         function openModal(id) { document.getElementById(id).style.display = 'flex'; if (tg.BackButton) tg.BackButton.show(); }
