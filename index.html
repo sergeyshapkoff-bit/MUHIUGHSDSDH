@@ -131,7 +131,6 @@
 </head>
 <body>
     <script>
-        // ГЛОБАЛЬНЫЙ ПЕРЕХВАТ ОШИБОК JS (если что-то сломается, вылезет окно)
         window.onerror = function(message, source, lineno, colno, error) {
             alert("КРИТИЧЕСКАЯ ОШИБКА JS:\n" + message + "\nСтрока: " + lineno);
             return true;
@@ -328,7 +327,7 @@
         <div class="custom-box" style="border:2px solid #ffd700;">
             <h3 style="color:#ffd700;text-shadow:0 0 10px #ffd700;">🎉 ПОЗДРАВЛЯЕМ! 🎉</h3>
             <div id="loot-icon" style="font-size:50px;margin:20px 0;">🎁</div>
-            <p id="loot-text" style="font-size:15px;font-weight:bold;color:#fff;margin-bottom:25px;white-space:pre-line;"></p>
+            <p id="loot-text" style="font-size:16px;font-weight:bold;color:#fff;margin-bottom:25px;white-space:pre-line;"></p>
             <button class="btn-confirm" style="width:100%;" onclick="closeModal('loot-modal')">Забрать</button>
         </div>
     </div>
@@ -436,7 +435,7 @@
                 renderApartments(data.apartments || []);
                 renderBusinesses(data.businesses || []);
                 loadDailyBusinesses();
-            } catch(e) { tg.showAlert("Ошибка загрузки"); }
+            } catch(e) { tg.showAlert("Ошибка загрузки данных"); }
         }
 
         function renderBonuses() {
@@ -574,17 +573,14 @@
         }
 
         async function openChest(type) {
-            // ДИАГНОСТИКА: если это окно не появилось - кнопка не нажимается (кеш или ошибка JS)
-            tg.showAlert("Кнопка нажата! Открываем: " + type);
-            
             try {
                 const discount = Math.min((playerBonuses && playerBonuses.chest_discount) || 0, 50);
                 const finalPrice = Math.floor(CHESTS_DATA[type].price * (1 - discount / 100));
                 
-                const confirm = await tg.showConfirm(`Открыть ${CHESTS_DATA[type].name} за ${finalPrice.toLocaleString()} $?`);
-                if (!confirm) return;
+                // Используем стандартный confirm браузера, чтобы избежать багов Telegram
+                if (!confirm(`Открыть ${CHESTS_DATA[type].name} за ${finalPrice.toLocaleString()} $?`)) return;
                 
-                if (tg.MainButton) { tg.MainButton.setText("ОТКРЫВАЕМ..."); tg.MainButton.showProgress(); }
+                tg.showAlert("Сундук открывается, ждите...");
 
                 const res = await fetch(`${SERVER_URL}/api/open_chest`, {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -593,20 +589,22 @@
                 
                 const text = await res.text();
                 let r;
-                try { r = JSON.parse(text); } catch(e) { throw new Error("Ошибка сервера (HTML вместо JSON)"); }
+                try { r = JSON.parse(text); } catch(e) { throw new Error("Сервер вернул не JSON: " + text.substring(0, 50)); }
 
                 if (r.status === 'ok') {
                     document.getElementById('loot-icon').innerText = CHESTS_DATA[type].icon;
                     document.getElementById('loot-text').innerText = r.loot;
-                    openModal('loot-modal');
+                    
+                    // Принудительно показываем модалку
+                    const modal = document.getElementById('loot-modal');
+                    modal.style.display = 'flex';
+                    
                     loadData();
                 } else {
-                    tg.showAlert('❌ ' + r.message);
+                    alert('❌ Ошибка: ' + r.message);
                 }
             } catch (err) {
-                tg.showAlert('⚠️ Ошибка: ' + err.message);
-            } finally {
-                if (tg.MainButton) { tg.MainButton.hideProgress(); tg.MainButton.hide(); }
+                alert('⚠️ Системная ошибка: ' + err.message);
             }
         }
 
@@ -674,13 +672,13 @@
         }
 
         async function sellItem(i) {
-            if (!(await tg.showConfirm("Продать этот предмет?"))) return;
+            if (!confirm("Продать этот предмет?")) return;
             const r = await fetch(`${SERVER_URL}/api/sell_item`, {
                 method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({user_id: userId, item_index: i})
             }).then(x => x.json());
-            if (r.status === 'ok') { tg.showAlert('✅ ' + r.message); loadData(); }
-            else tg.showAlert('❌ ' + r.message);
+            if (r.status === 'ok') { alert('✅ ' + r.message); loadData(); }
+            else alert('❌ ' + r.message);
         }
 
         let auctionItemIndex = null;
@@ -692,14 +690,14 @@
         }
         async function confirmAuctionList() {
             const price = parseInt(document.getElementById('auction-price-input').value);
-            if (isNaN(price) || price <= 0) return tg.showAlert('Введи цену');
+            if (isNaN(price) || price <= 0) return alert('Введи цену');
             closeModal('auction-price-modal');
             const r = await fetch(`${SERVER_URL}/api/auction/list`, {
                 method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({user_id: userId, item_index: auctionItemIndex, price})
             }).then(x => x.json());
-            if (r.status === 'ok') { tg.showAlert('✅ ' + r.message); loadData(); }
-            else tg.showAlert('❌ ' + r.message);
+            if (r.status === 'ok') { alert('✅ ' + r.message); loadData(); }
+            else alert('❌ ' + r.message);
         }
 
         async function loadAuctions() {
@@ -739,22 +737,22 @@
         }
 
         async function buyAuction(id, price) {
-            if (!(await tg.showConfirm(`Купить за ${price.toLocaleString()} $?`))) return;
+            if (!confirm(`Купить за ${price.toLocaleString()} $?`)) return;
             const r = await fetch(`${SERVER_URL}/api/auction/buy`, {
                 method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({user_id: userId, auction_id: id})
             }).then(x => x.json());
-            if (r.status === 'ok') { tg.showAlert('✅ ' + r.message); loadData(); loadAuctions(); }
-            else tg.showAlert('❌ ' + r.message);
+            if (r.status === 'ok') { alert('✅ ' + r.message); loadData(); loadAuctions(); }
+            else alert('❌ ' + r.message);
         }
         async function cancelAuction(id) {
-            if (!(await tg.showConfirm("Снять лот с продажи?"))) return;
+            if (!confirm("Снять лот с продажи?")) return;
             const r = await fetch(`${SERVER_URL}/api/auction/cancel`, {
                 method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({user_id: userId, auction_id: id})
             }).then(x => x.json());
-            if (r.status === 'ok') { tg.showAlert('✅ ' + r.message); loadData(); loadAuctions(); }
-            else tg.showAlert('❌ ' + r.message);
+            if (r.status === 'ok') { alert('✅ ' + r.message); loadData(); loadAuctions(); }
+            else alert('❌ ' + r.message);
         }
 
         function openMyApts()   { closeModal('city-menu-modal'); openModal('my-apts-modal'); }
@@ -797,17 +795,17 @@
                 method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({user_id: userId, user_name: playerName, apartment_name: buyItemData.name, price: buyItemData.price, income: buyItemData.income})
             }).then(x => x.json());
-            if (r.status === 'ok') { tg.showAlert('✅ Куплено'); closeModal('shop-modal'); loadData(); }
-            else tg.showAlert('❌ ' + r.message);
+            if (r.status === 'ok') { alert('✅ Куплено'); closeModal('shop-modal'); loadData(); }
+            else alert('❌ ' + r.message);
         }
         async function sellApt(i, p) {
-            if (!(await tg.showConfirm("Продать за 70%?"))) return;
+            if (!confirm("Продать за 70%?")) return;
             const r = await fetch(`${SERVER_URL}/api/sell`, {
                 method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({user_id: userId, apartment_index: i, price: p})
             }).then(x => x.json());
-            if (r.status === 'ok') { tg.showAlert(r.message); loadData(); }
-            else tg.showAlert(r.message);
+            if (r.status === 'ok') { alert(r.message); loadData(); }
+            else alert(r.message);
         }
 
         async function saveNickname() {
@@ -833,19 +831,19 @@
         async function confirmTransfer() {
             const rid = document.getElementById('transfer-user-select').value;
             const amt = parseInt(document.getElementById('transfer-amount').value);
-            if (!rid || isNaN(amt) || amt <= 0) return tg.showAlert('Заполни');
+            if (!rid || isNaN(amt) || amt <= 0) return alert('Заполни');
             closeModal('transfer-modal');
             const r = await fetch(`${SERVER_URL}/api/transfer`, {
                 method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({sender_id: userId, receiver_id: parseInt(rid), amount: amt})
             }).then(x => x.json());
-            if (r.status === 'ok') { tg.showAlert(r.message); loadData(); loadLeaderboard(); }
-            else tg.showAlert(r.message);
+            if (r.status === 'ok') { alert(r.message); loadData(); loadLeaderboard(); }
+            else alert(r.message);
         }
         async function buyBusiness(i) {
             const r = await fetch(`${SERVER_URL}/api/buy_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, business_index: i}) }).then(x => x.json());
-            if (r.status === 'ok') { tg.showAlert(r.message); loadData(); }
-            else tg.showAlert(r.message);
+            if (r.status === 'ok') { alert(r.message); loadData(); }
+            else alert(r.message);
         }
         function tradeToken(tok, act) {
             const a = prompt(`Сколько ${tok} ${act === 'buy' ? 'купить' : 'продать'}?`);
@@ -856,8 +854,8 @@
                 method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({user_id: userId, token_type: tok, amount: amt, action: act})
             }).then(r => r.json()).then(r => {
-                if (r.status === 'error') tg.showAlert('❌ ' + r.message);
-                else { tg.showAlert('✅ ' + r.message); loadData(); }
+                if (r.status === 'error') alert('❌ ' + r.message);
+                else { alert('✅ ' + r.message); loadData(); }
             });
         }
 
@@ -892,7 +890,7 @@
         async function adminAddMoney() {
             const a = parseInt(document.getElementById('admin-money-amount').value); if (!a) return;
             const r = await fetch(`${SERVER_URL}/api/admin/add_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: a}) }).then(x => x.json());
-            if (r.status === 'error') tg.showAlert(r.message);
+            if (r.status === 'error') alert(r.message);
             else { closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard(); }
         }
         async function adminRemoveMoney() {
@@ -902,12 +900,12 @@
         }
         async function adminViewApts(id) {
             const d = await fetch(`${SERVER_URL}/api/admin/user_apartments/${id}`).then(r => r.json());
-            tg.showAlert(d.apartments.map(a => `- ${a.name} (+${a.income}$/ч)`).join('\n') || "Нет квартир");
+            alert(d.apartments.map(a => `- ${a.name} (+${a.income}$/ч)`).join('\n') || "Нет квартир");
         }
         async function resetAllUsers() {
-            if (!(await tg.showConfirm("Удалить ВСЕХ?"))) return;
+            if (!confirm("Удалить ВСЕХ?")) return;
             const r = await fetch(`${SERVER_URL}/api/admin/reset_all`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id:0, amount:0}) }).then(x => x.json());
-            tg.showAlert(r.message); loadData(); loadLeaderboard();
+            alert(r.message); loadData(); loadLeaderboard();
         }
         async function openAdminAdmins() { openModal('admin-admins-modal'); loadAdminsList(); }
         async function loadAdminsList() {
@@ -921,16 +919,16 @@
         }
         async function addAdmin() {
             const n = parseInt(document.getElementById('new-admin-id').value);
-            if (isNaN(n)) return tg.showAlert('Неверный ID');
+            if (isNaN(n)) return alert('Неверный ID');
             const r = await fetch(`${SERVER_URL}/api/admin/add_admin`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: n}) }).then(x => x.json());
-            if (r.status === 'ok') { tg.showAlert('✅'); document.getElementById('new-admin-id').value = ''; loadAdminsList(); }
-            else tg.showAlert('❌ ' + r.message);
+            if (r.status === 'ok') { alert('✅'); document.getElementById('new-admin-id').value = ''; loadAdminsList(); }
+            else alert('❌ ' + r.message);
         }
         async function removeAdmin(tid) {
-            if (!(await tg.showConfirm("Удалить?"))) return;
+            if (!confirm("Удалить?")) return;
             const r = await fetch(`${SERVER_URL}/api/admin/remove_admin`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: tid}) }).then(x => x.json());
-            if (r.status === 'ok') { tg.showAlert('✅'); loadAdminsList(); }
-            else tg.showAlert('❌ ' + r.message);
+            if (r.status === 'ok') { alert('✅'); loadAdminsList(); }
+            else alert('❌ ' + r.message);
         }
         async function openAdminCompanies() {
             openModal('admin-companies-modal');
@@ -960,10 +958,10 @@
             const p = parseInt(prompt("Цена $:")); const i = parseInt(prompt("Доход $/ч:"));
             if (!p || !i) return;
             await fetch(`${SERVER_URL}/api/admin/add_tier/${cid}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: '', tier_data: {name:n,price:p,income:i}}) });
-            tg.showAlert("Добавлено!"); openAdminCompanies();
+            alert("Добавлено!"); openAdminCompanies();
         }
         async function deleteCompany(id) {
-            if (!(await tg.showConfirm("Удалить компанию?"))) return;
+            if (!confirm("Удалить компанию?")) return;
             await fetch(`${SERVER_URL}/api/admin/delete_company/${id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name:''}) });
             openAdminCompanies();
         }
