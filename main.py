@@ -12,7 +12,8 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 DATABASE_URL = (
     "postgresql://postgres.zmfepxqnxcvkvdjonzhp:p0LwFeRg9NJ7Cusj"
     "@aws-0-eu-west-1.pooler.supabase.com:6543/postgres"
-    "?sslmode=require&pgbouncer=true"
+    "?sslmode=require"
+
 )
 MAIN_ADMIN_ID = 5634302903
 GUEST_USER_ID = 123456789
