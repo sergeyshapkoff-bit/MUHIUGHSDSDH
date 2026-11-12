@@ -181,7 +181,6 @@
         <button class="nav-btn" onclick="switchTab(2,this)"><span>📈</span>Биржа</button>
     </nav>
 
-    <!-- Меню "+" -->
     <div id="city-menu-modal" class="custom-modal">
         <div class="custom-box">
             <h3>📋 Меню</h3>
@@ -194,19 +193,16 @@
         </div>
     </div>
 
-    <!-- Сундуки -->
     <div id="chests-modal" class="modal-overlay">
         <div class="modal-header"><h2>📦 Сундуки</h2><button class="close-btn" onclick="closeModal('chests-modal')">✕</button></div>
         <div class="modal-content"><div id="chests-list"></div></div>
     </div>
 
-    <!-- Инвентарь -->
     <div id="inventory-modal" class="modal-overlay">
         <div class="modal-header"><h2>🎒 Инвентарь</h2><button class="close-btn" onclick="closeModal('inventory-modal')">✕</button></div>
         <div class="modal-content"><div id="inventory-list"></div></div>
     </div>
 
-    <!-- Аукцион -->
     <div id="auction-modal" class="modal-overlay">
         <div class="modal-header"><h2>🔨 Аукцион</h2><button class="close-btn" onclick="closeModal('auction-modal')">✕</button></div>
         <div class="modal-content">
@@ -215,7 +211,6 @@
         </div>
     </div>
 
-    <!-- Квартиры -->
     <div id="my-apts-modal" class="modal-overlay">
         <div class="modal-header"><h2>🏢 Мои квартиры</h2><button class="close-btn" onclick="closeModal('my-apts-modal')">✕</button></div>
         <div class="modal-content">
@@ -228,13 +223,11 @@
         <div class="modal-content" id="shop-list"></div>
     </div>
 
-    <!-- Шансы сундука -->
     <div id="chances-modal" class="modal-overlay">
         <div class="modal-header"><h2 id="chances-title">🎲 Шансы</h2><button class="close-btn" onclick="closeModal('chances-modal')">✕</button></div>
         <div class="modal-content" id="chances-content"></div>
     </div>
 
-    <!-- Настройки -->
     <div id="settings-modal" class="modal-overlay">
         <div class="modal-header"><h2>⚙️ Настройки</h2><button class="close-btn" onclick="closeModal('settings-modal')">✕</button></div>
         <div class="modal-content">
@@ -256,7 +249,6 @@
         </div>
     </div>
 
-    <!-- Админка -->
     <div id="admin-modal" class="modal-overlay">
         <div class="modal-header"><h2>👑 Админ</h2><button class="close-btn" onclick="closeModal('admin-modal')">✕</button></div>
         <div class="modal-content">
@@ -286,7 +278,6 @@
         </div>
     </div>
 
-    <!-- Действия -->
     <div id="transfer-modal" class="custom-modal">
         <div class="custom-box">
             <h3>💸 Перевод</h3>
@@ -363,7 +354,6 @@
         }
         checkAdmin();
 
-        // Свайпы
         let tabs = ['balance', 'businesses', 'trades'];
         let currentTabIndex = 0, touchStartX = 0;
         function updateTabs() {
@@ -576,19 +566,36 @@
         }
 
         async function openChest(type) {
-            const discount = Math.min((playerBonuses && playerBonuses.chest_discount) || 0, 50);
-            const finalPrice = Math.floor(CHESTS_DATA[type].price * (1 - discount / 100));
-            if (!(await tg.showConfirm(`Открыть ${CHESTS_DATA[type].name} за ${finalPrice.toLocaleString()} $?`))) return;
-            const r = await fetch(`${SERVER_URL}/api/open_chest`, {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({user_id: userId, chest_type: type})
-            }).then(x => x.json());
-            if (r.status === 'ok') {
-                document.getElementById('loot-icon').innerText = CHESTS_DATA[type].icon;
-                document.getElementById('loot-text').innerText = r.loot;
-                openModal('loot-modal');
-                loadData();
-            } else tg.showAlert('❌ ' + r.message);
+            try {
+                const discount = Math.min((playerBonuses && playerBonuses.chest_discount) || 0, 50);
+                const finalPrice = Math.floor(CHESTS_DATA[type].price * (1 - discount / 100));
+                const confirm = await tg.showConfirm(`Открыть ${CHESTS_DATA[type].name} за ${finalPrice.toLocaleString()} $?`);
+                if (!confirm) return;
+                
+                if (tg.MainButton) { tg.MainButton.setText("ОТКРЫВАЕМ..."); tg.MainButton.showProgress(); }
+
+                const res = await fetch(`${SERVER_URL}/api/open_chest`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: userId, chest_type: type})
+                });
+                
+                const text = await res.text();
+                let r;
+                try { r = JSON.parse(text); } catch(e) { throw new Error("Ошибка сервера: " + text.substring(0, 50)); }
+
+                if (r.status === 'ok') {
+                    document.getElementById('loot-icon').innerText = CHESTS_DATA[type].icon;
+                    document.getElementById('loot-text').innerText = r.loot;
+                    openModal('loot-modal');
+                    loadData();
+                } else {
+                    tg.showAlert('❌ ' + r.message);
+                }
+            } catch (err) {
+                tg.showAlert('⚠️ Ошибка: ' + err.message);
+            } finally {
+                if (tg.MainButton) { tg.MainButton.hideProgress(); tg.MainButton.hide(); }
+            }
         }
 
         async function openChances(chestType) {
@@ -622,7 +629,6 @@
                     });
                     html += `</div>`;
                 }
-                html += `<div style="text-align:center;color:#8892b0;font-size:12px;font-style:italic;margin-top:20px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.1);">Шансы суммируются в 100%. Каждый сундук — независимый бросок.</div>`;
                 content.innerHTML = html;
             } catch(e) {
                 content.innerHTML = '<div style="color:#f87171;text-align:center;padding:20px;">Ошибка сети</div>';
@@ -843,7 +849,6 @@
             });
         }
 
-        // Админка
         async function openAdminPanel() {
             openModal('admin-modal');
             const list = document.getElementById('admin-users-list'); list.innerHTML = 'Загрузка...';
