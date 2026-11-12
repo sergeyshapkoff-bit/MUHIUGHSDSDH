@@ -41,31 +41,6 @@
         .nav-btn span { font-size: 22px; }
         .nav-btn.active { color: #ffffff; }
         .nav-btn.active span { transform: scale(1.15) translateY(-3px); }
-        .chest-card { background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; margin-bottom: 15px; text-align: center; }
-        .chest-title { font-size: 20px; font-weight: 800; margin-bottom: 5px; }
-        .chest-price { font-size: 14px; color: var(--accent); font-weight: bold; margin-bottom: 15px; }
-        .chest-btn { width: 100%; padding: 15px; border-radius: 15px; border: none; font-weight: bold; font-size: 16px; cursor: pointer; color: #000; }
-        .chest-card-buttons { display: flex; gap: 8px; }
-        .chest-card-buttons button { flex: 1; padding: 13px; border-radius: 14px; border: none; font-weight: bold; font-size: 14px; cursor: pointer; }
-        .chances-btn { background: rgba(255,255,255,0.1); color: white; }
-        .item-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-        .item-info { flex: 1; }
-        .item-name { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
-        .item-desc { font-size: 12px; color: #a3c2ff; font-style: italic; margin-bottom: 6px; line-height: 1.3; }
-        .item-price { font-size: 13px; color: #ffd700; font-weight: bold; }
-        .item-actions { display: flex; flex-direction: column; gap: 6px; }
-        .item-sell-btn { background: #4ade80; color: #000; border: none; padding: 9px 14px; border-radius: 10px; font-weight: bold; font-size: 12px; cursor: pointer; }
-        .item-auction-btn { background: #a855f7; color: #fff; border: none; padding: 9px 14px; border-radius: 10px; font-weight: bold; font-size: 12px; cursor: pointer; }
-        .auction-card { background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.1); border-radius: 18px; padding: 16px; margin-bottom: 12px; }
-        .auction-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 10px; }
-        .auction-item-name { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
-        .auction-seller { font-size: 11px; color: #8892b0; }
-        .auction-price { font-size: 18px; font-weight: 800; color: #ffd700; white-space: nowrap; }
-        .auction-desc { font-size: 12px; color: #a3c2ff; margin-bottom: 10px; font-style: italic; }
-        .auction-effect { font-size: 12px; color: #4ade80; font-weight: 600; margin-bottom: 8px; }
-        .auction-actions { display: flex; justify-content: flex-end; gap: 8px; }
-        .auction-buy-btn { background: var(--accent); color: #000; border: none; padding: 9px 20px; border-radius: 10px; font-weight: bold; font-size: 13px; cursor: pointer; }
-        .auction-cancel-btn { background: rgba(248,113,113,0.3); color: #f87171; border: 1px solid rgba(248,113,113,0.3); padding: 9px 20px; border-radius: 10px; font-weight: bold; font-size: 13px; cursor: pointer; }
         .exchange-card { background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 18px; margin-bottom: 15px; }
         .exchange-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
         .rate-title { font-size: 17px; font-weight: 700; }
@@ -115,28 +90,10 @@
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
         input[type="color"]::-webkit-color-swatch { border: 3px solid rgba(255,255,255,0.2); border-radius: 50%; }
         .menu-btn { width: 100%; padding: 15px; border-radius: 14px; border: none; font-weight: bold; font-size: 16px; margin-bottom: 10px; cursor: pointer; }
-        .chance-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; background: rgba(255,255,255,0.05); border-radius: 12px; margin-bottom: 6px; font-size: 13px; gap: 10px; }
-        .chance-row .lbl { flex: 1; text-align: left; }
-        .chance-row .pct { font-weight: 800; color: #4ade80; font-size: 15px; white-space: nowrap; }
-        .chance-section { margin-bottom: 22px; }
-        .chance-section-title { font-size: 12px; font-weight: 700; color: #a3c2ff; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; }
-        .chance-item-card { background: rgba(168,85,247,0.08); border: 1px solid rgba(168,85,247,0.2); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
-        .chance-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 10px; }
-        .chance-item-name { font-weight: 700; font-size: 14px; }
-        .chance-item-pct { font-weight: 800; color: #a855f7; font-size: 14px; white-space: nowrap; }
-        .chance-item-effect { font-size: 12px; color: #4ade80; font-weight: 600; margin-bottom: 4px; text-align: left; }
-        .chance-item-price { font-size: 11px; color: #ffd700; text-align: left; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
-    <script>
-        window.onerror = function(message, source, lineno, colno, error) {
-            alert("КРИТИЧЕСКАЯ ОШИБКА JS:\n" + message + "\nСтрока: " + lineno);
-            return true;
-        };
-    </script>
-
     <header>
         <div class="user-info"><div class="avatar">👤</div><span id="user-name">Загрузка...</span></div>
         <div class="icons" onclick="openModal('settings-modal')"><span>⚙️</span></div>
@@ -150,8 +107,6 @@
                     <div class="card-balance" id="user-balance">0 <span>$</span></div>
                     <div class="visa-logo">VISA</div>
                 </div>
-                <div id="bonuses-bar" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;"></div>
-                <div id="income-per-hour" style="font-size:13px;color:#4ade80;font-weight:bold;margin-bottom:10px;"></div>
                 <div class="card-number" onclick="copyText(document.getElementById('card-number').innerText)">
                     <span id="card-number">**** **** **** ****</span> <span class="copy-icon">📋</span>
                 </div>
@@ -188,33 +143,13 @@
         <button class="nav-btn" onclick="switchTab(2,this)"><span>📈</span>Биржа</button>
     </nav>
 
+    <!-- Меню "+" -->
     <div id="city-menu-modal" class="custom-modal">
         <div class="custom-box">
-            <h3>📋 Меню</h3>
+            <h3>🏙 Недвижимость</h3>
             <button class="menu-btn" style="background:#3b82f6;color:#fff;" onclick="openMyApts()">🏢 Мои квартиры</button>
             <button class="menu-btn" style="background:var(--accent);color:#000;" onclick="openShop()">🛒 Купить квартиру</button>
-            <button class="menu-btn" style="background:#f59e0b;color:#000;" onclick="openChests()">📦 Сундуки</button>
-            <button class="menu-btn" style="background:#a855f7;color:#fff;" onclick="openInventory()">🎒 Инвентарь</button>
-            <button class="menu-btn" style="background:#ef4444;color:#fff;" onclick="openAuction()">🔨 Аукцион</button>
             <button class="btn-cancel" style="width:100%;padding:13px;border-radius:14px;border:none;font-weight:bold;font-size:15px;" onclick="closeModal('city-menu-modal')">Закрыть</button>
-        </div>
-    </div>
-
-    <div id="chests-modal" class="modal-overlay">
-        <div class="modal-header"><h2>📦 Сундуки</h2><button class="close-btn" onclick="closeModal('chests-modal')">✕</button></div>
-        <div class="modal-content"><div id="chests-list"></div></div>
-    </div>
-
-    <div id="inventory-modal" class="modal-overlay">
-        <div class="modal-header"><h2>🎒 Инвентарь</h2><button class="close-btn" onclick="closeModal('inventory-modal')">✕</button></div>
-        <div class="modal-content"><div id="inventory-list"></div></div>
-    </div>
-
-    <div id="auction-modal" class="modal-overlay">
-        <div class="modal-header"><h2>🔨 Аукцион</h2><button class="close-btn" onclick="closeModal('auction-modal')">✕</button></div>
-        <div class="modal-content">
-            <button class="btn-action" style="margin-top:0;margin-bottom:15px;" onclick="loadAuctions()">🔄 Обновить</button>
-            <div id="auction-list"></div>
         </div>
     </div>
 
@@ -225,14 +160,10 @@
             <div id="my-apartments-list-modal"></div>
         </div>
     </div>
+    
     <div id="shop-modal" class="modal-overlay">
         <div class="modal-header"><h2>🛒 Магазин квартир</h2><button class="close-btn" onclick="closeModal('shop-modal')">✕</button></div>
         <div class="modal-content" id="shop-list"></div>
-    </div>
-
-    <div id="chances-modal" class="modal-overlay">
-        <div class="modal-header"><h2 id="chances-title">🎲 Шансы</h2><button class="close-btn" onclick="closeModal('chances-modal')">✕</button></div>
-        <div class="modal-content" id="chances-content"></div>
     </div>
 
     <div id="settings-modal" class="modal-overlay">
@@ -266,6 +197,7 @@
             <button class="admin-btn" style="background:#f87171;margin-top:20px;" onclick="resetAllUsers()">⚠️ Сбросить ВСЕХ</button>
         </div>
     </div>
+    
     <div id="admin-admins-modal" class="modal-overlay">
         <div class="modal-header"><h2>👥 Админы</h2><button class="close-btn" onclick="closeModal('admin-admins-modal')">✕</button></div>
         <div class="modal-content">
@@ -277,6 +209,7 @@
             <div id="admins-list"></div>
         </div>
     </div>
+
     <div id="admin-companies-modal" class="modal-overlay">
         <div class="modal-header"><h2>🏢 Компании</h2><button class="close-btn" onclick="closeModal('admin-companies-modal')">✕</button></div>
         <div class="modal-content">
@@ -293,6 +226,7 @@
             <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('transfer-modal')">Отмена</button><button class="btn-confirm" onclick="confirmTransfer()">Отправить</button></div>
         </div>
     </div>
+    
     <div id="buy-modal" class="custom-modal">
         <div class="custom-box">
             <h3 id="buy-modal-title">Купить?</h3>
@@ -300,6 +234,7 @@
             <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('buy-modal')">Отмена</button><button class="btn-confirm" onclick="executeBuy()">Купить</button></div>
         </div>
     </div>
+    
     <div id="admin-money-modal" class="custom-modal">
         <div class="custom-box">
             <h3>Деньги</h3>
@@ -312,25 +247,6 @@
             </div>
         </div>
     </div>
-    <div id="auction-price-modal" class="custom-modal">
-        <div class="custom-box">
-            <h3>🔨 Выставить на аукцион</h3>
-            <p id="auction-price-item-name"></p>
-            <input type="number" id="auction-price-input" placeholder="Цена в $">
-            <div class="modal-actions">
-                <button class="btn-cancel" onclick="closeModal('auction-price-modal')">Отмена</button>
-                <button class="btn-confirm" onclick="confirmAuctionList()">Выставить</button>
-            </div>
-        </div>
-    </div>
-    <div id="loot-modal" class="custom-modal">
-        <div class="custom-box" style="border:2px solid #ffd700;">
-            <h3 style="color:#ffd700;text-shadow:0 0 10px #ffd700;">🎉 ПОЗДРАВЛЯЕМ! 🎉</h3>
-            <div id="loot-icon" style="font-size:50px;margin:20px 0;">🎁</div>
-            <p id="loot-text" style="font-size:16px;font-weight:bold;color:#fff;margin-bottom:25px;white-space:pre-line;"></p>
-            <button class="btn-confirm" style="width:100%;" onclick="closeModal('loot-modal')">Забрать</button>
-        </div>
-    </div>
 
     <script>
         const tg = window.Telegram.WebApp;
@@ -341,15 +257,7 @@
         const MAIN_ADMIN_ID = 5634302903;
         const SERVER_URL = "https://mmiji.de1.netrun.io";
 
-        let currentRates = {}, companiesData = [], userPortfolio = {}, userInventory = [];
-        let playerBonuses = { apt_pct: 0, bus_pct: 0, total_pct: 0, chest_discount: 0 };
-        let playerIncomePerHour = 0;
-        const CHESTS_DATA = {
-            common:    { name: "Ржавый ящик",      price: 15000,   color: "#9ca3af", icon: "📦" },
-            rare:      { name: "Деревянный ларец", price: 75000,   color: "#3b82f6", icon: "🎁" },
-            epic:      { name: "Кованый сундук",   price: 300000,  color: "#a855f7", icon: "🧰" },
-            legendary: { name: "Сундук Дракона",   price: 2000000, color: "#f59e0b", icon: "🐉" }
-        };
+        let currentRates = {}, companiesData = [], userPortfolio = {};
 
         document.getElementById("settings-user-id").innerText = userId;
 
@@ -407,7 +315,7 @@
             document.getElementById('bg-color-2').value = bg2;
             const cardColor = localStorage.getItem('customCard');
             if (cardColor) document.getElementById('main-card').style.background = cardColor;
-            loadCompanies(); renderChests();
+            loadCompanies();
         };
 
         async function loadData() {
@@ -420,13 +328,9 @@
                 if (data.card_number) document.getElementById("card-number").innerText = data.card_number;
                 if (data.card_cvc) document.getElementById("card-cvc").innerText = "CVC: " + data.card_cvc;
                 userPortfolio = data.portfolio || {};
-                userInventory = data.inventory || [];
-                playerBonuses = data.bonuses || { apt_pct: 0, bus_pct: 0, total_pct: 0, chest_discount: 0 };
-                playerIncomePerHour = data.income_per_hour || 0;
-                renderBonuses();
+                
                 loadRates();
-                renderInventory();
-                renderChests();
+                
                 if (data.earned > 0) {
                     const b = document.getElementById("income-badge");
                     b.innerText = `+ ${data.earned} $`; b.style.display = 'block';
@@ -436,29 +340,6 @@
                 renderBusinesses(data.businesses || []);
                 loadDailyBusinesses();
             } catch(e) { tg.showAlert("Ошибка загрузки данных"); }
-        }
-
-        function renderBonuses() {
-            const bar = document.getElementById('bonuses-bar');
-            if (!bar) return;
-            const b = playerBonuses || {};
-            const chips = [];
-            if (b.apt_pct > 0) chips.push(`🏢 +${b.apt_pct}% к квартирам`);
-            if (b.bus_pct > 0) chips.push(`🏭 +${b.bus_pct}% к бизнесам`);
-            if (b.total_pct > 0) chips.push(`🔥 +${b.total_pct}% ко всему`);
-            if (b.chest_discount > 0) chips.push(`📦 −${Math.min(b.chest_discount, 50)}% сундуки`);
-            if (chips.length === 0) {
-                bar.innerHTML = `<div style="font-size:12px;color:#8892b0;font-style:italic;">Собери предметы из сундуков — они дают бонусы</div>`;
-            } else {
-                bar.innerHTML = chips.map(c =>
-                    `<div style="font-size:11px;font-weight:bold;background:rgba(74,222,128,0.15);color:#4ade80;padding:4px 10px;border-radius:20px;border:1px solid rgba(74,222,128,0.3);">${c}</div>`
-                ).join('');
-            }
-            const incomeLabel = document.getElementById('income-per-hour');
-            if (incomeLabel) {
-                incomeLabel.innerHTML = playerIncomePerHour > 0
-                    ? `📈 ${playerIncomePerHour.toLocaleString()} $/ч` : '';
-            }
         }
 
         async function loadLeaderboard() {
@@ -549,217 +430,8 @@
             } catch(e) {}
         }
 
-        function renderChests() {
-            const list = document.getElementById('chests-list'); list.innerHTML = '';
-            const discount = Math.min((playerBonuses && playerBonuses.chest_discount) || 0, 50);
-            for (const key in CHESTS_DATA) {
-                const c = CHESTS_DATA[key];
-                const finalPrice = Math.floor(c.price * (1 - discount / 100));
-                const fp = finalPrice.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                const oldPriceHtml = discount > 0
-                    ? `<span style="text-decoration:line-through;color:#666;font-size:12px;margin-right:6px;">${c.price.toLocaleString()} $</span>`
-                    : '';
-                list.innerHTML += `
-                    <div class="chest-card" style="border-color:${c.color};box-shadow:0 0 15px ${c.color}40;">
-                        <div style="font-size:50px;margin-bottom:10px;">${c.icon}</div>
-                        <div class="chest-title" style="color:${c.color};">${c.name}</div>
-                        <div class="chest-price">${oldPriceHtml}${fp} $</div>
-                        <div class="chest-card-buttons">
-                            <button class="chest-btn" style="background:${c.color};" onclick="openChest('${key}')">Открыть</button>
-                            <button class="chances-btn" onclick="openChances('${key}')">🎲 Шансы</button>
-                        </div>
-                    </div>`;
-            }
-        }
-
-        async function openChest(type) {
-            try {
-                const discount = Math.min((playerBonuses && playerBonuses.chest_discount) || 0, 50);
-                const finalPrice = Math.floor(CHESTS_DATA[type].price * (1 - discount / 100));
-                
-                // Используем стандартный confirm браузера, чтобы избежать багов Telegram
-                if (!confirm(`Открыть ${CHESTS_DATA[type].name} за ${finalPrice.toLocaleString()} $?`)) return;
-                
-                tg.showAlert("Сундук открывается, ждите...");
-
-                const res = await fetch(`${SERVER_URL}/api/open_chest`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({user_id: userId, chest_type: type})
-                });
-                
-                const text = await res.text();
-                let r;
-                try { r = JSON.parse(text); } catch(e) { throw new Error("Сервер вернул не JSON: " + text.substring(0, 50)); }
-
-                if (r.status === 'ok') {
-                    document.getElementById('loot-icon').innerText = CHESTS_DATA[type].icon;
-                    document.getElementById('loot-text').innerText = r.loot;
-                    
-                    // Принудительно показываем модалку
-                    const modal = document.getElementById('loot-modal');
-                    modal.style.display = 'flex';
-                    
-                    loadData();
-                } else {
-                    alert('❌ Ошибка: ' + r.message);
-                }
-            } catch (err) {
-                alert('⚠️ Системная ошибка: ' + err.message);
-            }
-        }
-
-        async function openChances(chestType) {
-            const content = document.getElementById('chances-content');
-            const title = document.getElementById('chances-title');
-            content.innerHTML = '<div style="text-align:center;color:#8892b0;padding:20px;">Загрузка...</div>';
-            openModal('chances-modal');
-            try {
-                const d = await fetch(`${SERVER_URL}/api/chest_info/${chestType}`).then(r => r.json());
-                if (d.status === 'error') { content.innerHTML = '<div style="color:#f87171;text-align:center;padding:20px;">Ошибка</div>'; return; }
-                title.innerText = `🎲 ${d.name}`;
-                let html = `<div style="text-align:center;margin-bottom:20px;">
-                    <div style="font-size:14px;color:#8892b0;">Стоимость: <b style="color:var(--accent);">${d.price.toLocaleString()} $</b></div>
-                </div>`;
-                html += `<div class="chance-section"><div class="chance-section-title">📊 Общий дроп</div>`;
-                d.main.forEach(m => {
-                    html += `<div class="chance-row"><span class="lbl">${m.label}</span><span class="pct">${m.chance}%</span></div>`;
-                });
-                html += `</div>`;
-                if (d.items && d.items.length > 0) {
-                    html += `<div class="chance-section"><div class="chance-section-title">🎁 Возможные предметы (${d.item_chance}% шанс дропа)</div>`;
-                    d.items.forEach(it => {
-                        html += `<div class="chance-item-card">
-                            <div class="chance-item-top">
-                                <span class="chance-item-name">${it.name}</span>
-                                <span class="chance-item-pct">${it.chance}%</span>
-                            </div>
-                            <div class="chance-item-effect">${it.effect_label}</div>
-                            <div class="chance-item-price">💰 ${it.price.toLocaleString()} $</div>
-                        </div>`;
-                    });
-                    html += `</div>`;
-                }
-                content.innerHTML = html;
-            } catch(e) {
-                content.innerHTML = '<div style="color:#f87171;text-align:center;padding:20px;">Ошибка сети</div>';
-            }
-        }
-
-        function renderInventory() {
-            const list = document.getElementById('inventory-list'); list.innerHTML = '';
-            if (userInventory.length === 0) {
-                list.innerHTML = '<div style="text-align:center;color:#8892b0;padding:20px;">Пусто. Открывай сундуки!</div>';
-                return;
-            }
-            userInventory.forEach((item, i) => {
-                const fp = item.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                const desc = item.desc || 'Загадочный предмет';
-                const effect = item.effect_label || '—';
-                list.innerHTML += `
-                    <div class="item-card">
-                        <div class="item-info">
-                            <div class="item-name">🎁 ${item.name}</div>
-                            <div class="item-desc">${desc}</div>
-                            <div style="font-size:13px;font-weight:bold;color:#4ade80;margin:6px 0;">${effect}</div>
-                            <div class="item-price">💰 ${fp} $</div>
-                        </div>
-                        <div class="item-actions">
-                            <button class="item-sell-btn" onclick="sellItem(${i})">Продать</button>
-                            <button class="item-auction-btn" onclick="askAuctionPrice(${i})">Аукцион</button>
-                        </div>
-                    </div>`;
-            });
-        }
-
-        async function sellItem(i) {
-            if (!confirm("Продать этот предмет?")) return;
-            const r = await fetch(`${SERVER_URL}/api/sell_item`, {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({user_id: userId, item_index: i})
-            }).then(x => x.json());
-            if (r.status === 'ok') { alert('✅ ' + r.message); loadData(); }
-            else alert('❌ ' + r.message);
-        }
-
-        let auctionItemIndex = null;
-        function askAuctionPrice(i) {
-            auctionItemIndex = i;
-            document.getElementById('auction-price-item-name').innerText = userInventory[i].name;
-            document.getElementById('auction-price-input').value = '';
-            openModal('auction-price-modal');
-        }
-        async function confirmAuctionList() {
-            const price = parseInt(document.getElementById('auction-price-input').value);
-            if (isNaN(price) || price <= 0) return alert('Введи цену');
-            closeModal('auction-price-modal');
-            const r = await fetch(`${SERVER_URL}/api/auction/list`, {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({user_id: userId, item_index: auctionItemIndex, price})
-            }).then(x => x.json());
-            if (r.status === 'ok') { alert('✅ ' + r.message); loadData(); }
-            else alert('❌ ' + r.message);
-        }
-
-        async function loadAuctions() {
-            const list = document.getElementById('auction-list');
-            list.innerHTML = 'Загрузка...';
-            try {
-                const d = await fetch(`${SERVER_URL}/api/auction`).then(r => r.json());
-                if (!d.listings || d.listings.length === 0) {
-                    list.innerHTML = '<div style="text-align:center;color:#8892b0;padding:20px;">Аукцион пуст. Выстави предмет из инвентаря!</div>';
-                    return;
-                }
-                list.innerHTML = '';
-                d.listings.forEach(l => {
-                    const isOwn = l.seller_id === userId;
-                    const price = parseInt(l.item_price).toLocaleString();
-                    const desc = (l.item_data && l.item_data.desc) || 'Без описания';
-                    const effect = (l.item_data && l.item_data.effect_label) || '—';
-                    list.innerHTML += `
-                        <div class="auction-card">
-                            <div class="auction-header">
-                                <div>
-                                    <div class="auction-item-name">🎁 ${l.item_name}</div>
-                                    <div class="auction-seller">Продавец: ${l.seller_name}${isOwn ? ' (вы)' : ''}</div>
-                                </div>
-                                <div class="auction-price">${price} $</div>
-                            </div>
-                            <div class="auction-desc">${desc}</div>
-                            <div class="auction-effect">${effect}</div>
-                            <div class="auction-actions">
-                                ${isOwn
-                                    ? `<button class="auction-cancel-btn" onclick="cancelAuction(${l.id})">Снять лот</button>`
-                                    : `<button class="auction-buy-btn" onclick="buyAuction(${l.id},${l.item_price})">Купить</button>`}
-                            </div>
-                        </div>`;
-                });
-            } catch(e) { list.innerHTML = 'Ошибка'; }
-        }
-
-        async function buyAuction(id, price) {
-            if (!confirm(`Купить за ${price.toLocaleString()} $?`)) return;
-            const r = await fetch(`${SERVER_URL}/api/auction/buy`, {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({user_id: userId, auction_id: id})
-            }).then(x => x.json());
-            if (r.status === 'ok') { alert('✅ ' + r.message); loadData(); loadAuctions(); }
-            else alert('❌ ' + r.message);
-        }
-        async function cancelAuction(id) {
-            if (!confirm("Снять лот с продажи?")) return;
-            const r = await fetch(`${SERVER_URL}/api/auction/cancel`, {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({user_id: userId, auction_id: id})
-            }).then(x => x.json());
-            if (r.status === 'ok') { alert('✅ ' + r.message); loadData(); loadAuctions(); }
-            else alert('❌ ' + r.message);
-        }
-
         function openMyApts()   { closeModal('city-menu-modal'); openModal('my-apts-modal'); }
-        function openInventory() { closeModal('city-menu-modal'); renderInventory(); openModal('inventory-modal'); }
-        function openChests()   { closeModal('city-menu-modal'); renderChests(); openModal('chests-modal'); }
-        function openAuction()  { closeModal('city-menu-modal'); loadAuctions(); openModal('auction-modal'); }
-
+        
         function openShop() {
             closeModal('city-menu-modal');
             const list = document.getElementById('shop-list'); list.innerHTML = '';
