@@ -9,7 +9,6 @@ import json, time, random, contextlib
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# ВАЖНО: Убран &pgbouncer=true, чтобы psycopg2 не падал с ошибкой DSN
 DATABASE_URL = (
     "postgresql://postgres.zmfepxqnxcvkvdjonzhp:p0LwFeRg9NJ7Cusj"
     "@aws-0-eu-west-1.pooler.supabase.com:6543/postgres"
