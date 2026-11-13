@@ -12,7 +12,7 @@
         header { display: flex; justify-content: space-between; align-items: center; padding: 20px; flex-shrink: 0; }
         .user-info { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
         .avatar { width: 38px; height: 38px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 18px; }
-        .icons { font-size: 22px; opacity: 0.8; cursor: pointer; }
+        .icons { display: flex; gap: 15px; font-size: 22px; opacity: 0.8; cursor: pointer; }
         #swipe-container { flex: 1; position: relative; overflow: hidden; }
         main { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 0 20px 100px 20px; overflow-y: auto; display: none; }
         main.active { display: block; animation: fadeIn 0.3s; }
@@ -90,13 +90,31 @@
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
         input[type="color"]::-webkit-color-swatch { border: 3px solid rgba(255,255,255,0.2); border-radius: 50%; }
         .menu-btn { width: 100%; padding: 15px; border-radius: 14px; border: none; font-weight: bold; font-size: 16px; margin-bottom: 10px; cursor: pointer; }
+        
+        .chat-container { display: flex; flex-direction: column; height: 100%; }
+        .chat-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .chat-item { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .chat-item:active { background: rgba(255,255,255,0.05); }
+        .chat-window { display: none; flex-direction: column; height: 100%; background: #0f172a; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .msg-bubble { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
+        .msg-me { align-self: flex-end; background: var(--accent); color: #000; border-bottom-right-radius: 4px; }
+        .msg-them { align-self: flex-start; background: rgba(255,255,255,0.1); color: white; border-bottom-left-radius: 4px; }
+        .msg-sender { font-size: 10px; opacity: 0.7; margin-bottom: 3px; display: block; }
+        .chat-input-area { display: flex; padding: 10px; background: #1e293b; gap: 10px; align-items: center; }
+        .chat-input-area input { flex: 1; padding: 12px; border-radius: 20px; border: none; background: rgba(255,255,255,0.1); color: white; outline: none; }
+        
+        .discount-badge { background: #ef4444; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 5px; font-weight: bold; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
     <header>
         <div class="user-info"><div class="avatar">👤</div><span id="user-name">Загрузка...</span></div>
-        <div class="icons" onclick="openModal('settings-modal')"><span>⚙️</span></div>
+        <div class="icons">
+            <span onclick="openChats()">💬</span>
+            <span onclick="openModal('settings-modal')">⚙️</span>
+        </div>
     </header>
 
     <div id="swipe-container">
@@ -143,7 +161,31 @@
         <button class="nav-btn" onclick="switchTab(2,this)"><span>📈</span>Биржа</button>
     </nav>
 
-    <!-- Меню "+" -->
+    <!-- ЧАТЫ -->
+    <div id="chat-modal" class="modal-overlay">
+        <div class="modal-header">
+            <h2 id="chat-header-title">💬 Чаты</h2>
+            <button class="close-btn" onclick="closeChat()">✕</button>
+        </div>
+        <div class="chat-container">
+            <div id="chat-list-view" class="chat-list"></div>
+            <div id="chat-window-view" class="chat-window">
+                <div id="chat-messages" class="chat-messages"></div>
+                
+                <div id="friend-request-panel" style="display:none; padding: 15px; text-align: center; background: #1e293b;">
+                    <div id="friend-request-text" style="margin-bottom: 10px; font-size: 14px;"></div>
+                    <div id="friend-request-buttons" style="display:flex; gap:10px; justify-content:center;"></div>
+                </div>
+
+                <div id="chat-input-panel" class="chat-input-area" style="display:none;">
+                    <button id="request-money-btn" onclick="requestMoney()" style="width:45px; height:45px; background:#ffd700; color:#000; border:none; border-radius:50%; font-size:22px; cursor:pointer;" title="Запросить деньги">💰</button>
+                    <input type="text" id="chat-input" placeholder="Сообщение...">
+                    <button onclick="sendMessage()" style="background:var(--accent); color:#000; border:none; border-radius:50%; width:45px; height:45px; font-size:20px; cursor:pointer;">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="city-menu-modal" class="custom-modal">
         <div class="custom-box">
             <h3>🏙 Недвижимость</h3>
@@ -187,11 +229,16 @@
         </div>
     </div>
 
+    <!-- АДМИНКА -->
     <div id="admin-modal" class="modal-overlay">
         <div class="modal-header"><h2>👑 Админ</h2><button class="close-btn" onclick="closeModal('admin-modal')">✕</button></div>
         <div class="modal-content">
             <button class="btn-action" style="background:#3b82f6;color:#fff;margin-bottom:10px;" onclick="openAdminCompanies()">🏢 Компании</button>
-            <button class="btn-action" style="background:#a855f7;color:#fff;margin-bottom:20px;" onclick="openAdminAdmins()">👥 Админы</button>
+            <button class="btn-action" style="background:#a855f7;color:#fff;margin-bottom:10px;" onclick="openAdminAdmins()">👥 Админы</button>
+            
+            <button class="btn-action" style="background:#f59e0b;color:#000;margin-bottom:10px;" onclick="adminBroadcast()">📢 Рассылка всем</button>
+            <button class="btn-action" style="background:#ef4444;color:#fff;margin-bottom:20px;" onclick="adminSetDiscount()">🏷 Скидка на квартиры</button>
+            
             <div class="section-title">Игроки</div>
             <div id="admin-users-list"></div>
             <button class="admin-btn" style="background:#f87171;margin-top:20px;" onclick="resetAllUsers()">⚠️ Сбросить ВСЕХ</button>
@@ -240,6 +287,7 @@
             <h3>Деньги</h3>
             <p id="admin-money-target"></p>
             <input type="number" id="admin-money-amount" placeholder="Сумма">
+            <p id="admin-money-limit" style="font-size:12px;color:#ffaa00;margin-top:-10px;margin-bottom:15px;display:none;">Лимит: 300 000 $ за раз</p>
             <div class="modal-actions">
                 <button class="btn-cancel" onclick="closeModal('admin-money-modal')">Отмена</button>
                 <button class="btn-confirm" onclick="adminAddMoney()">Выдать</button>
@@ -384,7 +432,10 @@
         }
 
         async function loadCompanies() {
-            try { companiesData = (await fetch(`${SERVER_URL}/api/companies`).then(r => r.json())).companies || []; } catch(e) {}
+            try { 
+                const d = await fetch(`${SERVER_URL}/api/companies`).then(r => r.json());
+                companiesData = d.companies || []; 
+            } catch(e) {}
         }
 
         function renderApartments(apts) {
@@ -408,7 +459,14 @@
             if (buses.length === 0) list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Нет бизнесов</div>';
             buses.forEach(b => {
                 const fi = b.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                list.innerHTML += `<div class="bus-card bus-${b.rarity}"><div class="bus-title">${b.name} <span style="font-size:13px;color:#a3c2ff;">(${b.rarity})</span></div><div class="bus-price">+ ${fi} $/ч</div></div>`;
+                list.innerHTML += `
+                    <div class="bus-card bus-${b.rarity}" style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div class="bus-title">${b.name} <span style="font-size:13px;color:#a3c2ff;">(${b.rarity})</span></div>
+                            <div class="bus-price">+ ${fi} $/ч</div>
+                        </div>
+                        <button class="sell-btn" onclick="sellBusiness()">Продать</button>
+                    </div>`;
             });
         }
 
@@ -430,6 +488,224 @@
             } catch(e) {}
         }
 
+        async function buyBusiness(i) {
+            const r = await fetch(`${SERVER_URL}/api/buy_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, business_index: i}) }).then(x => x.json());
+            if (r.status === 'ok') { alert(r.message); loadData(); }
+            else alert(r.message);
+        }
+
+        async function sellBusiness() {
+            if (!confirm("Продать компанию за 70% стоимости?")) return;
+            const r = await fetch(`${SERVER_URL}/api/sell_business`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({user_id: userId})
+            }).then(x => x.json());
+            if (r.status === 'ok') { alert(r.message); loadData(); }
+            else alert(r.message);
+        }
+
+        // --- ЧАТЫ И ДРУЗЬЯ ---
+        let currentChatId = null;
+        let currentChatStatus = 'none';
+        let chatInterval = null;
+
+        function openChats() {
+            openModal('chat-modal');
+            document.getElementById('chat-list-view').style.display = 'block';
+            document.getElementById('chat-window-view').style.display = 'none';
+            document.getElementById('chat-header-title').innerText = '💬 Чаты';
+            loadChats();
+        }
+
+        function closeChat() {
+            closeModal('chat-modal');
+            if(chatInterval) clearInterval(chatInterval);
+        }
+
+        async function loadChats() {
+            const list = document.getElementById('chat-list-view');
+            list.innerHTML = 'Загрузка...';
+            try {
+                const d = await fetch(`${SERVER_URL}/api/chats/${userId}`).then(r => r.json());
+                list.innerHTML = '';
+                d.chats.forEach(c => {
+                    let icon = '👤';
+                    if (c.id === 0) icon = '📢';
+                    else if (c.status === 'accepted') icon = '🤝';
+                    else if (c.status === 'pending_in') icon = '🔔';
+                    else if (c.status === 'pending_out') icon = '⏳';
+                    
+                    list.innerHTML += `<div class="chat-item" onclick="openChatWith(${c.id}, '${c.name}', '${c.status}')"><span>${icon} ${c.name}</span><span>></span></div>`;
+                });
+            } catch(e) { list.innerHTML = 'Ошибка'; }
+        }
+
+        function openChatWith(id, name, status) {
+            currentChatId = id;
+            currentChatStatus = status;
+            
+            document.getElementById('chat-list-view').style.display = 'none';
+            document.getElementById('chat-window-view').style.display = 'flex';
+            document.getElementById('chat-header-title').innerText = name;
+            
+            updateChatUI(status);
+            loadMessages();
+            if(chatInterval) clearInterval(chatInterval);
+            chatInterval = setInterval(loadMessages, 3000);
+        }
+
+        function updateChatUI(status) {
+            const inputPanel = document.getElementById('chat-input-panel');
+            const friendPanel = document.getElementById('friend-request-panel');
+            const friendText = document.getElementById('friend-request-text');
+            const friendBtns = document.getElementById('friend-request-buttons');
+
+            if (currentChatId === 0) {
+                inputPanel.style.display = 'none';
+                friendPanel.style.display = 'block';
+                friendText.innerHTML = 'Это канал администрации. Тут только объявления.';
+                friendBtns.innerHTML = '';
+                return;
+            }
+
+            if (status === 'accepted') {
+                inputPanel.style.display = 'flex';
+                friendPanel.style.display = 'none';
+                document.getElementById('request-money-btn').style.display = 'block';
+            } else {
+                inputPanel.style.display = 'none';
+                friendPanel.style.display = 'block';
+                document.getElementById('request-money-btn').style.display = 'none';
+
+                if (status === 'none') {
+                    friendText.innerHTML = 'Чтобы писать сообщения, добавьте игрока в друзья.';
+                    friendBtns.innerHTML = `<button onclick="sendFriendRequest()" style="background:var(--accent);color:#000;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">➕ Добавить в друзья</button>`;
+                } else if (status === 'pending_out') {
+                    friendText.innerHTML = 'Вы отправили запрос в друзья. Ожидание...';
+                    friendBtns.innerHTML = `<button onclick="declineFriend()" style="background:#f87171;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">Отменить</button>`;
+                } else if (status === 'pending_in') {
+                    friendText.innerHTML = 'Этот игрок хочет добавить вас в друзья!';
+                    friendBtns.innerHTML = `
+                        <button onclick="acceptFriend()" style="background:#4ade80;color:#000;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">Принять</button>
+                        <button onclick="declineFriend()" style="background:#f87171;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">Отклонить</button>
+                    `;
+                }
+            }
+        }
+
+        async function sendFriendRequest() {
+            const r = await fetch(`${SERVER_URL}/api/friends/request`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: currentChatId}) }).then(x => x.json());
+            if (r.status === 'ok') { currentChatStatus = 'pending_out'; updateChatUI(currentChatStatus); }
+            else alert(r.message);
+        }
+
+        async function acceptFriend() {
+            await fetch(`${SERVER_URL}/api/friends/accept`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, other_id: currentChatId}) });
+            currentChatStatus = 'accepted'; updateChatUI(currentChatStatus);
+        }
+
+        async function declineFriend() {
+            await fetch(`${SERVER_URL}/api/friends/decline`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, other_id: currentChatId}) });
+            currentChatStatus = 'none'; updateChatUI(currentChatStatus);
+        }
+
+        async function loadMessages() {
+            if(currentChatId === null) return;
+            try {
+                const d = await fetch(`${SERVER_URL}/api/chat_history/${userId}/${currentChatId}`).then(r => r.json());
+
+                const box = document.getElementById('chat-messages');
+                box.innerHTML = '';
+
+                let items = [];
+                d.messages.forEach(m => items.push({ type: 'msg', data: m, time: m.created_at }));
+                d.requests.forEach(r => items.push({ type: 'req', data: r, time: r.created_at }));
+                items.sort((a, b) => a.time - b.time);
+
+                items.forEach(item => {
+                    if (item.type === 'msg') {
+                        const m = item.data;
+                        const isMe = m.sender_id === userId;
+                        const senderLabel = (m.sender_id === 0 || !isMe && currentChatId === 0) ? `<span class="msg-sender">${m.sender_name}</span>` : '';
+                        box.innerHTML += `
+                            <div class="msg-bubble ${isMe ? 'msg-me' : 'msg-them'}">
+                                ${senderLabel}
+                                ${m.text}
+                            </div>
+                        `;
+                    } else {
+                        const r = item.data;
+                        const isMe = r.sender_id === userId;
+                        if (r.status === 'pending') {
+                            if (isMe) {
+                                box.innerHTML += `<div class="msg-bubble msg-me" style="background:#eab308;color:#000;text-align:center;">💰 Вы запросили <b>${r.amount} $</b>.<br><span style="font-size:11px;">Ожидание...</span></div>`;
+                            } else {
+                                box.innerHTML += `
+                                    <div class="msg-bubble msg-them" style="background:rgba(234,179,8,0.2);border:1px solid #eab308;text-align:center;">
+                                        <div style="margin-bottom:10px;">💰 <b>Запрос денег</b><br>Игрок <b>${r.sender_name}</b> просит <b>${r.amount} $</b></div>
+                                        <div style="display:flex; gap:10px; justify-content:center;">
+                                            <button onclick="acceptReq(${r.id})" style="background:#4ade80;color:#000;border:none;padding:8px 15px;border-radius:8px;font-weight:bold;cursor:pointer;">Принять</button>
+                                            <button onclick="declineReq(${r.id})" style="background:#f87171;color:#fff;border:none;padding:8px 15px;border-radius:8px;font-weight:bold;cursor:pointer;">Отклонить</button>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        } else if (r.status === 'accepted') {
+                            box.innerHTML += `<div class="msg-bubble msg-me" style="background:#4ade80;color:#000;font-size:12px;text-align:center;">✅ Запрос на <b>${r.amount} $</b> выполнен!</div>`;
+                        } else if (r.status === 'declined') {
+                            box.innerHTML += `<div class="msg-bubble msg-me" style="background:rgba(248,113,113,0.2);border:1px solid #f87171;color:#fff;font-size:12px;text-align:center;">❌ Запрос на <b>${r.amount} $</b> отклонен.</div>`;
+                        }
+                    }
+                });
+                box.scrollTop = box.scrollHeight;
+            } catch(e) {}
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if(!text || currentChatId === null) return;
+            input.value = '';
+            const r = await fetch(`${SERVER_URL}/api/send_message`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({sender_id: userId, receiver_id: currentChatId, text: text})
+            }).then(x => x.json());
+            
+            if (r.status === 'error') alert(r.message);
+            loadMessages();
+        }
+
+        async function requestMoney() {
+            if (!currentChatId) return;
+            const amt = parseInt(prompt("Сколько денег запросить у этого игрока?"));
+            if (isNaN(amt) || amt <= 0) return;
+            const r = await fetch(`${SERVER_URL}/api/request_money`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({sender_id: userId, receiver_id: currentChatId, amount: amt})
+            }).then(x => x.json());
+            
+            if (r.status === 'error') alert(r.message);
+            loadMessages();
+        }
+
+        async function acceptReq(id) {
+            const r = await fetch(`${SERVER_URL}/api/request_money/accept`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({request_id: id, user_id: userId})
+            }).then(x => x.json());
+            if (r.status === 'ok') { loadData(); loadMessages(); }
+            else alert(r.message);
+        }
+
+        async function declineReq(id) {
+            await fetch(`${SERVER_URL}/api/request_money/decline`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({request_id: id, user_id: userId})
+            });
+            loadMessages();
+        }
+
+        // --- ОСТАЛЬНОЕ ---
         function openMyApts()   { closeModal('city-menu-modal'); openModal('my-apts-modal'); }
         
         function openShop() {
@@ -441,11 +717,16 @@
                 g.tiers.forEach(item => {
                     const fp = item.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
                     const fi = item.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    let discountHtml = '';
+                    if (item.old_price && item.old_price > item.price) {
+                        const op = item.old_price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                        discountHtml = `<span class="discount-badge">СКИДКА</span> <s style="color:#8892b0; font-size:12px; margin-right:5px;">${op} $</s>`;
+                    }
                     html += `
                         <div class="apt-shop-item">
                             <div><div style="font-weight:bold;font-size:15px;margin-bottom:5px;">${item.name}</div>
                             <div style="font-size:13px;color:var(--accent);font-weight:bold;">+ ${fi} $/ч</div></div>
-                            <button class="buy-btn" onclick="prepareBuy('${item.name}',${item.price},${item.income})">${fp} $</button>
+                            <button class="buy-btn" onclick="prepareBuy('${item.name}',${item.price},${item.income})">${discountHtml}${fp} $</button>
                         </div>`;
                 });
                 list.innerHTML += html + '</div>';
@@ -512,11 +793,6 @@
             if (r.status === 'ok') { alert(r.message); loadData(); loadLeaderboard(); }
             else alert(r.message);
         }
-        async function buyBusiness(i) {
-            const r = await fetch(`${SERVER_URL}/api/buy_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, business_index: i}) }).then(x => x.json());
-            if (r.status === 'ok') { alert(r.message); loadData(); }
-            else alert(r.message);
-        }
         function tradeToken(tok, act) {
             const a = prompt(`Сколько ${tok} ${act === 'buy' ? 'купить' : 'продать'}?`);
             if (!a) return;
@@ -529,6 +805,21 @@
                 if (r.status === 'error') alert('❌ ' + r.message);
                 else { alert('✅ ' + r.message); loadData(); }
             });
+        }
+
+        async function adminBroadcast() {
+            const text = prompt("Введите сообщение для всех игроков:");
+            if (!text) return;
+            const r = await fetch(`${SERVER_URL}/api/admin/broadcast`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, text: text}) }).then(x => x.json());
+            alert(r.message);
+        }
+
+        async function adminSetDiscount() {
+            const pct = parseInt(prompt("Введите процент скидки (0-90):"));
+            if (isNaN(pct) || pct < 0 || pct > 90) return alert('Неверно');
+            const r = await fetch(`${SERVER_URL}/api/admin/set_discount`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, percent: pct}) }).then(x => x.json());
+            alert(r.message);
+            loadCompanies();
         }
 
         async function openAdminPanel() {
@@ -546,6 +837,7 @@
                             <div class="admin-btns">
                                 <button style="background:var(--accent);color:#000;" onclick="adminMoneyModal(${u.id},'${u.name}')">💰</button>
                                 <button style="background:#3b82f6;color:#fff;" onclick="adminViewApts(${u.id})">🏢</button>
+                                <button style="background:#f59e0b;color:#000;" onclick="adminViewBusiness(${u.id})">🏭</button>
                                 <button style="background:#a855f7;color:#fff;" onclick="openTransferModal(${u.id})">💸</button>
                             </div>
                         </div>`;
@@ -557,6 +849,13 @@
             adminTargetId = id;
             document.getElementById('admin-money-target').innerText = `Игрок: ${name}`;
             document.getElementById('admin-money-amount').value = '';
+            
+            if (userId === MAIN_ADMIN_ID) {
+                document.getElementById('admin-money-limit').style.display = 'none';
+            } else {
+                document.getElementById('admin-money-limit').style.display = 'block';
+            }
+            
             openModal('admin-money-modal');
         }
         async function adminAddMoney() {
@@ -574,8 +873,18 @@
             const d = await fetch(`${SERVER_URL}/api/admin/user_apartments/${id}`).then(r => r.json());
             alert(d.apartments.map(a => `- ${a.name} (+${a.income}$/ч)`).join('\n') || "Нет квартир");
         }
+        async function adminViewBusiness(id) {
+            const d = await fetch(`${SERVER_URL}/api/admin/user_business/${id}`).then(r => r.json());
+            if (!d.businesses || d.businesses.length === 0) return alert("Нет компании");
+            const b = d.businesses[0];
+            if (confirm(`Игрок владеет: ${b.name} (${b.income}$/ч).\n\nЗабрать компанию?`)) {
+                const r = await fetch(`${SERVER_URL}/api/admin/remove_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: id, amount: 0}) }).then(x => x.json());
+                if (r.status === 'ok') { alert('Компания забрана!'); }
+                else alert('Ошибка');
+            }
+        }
         async function resetAllUsers() {
-            if (!confirm("Удалить ВСЕХ?")) return;
+            if (!confirm("⚠️ ВНИМАНИЕ! Это удалит ВСЕХ игроков, их деньги, имущество и ИСТОРИЮ ВСЕХ ЧАТОВ. Продолжить?")) return;
             const r = await fetch(`${SERVER_URL}/api/admin/reset_all`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id:0, amount:0}) }).then(x => x.json());
             alert(r.message); loadData(); loadLeaderboard();
         }
