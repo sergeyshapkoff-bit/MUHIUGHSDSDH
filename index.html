@@ -164,7 +164,10 @@
     <!-- ЧАТЫ -->
     <div id="chat-modal" class="modal-overlay">
         <div class="modal-header">
-            <h2 id="chat-header-title">💬 Чаты</h2>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <button id="chat-back-btn" style="display:none; background:rgba(255,255,255,0.1); border:none; color:white; padding:8px 12px; border-radius:10px; font-weight:bold; cursor:pointer;" onclick="backToChats()">← Назад</button>
+                <h2 id="chat-header-title">💬 Чаты</h2>
+            </div>
             <button class="close-btn" onclick="closeChat()">✕</button>
         </div>
         <div class="chat-container">
@@ -233,11 +236,10 @@
     <div id="admin-modal" class="modal-overlay">
         <div class="modal-header"><h2>👑 Админ</h2><button class="close-btn" onclick="closeModal('admin-modal')">✕</button></div>
         <div class="modal-content">
-            <button class="btn-action" style="background:#3b82f6;color:#fff;margin-bottom:10px;" onclick="openAdminCompanies()">🏢 Компании</button>
+            <button class="btn-action" style="background:#3b82f6;color:#fff;margin-bottom:10px;" onclick="openAdminCompanies()">🏢 Компании и Скидки</button>
             <button class="btn-action" style="background:#a855f7;color:#fff;margin-bottom:10px;" onclick="openAdminAdmins()">👥 Админы</button>
             
-            <button class="btn-action" style="background:#f59e0b;color:#000;margin-bottom:10px;" onclick="adminBroadcast()">📢 Рассылка всем</button>
-            <button class="btn-action" style="background:#ef4444;color:#fff;margin-bottom:20px;" onclick="adminSetDiscount()">🏷 Скидка на квартиры</button>
+            <button class="btn-action" style="background:#f59e0b;color:#000;margin-bottom:20px;" onclick="adminBroadcast()">📢 Рассылка всем</button>
             
             <div class="section-title">Игроки</div>
             <div id="admin-users-list"></div>
@@ -260,7 +262,7 @@
     <div id="admin-companies-modal" class="modal-overlay">
         <div class="modal-header"><h2>🏢 Компании</h2><button class="close-btn" onclick="closeModal('admin-companies-modal')">✕</button></div>
         <div class="modal-content">
-            <button class="btn-action" style="background:var(--accent);color:#000;margin-bottom:20px;" onclick="addCompanyPrompt()">➕ Добавить</button>
+            <button class="btn-action" style="background:var(--accent);color:#000;margin-bottom:20px;" onclick="addCompanyPrompt()">➕ Добавить компанию</button>
             <div id="admin-companies-list"></div>
         </div>
     </div>
@@ -514,12 +516,23 @@
             document.getElementById('chat-list-view').style.display = 'block';
             document.getElementById('chat-window-view').style.display = 'none';
             document.getElementById('chat-header-title').innerText = '💬 Чаты';
+            document.getElementById('chat-back-btn').style.display = 'none';
             loadChats();
         }
 
         function closeChat() {
             closeModal('chat-modal');
             if(chatInterval) clearInterval(chatInterval);
+        }
+
+        function backToChats() {
+            document.getElementById('chat-list-view').style.display = 'block';
+            document.getElementById('chat-window-view').style.display = 'none';
+            document.getElementById('chat-header-title').innerText = '💬 Чаты';
+            document.getElementById('chat-back-btn').style.display = 'none';
+            currentChatId = null;
+            if(chatInterval) clearInterval(chatInterval);
+            loadChats();
         }
 
         async function loadChats() {
@@ -547,6 +560,7 @@
             document.getElementById('chat-list-view').style.display = 'none';
             document.getElementById('chat-window-view').style.display = 'flex';
             document.getElementById('chat-header-title').innerText = name;
+            document.getElementById('chat-back-btn').style.display = 'block';
             
             updateChatUI(status);
             loadMessages();
@@ -814,14 +828,6 @@
             alert(r.message);
         }
 
-        async function adminSetDiscount() {
-            const pct = parseInt(prompt("Введите процент скидки (0-90):"));
-            if (isNaN(pct) || pct < 0 || pct > 90) return alert('Неверно');
-            const r = await fetch(`${SERVER_URL}/api/admin/set_discount`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, percent: pct}) }).then(x => x.json());
-            alert(r.message);
-            loadCompanies();
-        }
-
         async function openAdminPanel() {
             openModal('admin-modal');
             const list = document.getElementById('admin-users-list'); list.innerHTML = 'Загрузка...';
@@ -917,16 +923,38 @@
             await loadCompanies();
             list.innerHTML = '';
             companiesData.forEach(c => {
+                let tiersHtml = '';
+                c.tiers.forEach((t, idx) => {
+                    let discStr = t.discount ? `<span style="color:#ef4444; font-weight:bold; margin-left:5px;">(-${t.discount}%)</span>` : '';
+                    tiersHtml += `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:8px; border-radius:8px; margin-top:5px;">
+                            <span style="font-size:13px;">${t.name} ${discStr}</span>
+                            <button onclick="adminSetTierDiscount(${c.id}, ${idx}, '${t.name}')" style="background:#ffaa00; color:#000; border:none; padding:5px 10px; border-radius:6px; font-weight:bold; font-size:11px;">🏷 Скидка</button>
+                        </div>
+                    `;
+                });
+                
                 list.innerHTML += `
                     <div class="user-row" style="border-left-color:#3b82f6;">
                         <div style="font-weight:bold;">${c.name}</div>
                         <div style="font-size:13px;color:#8892b0;">Тарифов: ${c.tiers.length}</div>
                         <div class="admin-btns">
-                            <button style="background:var(--accent);color:#000;" onclick="addTierPrompt(${c.id},'${c.name}')">➕</button>
-                            <button style="background:#f87171;color:white;" onclick="deleteCompany(${c.id})">🗑</button>
+                            <button style="background:var(--accent);color:#000;" onclick="addTierPrompt(${c.id},'${c.name}')">➕ Добавить</button>
+                            <button style="background:#f87171;color:white;" onclick="deleteCompany(${c.id})">🗑 Удалить</button>
                         </div>
+                        <div style="margin-top:10px;">${tiersHtml}</div>
                     </div>`;
             });
+        }
+        async function adminSetTierDiscount(companyId, tierIndex, tierName) {
+            const pct = parseInt(prompt(`Скидка на "${tierName}" (0-90%):`, "0"));
+            if (isNaN(pct) || pct < 0 || pct > 90) return alert('Неверно');
+            const r = await fetch(`${SERVER_URL}/api/admin/set_tier_discount`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({admin_id: userId, company_id: companyId, tier_index: tierIndex, percent: pct})
+            }).then(x => x.json());
+            if (r.status === 'ok') { alert('✅ ' + r.message); openAdminCompanies(); }
+            else alert('❌ ' + r.message);
         }
         async function addCompanyPrompt() {
             const n = prompt("Название компании:");
@@ -938,7 +966,7 @@
             const n = prompt(`Квартира в ${cname}:`); if (!n) return;
             const p = parseInt(prompt("Цена $:")); const i = parseInt(prompt("Доход $/ч:"));
             if (!p || !i) return;
-            await fetch(`${SERVER_URL}/api/admin/add_tier/${cid}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: '', tier_data: {name:n,price:p,income:i}}) });
+            await fetch(`${SERVER_URL}/api/admin/add_tier/${cid}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: '', tier_data: {name:n,price:p,income:i,discount:0}}) });
             alert("Добавлено!"); openAdminCompanies();
         }
         async function deleteCompany(id) {
