@@ -189,6 +189,7 @@ class AdminAdminRequest(BaseModel): admin_id: int; target_id: int
 class MessageRequest(BaseModel): sender_id: int; receiver_id: int; text: str
 class BroadcastRequest(BaseModel): admin_id: int; text: str
 class DiscountRequest(BaseModel): admin_id: int; percent: int
+class TierDiscountRequest(BaseModel): admin_id: int; company_id: int; tier_index: int; percent: int
 class MoneyRequestModel(BaseModel): sender_id: int; receiver_id: int; amount: int
 class RequestAction(BaseModel): request_id: int; user_id: int
 class FriendRequest(BaseModel): sender_id: int; receiver_id: int
@@ -221,7 +222,6 @@ def get_chats(user_id: int):
     with db_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
-        # 1. Получаем друзей
         cur.execute("SELECT * FROM friends WHERE user1_id = %s OR user2_id = %s", (user_id, user_id))
         friendships = cur.fetchall()
         friend_map = {}
@@ -231,7 +231,6 @@ def get_chats(user_id: int):
             elif f['status'] == 'pending':
                 friend_map[other] = 'pending_out' if f['action_user_id'] == user_id else 'pending_in'
 
-        # 2. Получаем пользователей и сортируем по времени последнего сообщения
         cur.execute("""
             SELECT u.id, u.name, MAX(m.created_at) as last_msg
             FROM users u
@@ -373,15 +372,27 @@ def admin_broadcast(req: BroadcastRequest):
         cur.close()
     return {"status": "ok", "message": "Рассылка отправлена!"}
 
-@app.post("/api/admin/set_discount")
-def admin_set_discount(req: DiscountRequest):
-    if not is_admin(req.admin_id): return {"status": "error"}
+# ОБНОВЛЕННЫЕ СКИДКИ (индивидуальные)
+@app.post("/api/admin/set_tier_discount")
+def admin_set_tier_discount(req: TierDiscountRequest):
+    if not is_admin(req.admin_id): return {"status": "error", "message": "Нет прав"}
     if req.percent < 0 or req.percent > 90: return {"status": "error", "message": "Скидка 0-90%"}
+    
     with db_conn() as conn:
-        cur = conn.cursor()
-        cur.execute("UPDATE settings SET value = %s WHERE key = 'apt_discount'", (str(req.percent),))
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT tiers FROM companies WHERE id = %s", (req.company_id,))
+        row = cur.fetchone()
+        if not row: return {"status": "error", "message": "Компания не найдена"}
+        
+        tiers = safe_json_load(row['tiers'], [])
+        if 0 <= req.tier_index < len(tiers):
+            tiers[req.tier_index]['discount'] = req.percent
+            cur.execute("UPDATE companies SET tiers = %s WHERE id = %s", (json.dumps(tiers), req.company_id))
+            cur.close()
+            return {"status": "ok", "message": f"Скидка {req.percent}% установлена!"}
         cur.close()
-    return {"status": "ok", "message": f"Скидка на квартиры: {req.percent}%"}
+    return {"status": "error", "message": "Тариф не найден"}
+
 
 @app.post("/api/admin/add_money")
 def admin_add_money(req: AdminMoneyRequest):
@@ -482,9 +493,6 @@ def sell_business(req: SellBusinessRequest):
 def get_companies():
     with db_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT value FROM settings WHERE key = 'apt_discount'")
-        disc_row = cur.fetchone()
-        discount = int(disc_row['value']) if disc_row else 0
         cur.execute("SELECT id, name, tiers FROM companies ORDER BY id ASC")
         rows = cur.fetchall(); cur.close()
         
@@ -492,12 +500,14 @@ def get_companies():
     for r in rows:
         tiers = safe_json_load(r['tiers'], [])
         for t in tiers:
+            # Индивидуальная скидка на квартиру
+            disc = t.get('discount', 0)
             t['old_price'] = t['price']
-            t['price'] = int(t['price'] * (1 - discount / 100.0))
+            t['price'] = int(t['price'] * (1 - disc / 100.0))
         tiers.sort(key=lambda x: x['price'])
         comps.append({"id": r['id'], "name": r['name'], "tiers": tiers})
     comps.sort(key=lambda x: x['tiers'][0]['price'] if x['tiers'] else 0)
-    return {"companies": comps, "discount": discount}
+    return {"companies": comps}
 
 @app.get("/api/balance/{user_id}")
 def get_balance(user_id: int, name: str = "Игрок"):
