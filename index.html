@@ -330,6 +330,8 @@
         const SERVER_URL = "https://mmiji.de1.netrun.io";
 
         let currentRates = {}, companiesData = [], userPortfolio = {};
+        let lastNotifMsgId = 0;
+        let lastNotifBcastId = 0;
 
         document.getElementById("settings-user-id").innerText = userId;
 
@@ -398,23 +400,30 @@
                 const d = await fetch(`${SERVER_URL}/api/notifications/${userId}`).then(r => r.json());
                 const bar = document.getElementById('notification-bar');
                 
-                if (d.message) {
-                    const m = d.message;
+                // Приоритет личным сообщениям
+                if (d.message && d.message.id !== lastNotifMsgId) {
+                    lastNotifMsgId = d.message.id;
                     bar.innerHTML = `
-                        <div class="notif-badge" onclick="openChatsWith(${m.sender_id}, '${m.sender_name}')">
-                            <div><b>${m.sender_name}</b>: ${m.text.substring(0, 20)}...</div>
+                        <div class="notif-badge" onclick="openChatsWith(${d.message.sender_id}, '${d.message.sender_name}')">
+                            <div><b>${d.message.sender_name}</b>: ${d.message.text.substring(0, 20)}...</div>
                             <span>💬</span>
                         </div>
                     `;
-                    setTimeout(() => bar.innerHTML = '', 5000);
-                } else if (d.broadcast) {
+                    // Очищаем плашку только если она не была заменена новым сообщением
+                    setTimeout(() => { 
+                        if (bar.innerHTML.includes(d.message.text.substring(0, 10))) bar.innerHTML = ''; 
+                    }, 5000);
+                } else if (d.broadcast && d.broadcast.id !== lastNotifBcastId) {
+                    lastNotifBcastId = d.broadcast.id;
                     bar.innerHTML = `
                         <div class="notif-badge broadcast" onclick="openChatsWith(0, '📢 Администрация')">
                             <div><b>Администрация</b>: ${d.broadcast.text.substring(0, 20)}...</div>
                             <span>📢</span>
                         </div>
                     `;
-                    setTimeout(() => bar.innerHTML = '', 7000);
+                    setTimeout(() => { 
+                        if (bar.innerHTML.includes(d.broadcast.text.substring(0, 10))) bar.innerHTML = ''; 
+                    }, 7000);
                 }
             } catch(e) {}
         }
