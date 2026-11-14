@@ -166,6 +166,16 @@ def init_db():
                     for comp in DEFAULT_COMPANIES:
                         cur.execute("INSERT INTO companies (name, tiers) VALUES (%s, %s)",
                                     (comp['name'], json.dumps(comp['tiers'])))
+                
+                # АВТООЧИСТКА: Удаляем лишние компании у игроков (если было больше 1)
+                cur.execute("SELECT id, businesses FROM users")
+                for u_row in cur.fetchall():
+                    u_id, b_json = u_row
+                    b_list = safe_json_load(b_json, [])
+                    if len(b_list) > 1:
+                        b_list.sort(key=lambda x: x.get('buy_price', 0), reverse=True)
+                        cur.execute("UPDATE users SET businesses = %s WHERE id = %s", (json.dumps([b_list[0]]), u_id))
+
                 cur.close()
             print(f"✅ init_db OK (attempt {attempt})")
             return True
@@ -372,7 +382,6 @@ def admin_broadcast(req: BroadcastRequest):
         cur.close()
     return {"status": "ok", "message": "Рассылка отправлена!"}
 
-# ОБНОВЛЕННЫЕ СКИДКИ (индивидуальные)
 @app.post("/api/admin/set_tier_discount")
 def admin_set_tier_discount(req: TierDiscountRequest):
     if not is_admin(req.admin_id): return {"status": "error", "message": "Нет прав"}
@@ -392,7 +401,6 @@ def admin_set_tier_discount(req: TierDiscountRequest):
             return {"status": "ok", "message": f"Скидка {req.percent}% установлена!"}
         cur.close()
     return {"status": "error", "message": "Тариф не найден"}
-
 
 @app.post("/api/admin/add_money")
 def admin_add_money(req: AdminMoneyRequest):
@@ -455,6 +463,7 @@ def buy_business(req: BusinessBuyRequest):
         owned = safe_json_load(row['businesses'], [])
         apts = safe_json_load(row['apartments'], [])
         
+        # Проверка на 1 компанию
         if len(owned) >= 1:
             return {"status": "error", "message": "У вас уже есть компания! Максимум 1."}
             
@@ -500,7 +509,6 @@ def get_companies():
     for r in rows:
         tiers = safe_json_load(r['tiers'], [])
         for t in tiers:
-            # Индивидуальная скидка на квартиру
             disc = t.get('discount', 0)
             t['old_price'] = t['price']
             t['price'] = int(t['price'] * (1 - disc / 100.0))
@@ -530,6 +538,13 @@ def get_balance(user_id: int, name: str = "Игрок"):
             buses = safe_json_load(row['businesses'], [])
             port = safe_json_load(row.get('portfolio'), {})
             lp = int(row['last_payout']) if row['last_payout'] else now
+
+            # АВТООЧИСТКА ПРИ ЗАГРУЗКЕ (если у игрока оказалось 2+ компании)
+            if len(buses) > 1:
+                buses.sort(key=lambda x: x.get('buy_price', 0), reverse=True)
+                buses = [buses[0]]
+                cur.execute("UPDATE users SET businesses = %s WHERE id = %s", (json.dumps(buses), user_id))
+
             nb, nl, earned = calculate_income(cb, apts, buses, lp)
             cur.execute("UPDATE users SET amount = %s, last_payout = %s WHERE id = %s", (nb, nl, user_id))
             cur.close()
