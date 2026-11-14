@@ -66,7 +66,9 @@ def get_current_rates():
         items = cur.fetchall()
         rates = {}
         for item in items:
-            # Обновляем цену раз в час, если админ не менял её вручную
+            # Если имя пустое, ставим ключ
+            name = item['name'] if item['name'] else item['key'].upper()
+            
             if now - item['updated_at'] > 3600:
                 rng = random.Random(hour + hash(item['key']))
                 change = rng.uniform(-0.05, 0.05)
@@ -74,9 +76,9 @@ def get_current_rates():
                 new_price = max(item['min_price'], min(item['max_price'], new_price))
                 trend = "up" if change > 0 else "down"
                 cur.execute("UPDATE exchange_items SET current_price = %s, trend = %s, updated_at = %s WHERE key = %s", (new_price, trend, now, item['key']))
-                rates[item['key']] = {"price": new_price, "trend": trend, "name": item['name']}
+                rates[item['key']] = {"price": new_price, "trend": trend, "name": name}
             else:
-                rates[item['key']] = {"price": item['current_price'], "trend": item['trend'], "name": item['name']}
+                rates[item['key']] = {"price": item['current_price'], "trend": item['trend'], "name": name}
         return rates
 
 
@@ -126,7 +128,6 @@ def init_db():
         try:
             with db_conn() as conn:
                 cur = conn.cursor()
-                # Таблица пользователей
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS users (
                         id bigint primary key, name text, amount bigint default 220000,
@@ -148,7 +149,6 @@ def init_db():
                 cur.execute("CREATE TABLE IF NOT EXISTS companies (id serial primary key, name text, tiers jsonb default '[]'::jsonb);")
                 cur.execute("CREATE TABLE IF NOT EXISTS admins (user_id bigint primary key);")
                 
-                # Сообщения
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS messages (
                         id serial primary key, sender_id bigint, sender_name text,
@@ -158,7 +158,6 @@ def init_db():
                 """)
                 cur.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read boolean DEFAULT false;")
                 
-                # Запросы денег
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS money_requests (
                         id serial primary key, sender_id bigint, sender_name text,
@@ -166,7 +165,6 @@ def init_db():
                     );
                 """)
                 
-                # Друзья
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS friends (
                         id serial primary key, user1_id bigint, user2_id bigint,
@@ -175,7 +173,6 @@ def init_db():
                     );
                 """)
                 
-                # Биржа
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS exchange_items (
                         key text primary key, name text, min_price bigint, max_price bigint,
@@ -188,19 +185,19 @@ def init_db():
                 """)
                 cur.execute("INSERT INTO settings (key, value) VALUES ('apt_discount', '0') ON CONFLICT DO NOTHING;")
                 
-                # Дефолтные компании
                 cur.execute("SELECT COUNT(*) FROM companies")
                 if cur.fetchone()[0] == 0:
                     for comp in DEFAULT_COMPANIES:
                         cur.execute("INSERT INTO companies (name, tiers) VALUES (%s, %s)", (comp['name'], json.dumps(comp['tiers'])))
                 
-                # Дефолтная биржа
-                cur.execute("SELECT COUNT(*) FROM exchange_items")
-                if cur.fetchone()[0] == 0:
-                    now = int(time.time())
-                    for ex in DEFAULT_EXCHANGE:
-                        cur.execute("INSERT INTO exchange_items (key, name, min_price, max_price, current_price, trend, updated_at) VALUES (%s, %s, %s, %s, %s, 'up', %s)",
-                                    (ex['key'], ex['name'], ex['min'], ex['max'], ex['base'], now))
+                # ЖЕЛЕЗОБЕТОННАЯ ВСТАВКА БИРЖИ (добавит АК-47, если его нет)
+                now = int(time.time())
+                for ex in DEFAULT_EXCHANGE:
+                    cur.execute("""
+                        INSERT INTO exchange_items (key, name, min_price, max_price, current_price, trend, updated_at) 
+                        VALUES (%s, %s, %s, %s, %s, 'up', %s) 
+                        ON CONFLICT (key) DO NOTHING
+                    """, (ex['key'], ex['name'], ex['min'], ex['max'], ex['base'], now))
 
                 cur.close()
             print(f"✅ init_db OK")
@@ -212,7 +209,6 @@ def init_db():
 
 init_db()
 
-# ═══════ МОДЕЛИ ═══════
 class BuyRequest(BaseModel): user_id: int; user_name: str; apartment_name: str; price: int; income: int
 class SellRequest(BaseModel): user_id: int; apartment_index: int; price: int
 class TransferRequest(BaseModel): sender_id: int; receiver_id: int; amount: int
@@ -253,17 +249,13 @@ def calculate_income(amount, apts, buses, last_payout):
     return amount, last_payout, 0
 
 
-# ═══════ УВЕДОМЛЕНИЯ ═══════
 @app.get("/api/notifications/{user_id}")
 def get_notifications(user_id: int):
     with db_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT sender_id, sender_name, text, created_at FROM messages WHERE receiver_id = %s AND sender_id != 0 AND is_read = false ORDER BY created_at DESC LIMIT 1", (user_id,))
+        msg = cur.fetchone()
         
-        # 1. Непрочитанные личные сообщения
-        cur.execute("SELECT sender_name, text, created_at FROM messages WHERE receiver_id = %s AND sender_id != 0 AND is_read = false ORDER BY created_at DESC LIMIT 3", (user_id,))
-        msgs = cur.fetchall()
-        
-        # 2. Новые рассылки (с момента последнего просмотра)
         cur.execute("SELECT last_broadcast_id FROM users WHERE id = %s", (user_id,))
         u = cur.fetchone()
         last_b_id = u['last_broadcast_id'] if u else 0
@@ -273,10 +265,8 @@ def get_notifications(user_id: int):
         
         if broadcast:
             cur.execute("UPDATE users SET last_broadcast_id = %s WHERE id = %s", (broadcast['id'], user_id))
-        
         cur.close()
-        
-    return {"messages": msgs, "broadcast": broadcast}
+    return {"message": msg, "broadcast": broadcast}
 
 @app.post("/api/messages/read")
 def mark_messages_read(req: FriendAction):
@@ -286,7 +276,6 @@ def mark_messages_read(req: FriendAction):
         cur.close()
     return {"status": "ok"}
 
-# ═══════ БИРЖА ═══════
 @app.get("/api/token_rates")
 def get_rates(): return get_current_rates()
 
@@ -338,7 +327,7 @@ def trade_token(req: TokenRequest):
         cur.close()
     return {"status": "ok", "message": "Сделка успешна!"}
 
-# ═══════ ОСТАЛЬНОЕ (ЧАТЫ, ДРУЗЬЯ, КОМПАНИИ) ═══════
+# --- ЧАТЫ ---
 @app.get("/api/chats/{user_id}")
 def get_chats(user_id: int):
     with db_conn() as conn:
@@ -372,7 +361,6 @@ def get_chat_history(user_id: int, other_id: int):
             cur.execute("SELECT * FROM messages WHERE receiver_id = 0 ORDER BY created_at ASC LIMIT 100")
         else:
             cur.execute("SELECT * FROM messages WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s) ORDER BY created_at ASC LIMIT 100", (user_id, other_id, other_id, user_id))
-            # Помечаем как прочитанные
             cur.execute("UPDATE messages SET is_read = true WHERE receiver_id = %s AND sender_id = %s", (user_id, other_id))
         msgs = cur.fetchall()
 
