@@ -66,7 +66,6 @@ def get_current_rates():
         items = cur.fetchall()
         rates = {}
         for item in items:
-            # Если имя пустое, ставим ключ
             name = item['name'] if item['name'] else item['key'].upper()
             
             if now - item['updated_at'] > 3600:
@@ -190,7 +189,6 @@ def init_db():
                     for comp in DEFAULT_COMPANIES:
                         cur.execute("INSERT INTO companies (name, tiers) VALUES (%s, %s)", (comp['name'], json.dumps(comp['tiers'])))
                 
-                # ЖЕЛЕЗОБЕТОННАЯ ВСТАВКА БИРЖИ (добавит АК-47, если его нет)
                 now = int(time.time())
                 for ex in DEFAULT_EXCHANGE:
                     cur.execute("""
@@ -253,7 +251,8 @@ def calculate_income(amount, apts, buses, last_payout):
 def get_notifications(user_id: int):
     with db_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT sender_id, sender_name, text, created_at FROM messages WHERE receiver_id = %s AND sender_id != 0 AND is_read = false ORDER BY created_at DESC LIMIT 1", (user_id,))
+        # ДОБАВЛЕН ID В ЗАПРОС СООБЩЕНИЯ
+        cur.execute("SELECT id, sender_id, sender_name, text, created_at FROM messages WHERE receiver_id = %s AND sender_id != 0 AND is_read = false ORDER BY created_at DESC LIMIT 1", (user_id,))
         msg = cur.fetchone()
         
         cur.execute("SELECT last_broadcast_id FROM users WHERE id = %s", (user_id,))
