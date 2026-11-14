@@ -58,14 +58,26 @@ def is_admin(uid: int) -> bool:
 
 
 def get_current_rates():
-    h = int(time.time()) // 3600
-    rng = random.Random(h)
-    base = {"silver": 50, "gold": 500, "diamonds": 5000, "bitcoin": 65000, "tesla": 250}
-    out = {}
-    for k, b in base.items():
-        ch = rng.uniform(-0.05, 0.05)
-        out[k] = {"price": int(b * (1 + ch)), "trend": "up" if ch > 0 else "down"}
-    return out
+    now = int(time.time())
+    hour = now // 3600
+    with db_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT * FROM exchange_items")
+        items = cur.fetchall()
+        rates = {}
+        for item in items:
+            # Обновляем цену раз в час, если админ не менял её вручную
+            if now - item['updated_at'] > 3600:
+                rng = random.Random(hour + hash(item['key']))
+                change = rng.uniform(-0.05, 0.05)
+                new_price = int(item['current_price'] * (1 + change))
+                new_price = max(item['min_price'], min(item['max_price'], new_price))
+                trend = "up" if change > 0 else "down"
+                cur.execute("UPDATE exchange_items SET current_price = %s, trend = %s, updated_at = %s WHERE key = %s", (new_price, trend, now, item['key']))
+                rates[item['key']] = {"price": new_price, "trend": trend, "name": item['name']}
+            else:
+                rates[item['key']] = {"price": item['current_price'], "trend": item['trend'], "name": item['name']}
+        return rates
 
 
 DEFAULT_COMPANIES = [
@@ -100,12 +112,21 @@ DEFAULT_COMPANIES = [
     ]}
 ]
 
+DEFAULT_EXCHANGE = [
+    {"key": "silver", "name": "🥈 Серебро", "min": 40, "max": 60, "base": 50},
+    {"key": "gold", "name": "🥇 Золото", "min": 400, "max": 600, "base": 500},
+    {"key": "diamonds", "name": "💎 Алмазы", "min": 4000, "max": 6000, "base": 5000},
+    {"key": "bitcoin", "name": "₿ Биткоин", "min": 50000, "max": 80000, "base": 65000},
+    {"key": "tesla", "name": "🚗 Tesla", "min": 200, "max": 300, "base": 250},
+    {"key": "ak47", "name": "🔫 АК-47", "min": 1000, "max": 1500, "base": 1200},
+]
 
 def init_db():
     for attempt in range(1, 4):
         try:
             with db_conn() as conn:
                 cur = conn.cursor()
+                # Таблица пользователей
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS users (
                         id bigint primary key, name text, amount bigint default 220000,
@@ -113,7 +134,8 @@ def init_db():
                         last_payout bigint, last_roll bigint default 0,
                         daily_businesses jsonb default '[]'::jsonb,
                         card_number text, card_cvc text,
-                        portfolio jsonb default '{}'::jsonb
+                        portfolio jsonb default '{}'::jsonb,
+                        last_broadcast_id bigint default 0
                     );
                 """)
                 cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS portfolio jsonb DEFAULT '{}'::jsonb;")
@@ -121,71 +143,76 @@ def init_db():
                 cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS businesses jsonb DEFAULT '[]'::jsonb;")
                 cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_businesses jsonb DEFAULT '[]'::jsonb;")
                 cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_roll bigint DEFAULT 0;")
+                cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_broadcast_id bigint DEFAULT 0;")
 
                 cur.execute("CREATE TABLE IF NOT EXISTS companies (id serial primary key, name text, tiers jsonb default '[]'::jsonb);")
                 cur.execute("CREATE TABLE IF NOT EXISTS admins (user_id bigint primary key);")
                 
+                # Сообщения
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS messages (
-                        id serial primary key,
-                        sender_id bigint, sender_name text,
-                        receiver_id bigint, text text, created_at bigint
+                        id serial primary key, sender_id bigint, sender_name text,
+                        receiver_id bigint, text text, created_at bigint,
+                        is_read boolean default false
                     );
                 """)
+                cur.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read boolean DEFAULT false;")
                 
+                # Запросы денег
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS money_requests (
-                        id serial primary key,
-                        sender_id bigint, sender_name text,
-                        receiver_id bigint, amount bigint,
-                        status text default 'pending', created_at bigint
+                        id serial primary key, sender_id bigint, sender_name text,
+                        receiver_id bigint, amount bigint, status text default 'pending', created_at bigint
                     );
                 """)
                 
+                # Друзья
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS friends (
-                        id serial primary key,
-                        user1_id bigint,
-                        user2_id bigint,
-                        status text default 'pending',
-                        action_user_id bigint,
-                        created_at bigint,
+                        id serial primary key, user1_id bigint, user2_id bigint,
+                        status text default 'pending', action_user_id bigint, created_at bigint,
                         UNIQUE(user1_id, user2_id)
                     );
                 """)
                 
+                # Биржа
                 cur.execute("""
-                    CREATE TABLE IF NOT EXISTS settings (
-                        key text primary key, value text
+                    CREATE TABLE IF NOT EXISTS exchange_items (
+                        key text primary key, name text, min_price bigint, max_price bigint,
+                        current_price bigint, trend text, updated_at bigint
                     );
+                """)
+
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS settings (key text primary key, value text);
                 """)
                 cur.execute("INSERT INTO settings (key, value) VALUES ('apt_discount', '0') ON CONFLICT DO NOTHING;")
                 
+                # Дефолтные компании
                 cur.execute("SELECT COUNT(*) FROM companies")
                 if cur.fetchone()[0] == 0:
                     for comp in DEFAULT_COMPANIES:
-                        cur.execute("INSERT INTO companies (name, tiers) VALUES (%s, %s)",
-                                    (comp['name'], json.dumps(comp['tiers'])))
+                        cur.execute("INSERT INTO companies (name, tiers) VALUES (%s, %s)", (comp['name'], json.dumps(comp['tiers'])))
                 
-                # АВТООЧИСТКА: Удаляем лишние компании у игроков (если было больше 1)
-                cur.execute("SELECT id, businesses FROM users")
-                for u_row in cur.fetchall():
-                    u_id, b_json = u_row
-                    b_list = safe_json_load(b_json, [])
-                    if len(b_list) > 1:
-                        b_list.sort(key=lambda x: x.get('buy_price', 0), reverse=True)
-                        cur.execute("UPDATE users SET businesses = %s WHERE id = %s", (json.dumps([b_list[0]]), u_id))
+                # Дефолтная биржа
+                cur.execute("SELECT COUNT(*) FROM exchange_items")
+                if cur.fetchone()[0] == 0:
+                    now = int(time.time())
+                    for ex in DEFAULT_EXCHANGE:
+                        cur.execute("INSERT INTO exchange_items (key, name, min_price, max_price, current_price, trend, updated_at) VALUES (%s, %s, %s, %s, %s, 'up', %s)",
+                                    (ex['key'], ex['name'], ex['min'], ex['max'], ex['base'], now))
 
                 cur.close()
-            print(f"✅ init_db OK (attempt {attempt})")
+            print(f"✅ init_db OK")
             return True
         except Exception as e:
-            print(f"❌ init_db attempt {attempt} failed: {type(e).__name__}: {e}")
+            print(f"❌ init_db attempt {attempt} failed: {e}")
             if attempt < 3: time.sleep(2 * attempt)
     return False
 
 init_db()
 
+# ═══════ МОДЕЛИ ═══════
 class BuyRequest(BaseModel): user_id: int; user_name: str; apartment_name: str; price: int; income: int
 class SellRequest(BaseModel): user_id: int; apartment_index: int; price: int
 class TransferRequest(BaseModel): sender_id: int; receiver_id: int; amount: int
@@ -198,12 +225,13 @@ class AdminCompanyRequest(BaseModel): admin_id: int; company_name: str; tier_dat
 class AdminAdminRequest(BaseModel): admin_id: int; target_id: int
 class MessageRequest(BaseModel): sender_id: int; receiver_id: int; text: str
 class BroadcastRequest(BaseModel): admin_id: int; text: str
-class DiscountRequest(BaseModel): admin_id: int; percent: int
 class TierDiscountRequest(BaseModel): admin_id: int; company_id: int; tier_index: int; percent: int
 class MoneyRequestModel(BaseModel): sender_id: int; receiver_id: int; amount: int
 class RequestAction(BaseModel): request_id: int; user_id: int
 class FriendRequest(BaseModel): sender_id: int; receiver_id: int
 class FriendAction(BaseModel): user_id: int; other_id: int
+class ExchangeUpdateRequest(BaseModel): admin_id: int; key: str; name: str; min_price: int; max_price: int; current_price: int; trend: str
+class ExchangeAddRequest(BaseModel): admin_id: int; key: str; name: str; min_price: int; max_price: int; base_price: int
 
 
 def safe_json_load(data, default):
@@ -225,38 +253,114 @@ def calculate_income(amount, apts, buses, last_payout):
     return amount, last_payout, 0
 
 
-# --- ЧАТЫ И ДРУЗЬЯ ---
+# ═══════ УВЕДОМЛЕНИЯ ═══════
+@app.get("/api/notifications/{user_id}")
+def get_notifications(user_id: int):
+    with db_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # 1. Непрочитанные личные сообщения
+        cur.execute("SELECT sender_name, text, created_at FROM messages WHERE receiver_id = %s AND sender_id != 0 AND is_read = false ORDER BY created_at DESC LIMIT 3", (user_id,))
+        msgs = cur.fetchall()
+        
+        # 2. Новые рассылки (с момента последнего просмотра)
+        cur.execute("SELECT last_broadcast_id FROM users WHERE id = %s", (user_id,))
+        u = cur.fetchone()
+        last_b_id = u['last_broadcast_id'] if u else 0
+        
+        cur.execute("SELECT id, text, created_at FROM messages WHERE receiver_id = 0 AND id > %s ORDER BY created_at DESC LIMIT 1", (last_b_id,))
+        broadcast = cur.fetchone()
+        
+        if broadcast:
+            cur.execute("UPDATE users SET last_broadcast_id = %s WHERE id = %s", (broadcast['id'], user_id))
+        
+        cur.close()
+        
+    return {"messages": msgs, "broadcast": broadcast}
 
+@app.post("/api/messages/read")
+def mark_messages_read(req: FriendAction):
+    with db_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE messages SET is_read = true WHERE receiver_id = %s AND sender_id = %s", (req.user_id, req.other_id))
+        cur.close()
+    return {"status": "ok"}
+
+# ═══════ БИРЖА ═══════
+@app.get("/api/token_rates")
+def get_rates(): return get_current_rates()
+
+@app.post("/api/admin/update_exchange")
+def admin_update_exchange(req: ExchangeUpdateRequest):
+    if not is_admin(req.admin_id): return {"status": "error"}
+    with db_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE exchange_items 
+            SET name = %s, min_price = %s, max_price = %s, current_price = %s, trend = %s, updated_at = %s
+            WHERE key = %s
+        """, (req.name, req.min_price, req.max_price, req.current_price, req.trend, int(time.time()), req.key))
+        cur.close()
+    return {"status": "ok", "message": "Биржа обновлена!"}
+
+@app.post("/api/admin/add_exchange")
+def admin_add_exchange(req: ExchangeAddRequest):
+    if not is_admin(req.admin_id): return {"status": "error"}
+    with db_conn() as conn:
+        cur = conn.cursor()
+        try:
+            cur.execute("""
+                INSERT INTO exchange_items (key, name, min_price, max_price, current_price, trend, updated_at)
+                VALUES (%s, %s, %s, %s, %s, 'up', %s)
+            """, (req.key, req.name, req.min_price, req.max_price, req.base_price, int(time.time())))
+            cur.close()
+            return {"status": "ok", "message": "Актив добавлен!"}
+        except Exception as e:
+            return {"status": "error", "message": "Такой ключ уже существует"}
+
+@app.post("/api/trade_token")
+def trade_token(req: TokenRequest):
+    rates = get_current_rates()
+    if req.token_type not in rates: return {"status": "error", "message": "Неизвестный актив"}
+    cost = req.amount * rates[req.token_type]['price']
+    with db_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT amount, portfolio FROM users WHERE id = %s", (req.user_id,)); row = cur.fetchone()
+        port = safe_json_load(row['portfolio'], {}); cur_qty = int(port.get(req.token_type, 0))
+        if req.action == "buy":
+            if int(row['amount']) < cost: return {"status": "error", "message": "Мало денег"}
+            port[req.token_type] = cur_qty + req.amount
+            cur.execute("UPDATE users SET amount = amount - %s, portfolio = %s WHERE id = %s", (cost, json.dumps(port), req.user_id))
+        else:
+            if cur_qty < req.amount: return {"status": "error", "message": "Мало активов"}
+            port[req.token_type] = cur_qty - req.amount
+            cur.execute("UPDATE users SET amount = amount + %s, portfolio = %s WHERE id = %s", (cost, json.dumps(port), req.user_id))
+        cur.close()
+    return {"status": "ok", "message": "Сделка успешна!"}
+
+# ═══════ ОСТАЛЬНОЕ (ЧАТЫ, ДРУЗЬЯ, КОМПАНИИ) ═══════
 @app.get("/api/chats/{user_id}")
 def get_chats(user_id: int):
     with db_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        
         cur.execute("SELECT * FROM friends WHERE user1_id = %s OR user2_id = %s", (user_id, user_id))
         friendships = cur.fetchall()
         friend_map = {}
         for f in friendships:
             other = f['user2_id'] if f['user1_id'] == user_id else f['user1_id']
             if f['status'] == 'accepted': friend_map[other] = 'accepted'
-            elif f['status'] == 'pending':
-                friend_map[other] = 'pending_out' if f['action_user_id'] == user_id else 'pending_in'
+            elif f['status'] == 'pending': friend_map[other] = 'pending_out' if f['action_user_id'] == user_id else 'pending_in'
 
         cur.execute("""
             SELECT u.id, u.name, MAX(m.created_at) as last_msg
-            FROM users u
-            LEFT JOIN messages m ON (m.sender_id = u.id AND m.receiver_id = %s) OR (m.sender_id = %s AND m.receiver_id = u.id)
-            WHERE u.id != %s
-            GROUP BY u.id, u.name
-            ORDER BY last_msg DESC NULLS LAST, u.amount DESC
-            LIMIT 100
+            FROM users u LEFT JOIN messages m ON (m.sender_id = u.id AND m.receiver_id = %s) OR (m.sender_id = %s AND m.receiver_id = u.id)
+            WHERE u.id != %s GROUP BY u.id, u.name ORDER BY last_msg DESC NULLS LAST, u.amount DESC LIMIT 100
         """, (user_id, user_id, user_id))
         users = cur.fetchall()
         
         chats = [{"id": 0, "name": "📢 Администрация", "status": "admin"}]
         for u in users:
-            st = friend_map.get(u['id'], 'none')
-            chats.append({"id": u['id'], "name": u['name'], "status": st})
-            
+            chats.append({"id": u['id'], "name": u['name'], "status": friend_map.get(u['id'], 'none')})
         cur.close()
     return {"chats": chats}
 
@@ -268,14 +372,14 @@ def get_chat_history(user_id: int, other_id: int):
             cur.execute("SELECT * FROM messages WHERE receiver_id = 0 ORDER BY created_at ASC LIMIT 100")
         else:
             cur.execute("SELECT * FROM messages WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s) ORDER BY created_at ASC LIMIT 100", (user_id, other_id, other_id, user_id))
+            # Помечаем как прочитанные
+            cur.execute("UPDATE messages SET is_read = true WHERE receiver_id = %s AND sender_id = %s", (user_id, other_id))
         msgs = cur.fetchall()
 
-        if other_id == 0:
-            reqs = []
+        if other_id == 0: reqs = []
         else:
             cur.execute("SELECT * FROM money_requests WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s) ORDER BY created_at ASC LIMIT 100", (user_id, other_id, other_id, user_id))
             reqs = cur.fetchall()
-        
         cur.close()
     return {"messages": msgs, "requests": reqs}
 
@@ -283,15 +387,9 @@ def get_chat_history(user_id: int, other_id: int):
 def send_message(req: MessageRequest):
     with db_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        
         if req.receiver_id != 0:
-            cur.execute("""
-                SELECT 1 FROM friends
-                WHERE status = 'accepted'
-                AND ((user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s))
-            """, (req.sender_id, req.receiver_id, req.receiver_id, req.sender_id))
-            if not cur.fetchone():
-                return {"status": "error", "message": "Вы не друзья! Отправьте запрос в друзья."}
+            cur.execute("SELECT 1 FROM friends WHERE status = 'accepted' AND ((user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s))", (req.sender_id, req.receiver_id, req.receiver_id, req.sender_id))
+            if not cur.fetchone(): return {"status": "error", "message": "Вы не друзья!"}
 
         cur.execute("SELECT name FROM users WHERE id = %s", (req.sender_id,))
         row = cur.fetchone(); s_name = row['name'] if row else "Игрок"
@@ -306,7 +404,6 @@ def friend_request(req: FriendRequest):
         cur = conn.cursor()
         cur.execute("SELECT 1 FROM friends WHERE (user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s)", (req.sender_id, req.receiver_id, req.receiver_id, req.sender_id))
         if cur.fetchone(): return {"status": "error", "message": "Запрос уже существует"}
-        
         u1, u2 = min(req.sender_id, req.receiver_id), max(req.sender_id, req.receiver_id)
         cur.execute("INSERT INTO friends (user1_id, user2_id, status, action_user_id, created_at) VALUES (%s, %s, 'pending', %s, %s)", (u1, u2, req.sender_id, int(time.time())))
         cur.close()
@@ -332,16 +429,11 @@ def friend_decline(req: FriendAction):
 
 @app.post("/api/request_money")
 def create_money_request(req: MoneyRequestModel):
-    if req.amount <= 0: return {"status": "error", "message": "Сумма > 0"}
+    if req.amount <= 0: return {"status": "error"}
     with db_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("""
-            SELECT 1 FROM friends
-            WHERE status = 'accepted'
-            AND ((user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s))
-        """, (req.sender_id, req.receiver_id, req.receiver_id, req.sender_id))
+        cur.execute("SELECT 1 FROM friends WHERE status = 'accepted' AND ((user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s))", (req.sender_id, req.receiver_id, req.receiver_id, req.sender_id))
         if not cur.fetchone(): return {"status": "error", "message": "Вы не друзья!"}
-
         cur.execute("SELECT name FROM users WHERE id = %s", (req.sender_id,))
         row = cur.fetchone(); s_name = row['name'] if row else "Игрок"
         cur.execute("INSERT INTO money_requests (sender_id, sender_name, receiver_id, amount, created_at) VALUES (%s, %s, %s, %s, %s)", (req.sender_id, s_name, req.receiver_id, req.amount, int(time.time())))
@@ -384,15 +476,13 @@ def admin_broadcast(req: BroadcastRequest):
 
 @app.post("/api/admin/set_tier_discount")
 def admin_set_tier_discount(req: TierDiscountRequest):
-    if not is_admin(req.admin_id): return {"status": "error", "message": "Нет прав"}
-    if req.percent < 0 or req.percent > 90: return {"status": "error", "message": "Скидка 0-90%"}
-    
+    if not is_admin(req.admin_id): return {"status": "error"}
+    if req.percent < 0 or req.percent > 90: return {"status": "error"}
     with db_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("SELECT tiers FROM companies WHERE id = %s", (req.company_id,))
         row = cur.fetchone()
-        if not row: return {"status": "error", "message": "Компания не найдена"}
-        
+        if not row: return {"status": "error"}
         tiers = safe_json_load(row['tiers'], [])
         if 0 <= req.tier_index < len(tiers):
             tiers[req.tier_index]['discount'] = req.percent
@@ -400,23 +490,17 @@ def admin_set_tier_discount(req: TierDiscountRequest):
             cur.close()
             return {"status": "ok", "message": f"Скидка {req.percent}% установлена!"}
         cur.close()
-    return {"status": "error", "message": "Тариф не найден"}
+    return {"status": "error"}
 
 @app.post("/api/admin/add_money")
 def admin_add_money(req: AdminMoneyRequest):
-    if not is_admin(req.admin_id): return {"status": "error", "message": "Нет прав"}
-    
+    if not is_admin(req.admin_id): return {"status": "error"}
     if req.admin_id != MAIN_ADMIN_ID and req.amount > 300000:
-        return {"status": "error", "message": "❌ Лимит! Обычные админы могут выдать не более 300 000 $ за раз."}
-        
+        return {"status": "error", "message": "❌ Лимит! Обычные админы могут выдать не более 300 000 $."}
     with db_conn() as conn:
-        cur = conn.cursor()
-        cur.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, req.target_id))
-        cur.close()
+        cur = conn.cursor(); cur.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, req.target_id)); cur.close()
     return {"status": "ok"}
 
-
-# --- БИЗНЕСЫ ---
 BUSINESS_POOL = [
     {"name": "Киоск", "rarity": "Common", "price": 50000, "income": 1000, "req": 1, "weight": 50},
     {"name": "Кофейня", "rarity": "Rare", "price": 250000, "income": 6000, "req": 2, "weight": 25},
@@ -463,7 +547,6 @@ def buy_business(req: BusinessBuyRequest):
         owned = safe_json_load(row['businesses'], [])
         apts = safe_json_load(row['apartments'], [])
         
-        # Проверка на 1 компанию
         if len(owned) >= 1:
             return {"status": "error", "message": "У вас уже есть компания! Максимум 1."}
             
@@ -496,15 +579,12 @@ def sell_business(req: SellBusinessRequest):
         cur.close()
     return {"status": "ok", "message": f"Продано за {sell_price} $"}
 
-# --- ОСТАЛЬНОЕ ---
-
 @app.get("/api/companies")
 def get_companies():
     with db_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("SELECT id, name, tiers FROM companies ORDER BY id ASC")
         rows = cur.fetchall(); cur.close()
-        
     comps = []
     for r in rows:
         tiers = safe_json_load(r['tiers'], [])
@@ -539,7 +619,6 @@ def get_balance(user_id: int, name: str = "Игрок"):
             port = safe_json_load(row.get('portfolio'), {})
             lp = int(row['last_payout']) if row['last_payout'] else now
 
-            # АВТООЧИСТКА ПРИ ЗАГРУЗКЕ (если у игрока оказалось 2+ компании)
             if len(buses) > 1:
                 buses.sort(key=lambda x: x.get('buy_price', 0), reverse=True)
                 buses = [buses[0]]
@@ -553,9 +632,6 @@ def get_balance(user_id: int, name: str = "Игрок"):
 
 @app.get("/api/check_admin/{user_id}")
 def check_admin(user_id: int): return {"is_admin": is_admin(user_id)}
-
-@app.get("/api/token_rates")
-def get_rates(): return get_current_rates()
 
 @app.post("/api/set_name")
 def set_name(req: SetNameRequest):
@@ -591,26 +667,6 @@ def delete_company(company_id: int, req: AdminCompanyRequest):
     with db_conn() as conn:
         cur = conn.cursor(); cur.execute("DELETE FROM companies WHERE id = %s", (company_id,)); cur.close()
     return {"status": "ok"}
-
-@app.post("/api/trade_token")
-def trade_token(req: TokenRequest):
-    rates = get_current_rates()
-    if req.token_type not in rates: return {"status": "error"}
-    cost = req.amount * rates[req.token_type]['price']
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT amount, portfolio FROM users WHERE id = %s", (req.user_id,)); row = cur.fetchone()
-        port = safe_json_load(row['portfolio'], {}); cur_qty = int(port.get(req.token_type, 0))
-        if req.action == "buy":
-            if int(row['amount']) < cost: return {"status": "error", "message": "Мало денег"}
-            port[req.token_type] = cur_qty + req.amount
-            cur.execute("UPDATE users SET amount = amount - %s, portfolio = %s WHERE id = %s", (cost, json.dumps(port), req.user_id))
-        else:
-            if cur_qty < req.amount: return {"status": "error", "message": "Мало токенов"}
-            port[req.token_type] = cur_qty - req.amount
-            cur.execute("UPDATE users SET amount = amount + %s, portfolio = %s WHERE id = %s", (cost, json.dumps(port), req.user_id))
-        cur.close()
-    return {"status": "ok", "message": "Сделка успешна!"}
 
 @app.post("/api/buy")
 def buy_apartment(req: BuyRequest):
@@ -688,7 +744,9 @@ def admin_remove_business(req: AdminMoneyRequest):
 def admin_reset_all(req: AdminMoneyRequest):
     if req.admin_id != MAIN_ADMIN_ID: return {"status": "error"}
     with db_conn() as conn:
-        cur = conn.cursor(); cur.execute("DELETE FROM users"); cur.execute("DELETE FROM messages"); cur.execute("DELETE FROM money_requests"); cur.execute("DELETE FROM friends"); cur.close()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM users"); cur.execute("DELETE FROM messages"); cur.execute("DELETE FROM money_requests"); cur.execute("DELETE FROM friends")
+        cur.close()
     return {"status": "ok", "message": "Все сброшено!"}
 
 @app.post("/api/admin/add_admin")
