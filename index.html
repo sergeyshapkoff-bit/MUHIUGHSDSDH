@@ -458,7 +458,10 @@
 
         function renderBusinesses(buses) {
             const list = document.getElementById('my-businesses-list'); list.innerHTML = '';
-            if (buses.length === 0) list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Нет бизнесов</div>';
+            if (buses.length === 0) {
+                list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Нет бизнесов</div>';
+                return;
+            }
             buses.forEach(b => {
                 const fi = b.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
                 list.innerHTML += `
