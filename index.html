@@ -13,6 +13,12 @@
         .user-info { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
         .avatar { width: 38px; height: 38px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 18px; }
         .icons { display: flex; gap: 15px; font-size: 22px; opacity: 0.8; cursor: pointer; }
+        
+        #notification-bar { position: absolute; top: 70px; left: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+        .notif-badge { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 12px 16px; border-radius: 12px; font-size: 14px; box-shadow: 0 5px 15px rgba(0,0,0,0.4); display: flex; justify-content: space-between; align-items: center; animation: slideDown 0.4s ease-out; pointer-events: auto; cursor: pointer; }
+        .notif-badge.broadcast { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
         #swipe-container { flex: 1; position: relative; overflow: hidden; }
         main { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 0 20px 100px 20px; overflow-y: auto; display: none; }
         main.active { display: block; animation: fadeIn 0.3s; }
@@ -41,6 +47,7 @@
         .nav-btn span { font-size: 22px; }
         .nav-btn.active { color: #ffffff; }
         .nav-btn.active span { transform: scale(1.15) translateY(-3px); }
+        
         .exchange-card { background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 18px; margin-bottom: 15px; }
         .exchange-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
         .rate-title { font-size: 17px; font-weight: 700; }
@@ -53,6 +60,7 @@
         .exchange-buttons button { padding: 8px 15px; border-radius: 10px; border: none; font-weight: bold; font-size: 13px; cursor: pointer; }
         .btn-buy { background: var(--accent); color: #000; }
         .btn-sell { background: rgba(248,113,113,0.8); color: white; }
+        
         .bus-card { background: var(--card-bg); border-radius: 18px; padding: 18px; margin-bottom: 15px; }
         .bus-Common { border-left: 5px solid #9ca3af; } .bus-Rare { border-left: 5px solid #3b82f6; }
         .bus-Epic { border-left: 5px solid #a855f7; } .bus-Mythic { border-left: 5px solid #ef4444; }
@@ -61,6 +69,7 @@
         .bus-info { font-size: 13px; color: #a3c2ff; }
         .bus-price { font-size: 15px; color: var(--accent); font-weight: bold; }
         .buy-btn { background: var(--accent); color: #000; border: none; padding: 12px 18px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; }
+        
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 100; display: none; flex-direction: column; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #1e293b; }
         .modal-header h2 { margin: 0; font-size: 20px; }
@@ -73,6 +82,7 @@
         .user-row { display: flex; flex-direction: column; gap: 8px; background: var(--card-bg); padding: 16px; border-radius: 16px; margin-bottom: 12px; border-left: 4px solid #ffaa00; }
         .admin-btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
         .admin-btns button { flex: 1; padding: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 13px; }
+        
         .custom-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 999; display: none; justify-content: center; align-items: center; }
         .custom-box { background: #1e293b; padding: 25px 22px; border-radius: 24px; width: 90%; max-width: 350px; max-height: 85vh; overflow-y: auto; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
         .custom-box h3 { margin: 0 0 18px 0; font-size: 22px; }
@@ -109,6 +119,8 @@
     </style>
 </head>
 <body>
+    <div id="notification-bar"></div>
+
     <header>
         <div class="user-info"><div class="avatar">👤</div><span id="user-name">Загрузка...</span></div>
         <div class="icons">
@@ -237,6 +249,7 @@
         <div class="modal-header"><h2>👑 Админ</h2><button class="close-btn" onclick="closeModal('admin-modal')">✕</button></div>
         <div class="modal-content">
             <button class="btn-action" style="background:#3b82f6;color:#fff;margin-bottom:10px;" onclick="openAdminCompanies()">🏢 Компании и Скидки</button>
+            <button class="btn-action" style="background:#10b981;color:#fff;margin-bottom:10px;" onclick="openAdminExchange()">📈 Настроить Биржу</button>
             <button class="btn-action" style="background:#a855f7;color:#fff;margin-bottom:10px;" onclick="openAdminAdmins()">👥 Админы</button>
             
             <button class="btn-action" style="background:#f59e0b;color:#000;margin-bottom:20px;" onclick="adminBroadcast()">📢 Рассылка всем</button>
@@ -247,6 +260,15 @@
         </div>
     </div>
     
+    <!-- Модалка биржи админа -->
+    <div id="admin-exchange-modal" class="modal-overlay">
+        <div class="modal-header"><h2>📈 Биржа</h2><button class="close-btn" onclick="closeModal('admin-exchange-modal')">✕</button></div>
+        <div class="modal-content">
+            <button class="btn-action" style="background:var(--accent);color:#000;margin-bottom:20px;" onclick="addExchangePrompt()">➕ Добавить актив</button>
+            <div id="admin-exchange-list"></div>
+        </div>
+    </div>
+
     <div id="admin-admins-modal" class="modal-overlay">
         <div class="modal-header"><h2>👥 Админы</h2><button class="close-btn" onclick="closeModal('admin-admins-modal')">✕</button></div>
         <div class="modal-content">
@@ -366,7 +388,36 @@
             const cardColor = localStorage.getItem('customCard');
             if (cardColor) document.getElementById('main-card').style.background = cardColor;
             loadCompanies();
+            checkNotifications();
+            setInterval(checkNotifications, 10000);
         };
+
+        // --- УВЕДОМЛЕНИЯ ---
+        async function checkNotifications() {
+            try {
+                const d = await fetch(`${SERVER_URL}/api/notifications/${userId}`).then(r => r.json());
+                const bar = document.getElementById('notification-bar');
+                
+                if (d.message) {
+                    const m = d.message;
+                    bar.innerHTML = `
+                        <div class="notif-badge" onclick="openChatsWith(${m.sender_id}, '${m.sender_name}')">
+                            <div><b>${m.sender_name}</b>: ${m.text.substring(0, 20)}...</div>
+                            <span>💬</span>
+                        </div>
+                    `;
+                    setTimeout(() => bar.innerHTML = '', 5000);
+                } else if (d.broadcast) {
+                    bar.innerHTML = `
+                        <div class="notif-badge broadcast" onclick="openChatsWith(0, '📢 Администрация')">
+                            <div><b>Администрация</b>: ${d.broadcast.text.substring(0, 20)}...</div>
+                            <span>📢</span>
+                        </div>
+                    `;
+                    setTimeout(() => bar.innerHTML = '', 7000);
+                }
+            } catch(e) {}
+        }
 
         async function loadData() {
             try {
@@ -409,16 +460,16 @@
             try {
                 currentRates = await fetch(`${SERVER_URL}/api/token_rates`).then(r => r.json());
                 const list = document.getElementById('exchange-list'); list.innerHTML = '';
-                const names = { silver: "🥈 Серебро", gold: "🥇 Золото", diamonds: "💎 Алмазы", bitcoin: "₿ Биткоин", tesla: "🚗 Tesla" };
                 for (const key in currentRates) {
                     const r = currentRates[key];
                     const cls = r.trend === 'up' ? 'trend-up' : 'trend-down';
                     const sym = r.trend === 'up' ? '▲' : '▼';
                     const owned = userPortfolio[key] || 0;
+                    const displayName = r.name || key.toUpperCase();
                     list.innerHTML += `
                         <div class="exchange-card">
                             <div class="exchange-header">
-                                <div><div class="rate-title">${names[key]}</div><div class="rate-price">Цена: ${r.price} $</div></div>
+                                <div><div class="rate-title">${displayName}</div><div class="rate-price">Цена: ${r.price} $</div></div>
                                 <div class="rate-trend ${cls}">${sym}</div>
                             </div>
                             <div class="exchange-bottom">
@@ -521,6 +572,13 @@
             document.getElementById('chat-header-title').innerText = '💬 Чаты';
             document.getElementById('chat-back-btn').style.display = 'none';
             loadChats();
+        }
+
+        function openChatsWith(id, name) {
+            openChats();
+            setTimeout(() => {
+                openChatWith(id, name, 'none');
+            }, 300);
         }
 
         function closeChat() {
@@ -630,6 +688,15 @@
             if(currentChatId === null) return;
             try {
                 const d = await fetch(`${SERVER_URL}/api/chat_history/${userId}/${currentChatId}`).then(r => r.json());
+                
+                if (currentChatId !== 0 && currentChatStatus !== 'accepted') {
+                    const chats = await fetch(`${SERVER_URL}/api/chats/${userId}`).then(r => r.json());
+                    const thisChat = chats.chats.find(c => c.id === currentChatId);
+                    if (thisChat && thisChat.status === 'accepted') {
+                        currentChatStatus = 'accepted';
+                        updateChatUI(currentChatStatus);
+                    }
+                }
 
                 const box = document.getElementById('chat-messages');
                 box.innerHTML = '';
@@ -976,6 +1043,67 @@
             if (!confirm("Удалить компанию?")) return;
             await fetch(`${SERVER_URL}/api/admin/delete_company/${id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name:''}) });
             openAdminCompanies();
+        }
+
+        // --- АДМИН БИРЖА ---
+        async function openAdminExchange() {
+            openModal('admin-exchange-modal');
+            const list = document.getElementById('admin-exchange-list'); list.innerHTML = 'Загрузка...';
+            const d = await fetch(`${SERVER_URL}/api/token_rates`).then(r => r.json());
+            
+            list.innerHTML = '';
+            for (const key in d) {
+                const item = d[key];
+                list.innerHTML += `
+                    <div class="user-row" style="border-left-color:#10b981;">
+                        <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                            <span>${item.name || key}</span>
+                            <span style="color:var(--accent)">${item.price} $</span>
+                        </div>
+                        <div style="font-size:12px; color:#8892b0;">Тренд: ${item.trend === 'up' ? '📈 Вверх' : '📉 Вниз'}</div>
+                        <div class="admin-btns">
+                            <button style="background:#ffaa00;color:#000;" onclick="editExchangeItem('${key}', '${item.name || key}', ${item.price}, '${item.trend}')">✏️ Изменить</button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        async function editExchangeItem(key, name, price, trend) {
+            const n_price = parseInt(prompt(`Текущая цена ${name}:`, price));
+            if (isNaN(n_price)) return;
+            const t_dir = prompt(`Тренд (up / down):`, trend);
+            if (!t_dir) return;
+            const min_p = parseInt(prompt(`Минимальная цена (дна):`, Math.floor(n_price * 0.5)));
+            const max_p = parseInt(prompt(`Максимальная цена (верха):`, Math.floor(n_price * 1.5)));
+            
+            if (isNaN(min_p) || isNaN(max_p)) return alert("Неверные лимиты");
+
+            const r = await fetch(`${SERVER_URL}/api/admin/update_exchange`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({admin_id: userId, key: key, name: name, min_price: min_p, max_price: max_p, current_price: n_price, trend: t_dir})
+            }).then(x => x.json());
+            if (r.status === 'ok') { alert(r.message); openAdminExchange(); loadRates(); }
+            else alert(r.message);
+        }
+
+        async function addExchangePrompt() {
+            const key = prompt("Ключ (англ, без пробелов, напр. silver):");
+            if (!key) return;
+            const name = prompt("Название (с эмодзи, напр. 🥈 Серебро):");
+            if (!name) return;
+            const base_p = parseInt(prompt("Стартовая цена:"));
+            const min_p = parseInt(prompt("Минимальная цена (дно):"));
+            const max_p = parseInt(prompt("Максимальная цена (верх):"));
+            
+            if (!base_p || !min_p || !max_p) return alert("Неверные цены");
+
+            const r = await fetch(`${SERVER_URL}/api/admin/add_exchange`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({admin_id: userId, key: key, name: name, min_price: min_p, max_price: max_p, base_price: base_p})
+            }).then(x => x.json());
+            if (r.status === 'ok') { alert(r.message); openAdminExchange(); loadRates(); }
+            else alert(r.message);
         }
 
         function openModal(id) { document.getElementById(id).style.display = 'flex'; if (tg.BackButton) tg.BackButton.show(); }
