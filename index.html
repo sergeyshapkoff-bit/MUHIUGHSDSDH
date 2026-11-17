@@ -23,7 +23,7 @@
         main { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 0 20px 100px 20px; overflow-y: auto; display: none; }
         main.active { display: block; animation: fadeIn 0.3s; }
         
-        /* НОВАЯ КАРТА */
+        /* КАРТА */
         .bank-card { background: linear-gradient(135deg, #2a2a2a, #111111); border-radius: 18px; padding: 25px; margin-bottom: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); position: relative; border: 1px solid rgba(255,255,255,0.1); color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
         .card-shine { position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%); transform: rotate(30deg); pointer-events: none; }
         .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
@@ -336,7 +336,7 @@
             <h3>Деньги</h3>
             <p id="admin-money-target"></p>
             <input type="number" id="admin-money-amount" placeholder="Сумма Br">
-            <p id="admin-money-limit" style="font-size:12px;color:#ffaa00;margin-top:-10px;margin-bottom:15px;display:none;">Лимит: 300 000 Br за раз</p>
+            <p id="admin-money-limit" style="font-size:12px;color:#ffaa00;margin-top:-10px;margin-bottom:15px;display:none;">Лимит: 500 000 Br за раз</p>
             <div class="modal-actions">
                 <button class="btn-cancel" onclick="closeModal('admin-money-modal')">Отмена</button>
                 <button class="btn-confirm" onclick="adminAddMoney()">Выдать</button>
@@ -459,7 +459,6 @@
                 document.getElementById("nickname-input").value = data.name || playerName;
                 document.getElementById("user-balance").innerHTML = `${data.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} <span>Br</span>`;
                 
-                // Обновляем данные карты
                 if (data.card_number) document.getElementById("card-number").innerText = data.card_number;
                 if (data.card_cvc) document.getElementById("card-cvc").innerText = "CVC: " + data.card_cvc;
                 document.getElementById("card-holder").innerText = data.name || playerName;
@@ -650,24 +649,31 @@
             } catch(e) { list.innerHTML = 'Ошибка'; }
         }
 
-        function openChatWith(id, name, status) {
+        async function openChatWith(id, name, initialStatus) {
             currentChatId = id;
-            currentChatStatus = status;
-            
+            currentChatStatus = initialStatus;
+
             document.getElementById('chat-list-view').style.display = 'none';
             document.getElementById('chat-window-view').style.display = 'flex';
             document.getElementById('chat-header-title').innerText = name;
             document.getElementById('chat-back-btn').style.display = 'block';
-            
-            // Помечаем сообщения как прочитанные
-            if (id !== 0) {
-                fetch(`${SERVER_URL}/api/messages/read`, {
-                    method: 'POST', headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({user_id: userId, other_id: id})
-                });
-            }
 
-            updateChatUI(status);
+            // ВСЕГДА ЗАПРАШИВАЕМ РЕАЛЬНЫЙ СТАТУС У СЕРВЕРА
+            try {
+                const d = await fetch(`${SERVER_URL}/api/chats/${userId}`).then(r => r.json());
+                const thisChat = d.chats.find(c => c.id === id);
+                if (thisChat) {
+                    currentChatStatus = thisChat.status;
+                    if (currentChatStatus === 'accepted' && id !== 0) {
+                         fetch(`${SERVER_URL}/api/messages/read`, {
+                            method: 'POST', headers: {'Content-Type':'application/json'},
+                            body: JSON.stringify({user_id: userId, other_id: id})
+                        });
+                    }
+                }
+            } catch(e) {}
+
+            updateChatUI(currentChatStatus);
             loadMessages();
             if(chatInterval) clearInterval(chatInterval);
             chatInterval = setInterval(loadMessages, 3000);
@@ -714,7 +720,11 @@
 
         async function sendFriendRequest() {
             const r = await fetch(`${SERVER_URL}/api/friends/request`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: currentChatId}) }).then(x => x.json());
-            if (r.status === 'ok') { currentChatStatus = 'pending_out'; updateChatUI(currentChatStatus); }
+            // Если запрос уже существует, все равно меняем интерфейс на "Ожидание"
+            if (r.status === 'ok' || r.message === "Запрос уже существует") { 
+                currentChatStatus = 'pending_out'; 
+                updateChatUI(currentChatStatus); 
+            }
             else alert(r.message);
         }
 
