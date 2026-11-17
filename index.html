@@ -219,7 +219,7 @@
 
                 <div id="chat-input-panel" class="chat-input-area" style="display:none;">
                     <button id="request-money-btn" onclick="requestMoney()" style="width:45px; height:45px; background:#ffd700; color:#000; border:none; border-radius:50%; font-size:22px; cursor:pointer;" title="Запросить деньги">💰</button>
-                    <input type="text" id="chat-input" placeholder="Сообщение...">
+                    <input type="text" id="chat-input" placeholder="Сообщение..." onkeydown="if(event.key === 'Enter') sendMessage()">
                     <button onclick="sendMessage()" style="background:var(--accent); color:#000; border:none; border-radius:50%; width:45px; height:45px; font-size:20px; cursor:pointer;">➤</button>
                 </div>
             </div>
@@ -789,15 +789,25 @@
         async function sendMessage() {
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
-            if(!text || currentChatId === null) return;
-            input.value = '';
-            const r = await fetch(`${SERVER_URL}/api/send_message`, {
-                method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({sender_id: userId, receiver_id: currentChatId, text: text})
-            }).then(x => x.json());
-            
-            if (r.status === 'error') alert(r.message);
-            loadMessages();
+            if (!text || currentChatId === null) return;
+
+            try {
+                const res = await fetch(`${SERVER_URL}/api/send_message`, {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({sender_id: userId, receiver_id: currentChatId, text: text})
+                });
+                const r = await res.json();
+
+                if (r.status === 'ok') {
+                    input.value = '';
+                    loadMessages();
+                } else {
+                    tg.showAlert('❌ Ошибка: ' + r.message);
+                }
+            } catch (err) {
+                tg.showAlert('⚠️ Ошибка соединения: ' + err.message);
+            }
         }
 
         async function requestMoney() {
