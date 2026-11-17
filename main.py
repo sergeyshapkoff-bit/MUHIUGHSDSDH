@@ -145,7 +145,6 @@ def init_db():
                 cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_roll bigint DEFAULT 0;")
                 cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_broadcast_id bigint DEFAULT 0;")
 
-                # Безопасное обновление компаний и биржи без удаления таблиц
                 cur.execute("CREATE TABLE IF NOT EXISTS companies (id serial primary key, name text, tiers jsonb default '[]'::jsonb);")
                 cur.execute("TRUNCATE TABLE companies RESTART IDENTITY;")
                 
@@ -354,21 +353,29 @@ def get_chat_status(user_id: int, other_id: int):
         if row['action_user_id'] == user_id: return {"status": "pending_out"}
         return {"status": "pending_in"}
 
+# ИСПРАВЛЕННАЯ ФУНКЦИЯ ИСТОРИИ ЧАТА
 @app.get("/api/chat_history/{user_id}/{other_id}")
 def get_chat_history(user_id: int, other_id: int):
     with db_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
+        
         if other_id == 0:
             cur.execute("SELECT * FROM messages WHERE receiver_id = 0 ORDER BY created_at ASC LIMIT 100")
+            msgs = cur.fetchall()
         else:
+            # СНАЧАЛА ДЕЛАЕМ SELECT И ЗАБИРАЕМ РЕЗУЛЬТАТ
             cur.execute("SELECT * FROM messages WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s) ORDER BY created_at ASC LIMIT 100", (user_id, other_id, other_id, user_id))
+            msgs = cur.fetchall()
+            
+            # ПОТОМ СТАВИМ ПРОЧИТАНО
             cur.execute("UPDATE messages SET is_read = true WHERE receiver_id = %s AND sender_id = %s", (user_id, other_id))
-        msgs = cur.fetchall()
 
-        if other_id == 0: reqs = []
+        if other_id == 0: 
+            reqs = []
         else:
             cur.execute("SELECT * FROM money_requests WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s) ORDER BY created_at ASC LIMIT 100", (user_id, other_id, other_id, user_id))
             reqs = cur.fetchall()
+            
         cur.close()
     return {"messages": msgs, "requests": reqs}
 
