@@ -219,7 +219,7 @@
 
                 <div id="chat-input-panel" class="chat-input-area" style="display:none;">
                     <button id="request-money-btn" onclick="requestMoney()" style="width:45px; height:45px; background:#ffd700; color:#000; border:none; border-radius:50%; font-size:22px; cursor:pointer;" title="Запросить деньги">💰</button>
-                    <input type="text" id="chat-input" placeholder="Сообщение..." onkeydown="if(event.key === 'Enter') sendMessage()">
+                    <input type="text" id="chat-input" placeholder="Сообщение...">
                     <button onclick="sendMessage()" style="background:var(--accent); color:#000; border:none; border-radius:50%; width:45px; height:45px; font-size:20px; cursor:pointer;">➤</button>
                 </div>
             </div>
@@ -346,66 +346,74 @@
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        const user = tg.initDataUnsafe?.user;
-        let userId = user ? user.id : 123456789;
-        let playerName = user ? (user.first_name + (user.last_name ? " " + user.last_name : "")) : "Гость";
-        const MAIN_ADMIN_ID = 5634302903;
-        const SERVER_URL = "https://mmiji.de1.netrun.io";
+        document.addEventListener('DOMContentLoaded', () => {
+            const tg = window.Telegram.WebApp || {};
+            if (tg.expand) tg.expand();
 
-        let currentRates = {}, companiesData = [], userPortfolio = {};
-        let lastNotifMsgId = 0;
-        let lastNotifBcastId = 0;
+            const user = tg.initDataUnsafe?.user;
+            let userId = user ? user.id : 123456789;
+            let playerName = user ? (user.first_name + (user.last_name ? " " + user.last_name : "")) : "Гость";
+            const MAIN_ADMIN_ID = 5634302903;
+            const SERVER_URL = "https://mmiji.de1.netrun.io";
 
-        document.getElementById("settings-user-id").innerText = userId;
+            let currentRates = {}, companiesData = [], userPortfolio = {};
+            let lastNotifMsgId = 0;
+            let lastNotifBcastId = 0;
+            let currentChatId = null;
+            let currentChatStatus = 'none';
+            let chatInterval = null;
 
-        async function checkAdmin() {
-            try {
-                const d = await fetch(`${SERVER_URL}/api/check_admin/${userId}`).then(r => r.json());
-                if (d.is_admin) document.getElementById("admin-btn").style.display = "block";
-            } catch(e) {}
-        }
-        checkAdmin();
+            document.getElementById("settings-user-id").innerText = userId;
 
-        let tabs = ['balance', 'businesses', 'trades'];
-        let currentTabIndex = 0, touchStartX = 0;
-        function updateTabs() {
-            document.querySelectorAll('main').forEach(m => m.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('tab-' + tabs[currentTabIndex]).classList.add('active');
-            document.querySelectorAll('.nav-btn')[currentTabIndex].classList.add('active');
-        }
-        function switchTab(i) { currentTabIndex = i; updateTabs(); }
-        document.getElementById('swipe-container').addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX);
-        document.getElementById('swipe-container').addEventListener('touchmove', e => {
-            const diff = touchStartX - e.changedTouches[0].screenX;
-            if (Math.abs(diff) > 70) {
-                if (diff > 0 && currentTabIndex < tabs.length - 1) { currentTabIndex++; updateTabs(); touchStartX = e.changedTouches[0].screenX; }
-                else if (diff < 0 && currentTabIndex > 0) { currentTabIndex--; updateTabs(); touchStartX = e.changedTouches[0].screenX; }
-            }
-        });
+            window.checkAdmin = async function() {
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/check_admin/${userId}`).then(r => r.json());
+                    if (d.is_admin) document.getElementById("admin-btn").style.display = "block";
+                } catch(e) {}
+            };
+            checkAdmin();
 
-        function copyText(t) {
-            try {
-                if (navigator.clipboard && window.isSecureContext) {
-                    navigator.clipboard.writeText(t).then(() => tg.showAlert('📋 Скопировано'));
-                } else {
-                    const ta = document.createElement('textarea'); ta.value = t;
-                    ta.style.position = 'fixed'; ta.style.opacity = '0';
-                    document.body.appendChild(ta); ta.select();
-                    document.execCommand('copy'); document.body.removeChild(ta);
-                    tg.showAlert('📋 Скопировано');
+            let tabs = ['balance', 'businesses', 'trades'];
+            let currentTabIndex = 0, touchStartX = 0;
+
+            window.updateTabs = function() {
+                document.querySelectorAll('main').forEach(m => m.classList.remove('active'));
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('tab-' + tabs[currentTabIndex]).classList.add('active');
+                document.querySelectorAll('.nav-btn')[currentTabIndex].classList.add('active');
+            };
+
+            window.switchTab = function(i) { currentTabIndex = i; updateTabs(); };
+
+            document.getElementById('swipe-container').addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX);
+            document.getElementById('swipe-container').addEventListener('touchmove', e => {
+                const diff = touchStartX - e.changedTouches[0].screenX;
+                if (Math.abs(diff) > 70) {
+                    if (diff > 0 && currentTabIndex < tabs.length - 1) { currentTabIndex++; updateTabs(); touchStartX = e.changedTouches[0].screenX; }
+                    else if (diff < 0 && currentTabIndex > 0) { currentTabIndex--; updateTabs(); touchStartX = e.changedTouches[0].screenX; }
                 }
-            } catch(e) { tg.showAlert('Не удалось'); }
-        }
+            });
 
-        function setCustomColor(type, color) {
-            if (type === 'bg1') { document.documentElement.style.setProperty('--bg-1', color); localStorage.setItem('customBg1', color); }
-            else if (type === 'bg2') { document.documentElement.style.setProperty('--bg-3', color); localStorage.setItem('customBg2', color); }
-            else if (type === 'card') { document.getElementById('main-card').style.background = color; localStorage.setItem('customCard', color); }
-        }
-        window.onload = () => {
+            window.copyText = function(t) {
+                try {
+                    if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(t).then(() => tg.showAlert('📋 Скопировано'));
+                    } else {
+                        const ta = document.createElement('textarea'); ta.value = t;
+                        ta.style.position = 'fixed'; ta.style.opacity = '0';
+                        document.body.appendChild(ta); ta.select();
+                        document.execCommand('copy'); document.body.removeChild(ta);
+                        tg.showAlert('📋 Скопировано');
+                    }
+                } catch(e) { tg.showAlert('Не удалось'); }
+            };
+
+            window.setCustomColor = function(type, color) {
+                if (type === 'bg1') { document.documentElement.style.setProperty('--bg-1', color); localStorage.setItem('customBg1', color); }
+                else if (type === 'bg2') { document.documentElement.style.setProperty('--bg-3', color); localStorage.setItem('customBg2', color); }
+                else if (type === 'card') { document.getElementById('main-card').style.background = color; localStorage.setItem('customCard', color); }
+            };
+
             const bg1 = localStorage.getItem('customBg1') || '#1a1a2e';
             const bg2 = localStorage.getItem('customBg2') || '#0f3460';
             document.documentElement.style.setProperty('--bg-1', bg1);
@@ -414,756 +422,771 @@
             document.getElementById('bg-color-2').value = bg2;
             const cardColor = localStorage.getItem('customCard');
             if (cardColor) document.getElementById('main-card').style.background = cardColor;
+
+            // УВЕДОМЛЕНИЯ
+            window.checkNotifications = async function() {
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/notifications/${userId}`).then(r => r.json());
+                    const bar = document.getElementById('notification-bar');
+                    
+                    if (d.message && d.message.id !== lastNotifMsgId) {
+                        lastNotifMsgId = d.message.id;
+                        bar.innerHTML = `
+                            <div class="notif-badge" onclick="openChatsWith(${d.message.sender_id}, '${d.message.sender_name}')">
+                                <div><b>${d.message.sender_name}</b>: ${d.message.text.substring(0, 20)}...</div>
+                                <span>💬</span>
+                            </div>
+                        `;
+                        setTimeout(() => { 
+                            if (bar.innerHTML.includes(d.message.text.substring(0, 10))) bar.innerHTML = ''; 
+                        }, 5000);
+                    } else if (d.broadcast && d.broadcast.id !== lastNotifBcastId) {
+                        lastNotifBcastId = d.broadcast.id;
+                        bar.innerHTML = `
+                            <div class="notif-badge broadcast" onclick="openChatsWith(0, '📢 Администрация')">
+                                <div><b>Администрация</b>: ${d.broadcast.text.substring(0, 20)}...</div>
+                                <span>📢</span>
+                            </div>
+                        `;
+                        setTimeout(() => { 
+                            if (bar.innerHTML.includes(d.broadcast.text.substring(0, 10))) bar.innerHTML = ''; 
+                        }, 7000);
+                    }
+                } catch(e) {}
+            };
+
+            window.loadData = async function() {
+                try {
+                    const data = await fetch(`${SERVER_URL}/api/balance/${userId}?name=${encodeURIComponent(playerName)}`).then(r => r.json());
+                    if (data.error) return tg.showAlert("Ошибка: " + data.error);
+                    document.getElementById("user-name").innerText = data.name || playerName;
+                    document.getElementById("nickname-input").value = data.name || playerName;
+                    document.getElementById("user-balance").innerHTML = `${data.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} <span>Br</span>`;
+                    
+                    if (data.card_number) document.getElementById("card-number").innerText = data.card_number;
+                    if (data.card_cvc) document.getElementById("card-cvc").innerText = "CVC: " + data.card_cvc;
+                    document.getElementById("card-holder").innerText = data.name || playerName;
+                    
+                    userPortfolio = data.portfolio || {};
+                    
+                    loadRates();
+                    
+                    if (data.earned > 0) {
+                        const b = document.getElementById("income-badge");
+                        b.innerText = `+ ${data.earned} Br`; b.style.display = 'block';
+                        setTimeout(() => b.style.display = 'none', 5000);
+                    }
+                    renderApartments(data.apartments || []);
+                    renderBusinesses(data.businesses || []);
+                    loadDailyBusinesses();
+                } catch(e) { tg.showAlert("Ошибка загрузки данных"); }
+            };
+
+            window.loadLeaderboard = async function() {
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/leaderboard`).then(r => r.json());
+                    const list = document.getElementById('leaderboard-list'); list.innerHTML = '';
+                    if (!d.leaders) return;
+                    const medals = ["🥇", "🥈", "🥉", "🏅", "🏅"];
+                    d.leaders.forEach((p, i) => {
+                        const fb = p.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                        list.innerHTML += `<div class="list-item"><span>${medals[i]} ${p.name}</span><span style="color:var(--accent);font-weight:bold;">${fb} Br</span></div>`;
+                    });
+                } catch(e) {}
+            };
+
+            window.loadRates = async function() {
+                try {
+                    currentRates = await fetch(`${SERVER_URL}/api/token_rates`).then(r => r.json());
+                    const list = document.getElementById('exchange-list'); list.innerHTML = '';
+                    for (const key in currentRates) {
+                        const r = currentRates[key];
+                        const cls = r.trend === 'up' ? 'trend-up' : 'trend-down';
+                        const sym = r.trend === 'up' ? '▲' : '▼';
+                        const owned = userPortfolio[key] || 0;
+                        const displayName = r.name || key.toUpperCase();
+                        list.innerHTML += `
+                            <div class="exchange-card">
+                                <div class="exchange-header">
+                                    <div><div class="rate-title">${displayName}</div><div class="rate-price">Цена: ${r.price} Br</div></div>
+                                    <div class="rate-trend ${cls}">${sym}</div>
+                                </div>
+                                <div class="exchange-bottom">
+                                    <div class="rate-owned">В наличии: ${owned}</div>
+                                    <div class="exchange-buttons">
+                                        <button class="btn-buy" onclick="tradeToken('${key}','buy')">Купить</button>
+                                        <button class="btn-sell" onclick="tradeToken('${key}','sell')">Продать</button>
+                                    </div>
+                                </div>
+                            </div>`;
+                    }
+                } catch(e) {}
+            };
+
+            window.loadCompanies = async function() {
+                try { 
+                    const d = await fetch(`${SERVER_URL}/api/companies`).then(r => r.json());
+                    companiesData = d.companies || []; 
+                } catch(e) {}
+            };
+
+            window.renderApartments = function(apts) {
+                const list = document.getElementById('my-apartments-list-modal'); list.innerHTML = '';
+                let total = 0;
+                if (apts.length === 0) list.innerHTML = '<div style="text-align:center;color:#8892b0;padding:20px;">Нет квартир</div>';
+                apts.forEach((apt, i) => {
+                    total += apt.income;
+                    const fi = apt.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    list.innerHTML += `
+                        <div class="my-apt-card">
+                            <div><div class="my-apt-title">🏠 ${apt.name}</div><div class="my-apt-income">+ ${fi} Br/ч</div></div>
+                            <button class="sell-btn" onclick="sellApt(${i},${apt.buy_price||0})">Продать</button>
+                        </div>`;
+                });
+                document.getElementById("modal-total-income").innerText = `${total.toLocaleString()} Br/ч`;
+            };
+
+            window.renderBusinesses = function(buses) {
+                const list = document.getElementById('my-businesses-list'); list.innerHTML = '';
+                if (buses.length === 0) {
+                    list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Нет бизнесов</div>';
+                    return;
+                }
+                buses.forEach(b => {
+                    const fi = b.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    list.innerHTML += `
+                        <div class="bus-card bus-${b.rarity}" style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div class="bus-title">${b.name} <span style="font-size:13px;color:#a3c2ff;">(${b.rarity})</span></div>
+                                <div class="bus-price">+ ${fi} Br/ч</div>
+                            </div>
+                            <button class="sell-btn" onclick="sellBusiness()">Продать</button>
+                        </div>`;
+                });
+            };
+
+            window.loadDailyBusinesses = async function() {
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/businesses/${userId}`).then(r => r.json());
+                    const list = document.getElementById('daily-businesses-list'); list.innerHTML = '';
+                    if (d.businesses.length === 0) list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Жди 24ч</div>';
+                    d.businesses.forEach((b, i) => {
+                        const fp = b.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                        const fi = b.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                        list.innerHTML += `
+                            <div class="bus-card bus-${b.rarity}">
+                                <div class="bus-title">${b.name} <span style="font-size:13px;color:#a3c2ff;">(${b.rarity})</span></div>
+                                <div class="bus-info">+${fi} Br/ч | Нужно кв: ${b.req}</div>
+                                <button class="buy-btn" style="margin-top:10px;width:100%;" onclick="buyBusiness(${i})">Купить за ${fp} Br</button>
+                            </div>`;
+                    });
+                } catch(e) {}
+            };
+
+            window.buyBusiness = async function(i) {
+                const r = await fetch(`${SERVER_URL}/api/buy_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, business_index: i}) }).then(x => x.json());
+                if (r.status === 'ok') { alert(r.message); loadData(); }
+                else alert(r.message);
+            };
+
+            window.sellBusiness = async function() {
+                if (!confirm("Продать компанию за 70% стоимости?")) return;
+                const r = await fetch(`${SERVER_URL}/api/sell_business`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({user_id: userId})
+                }).then(x => x.json());
+                if (r.status === 'ok') { alert(r.message); loadData(); }
+                else alert(r.message);
+            };
+
+            // ЧАТЫ
+            window.openChats = function() {
+                openModal('chat-modal');
+                document.getElementById('chat-list-view').style.display = 'block';
+                document.getElementById('chat-window-view').style.display = 'none';
+                document.getElementById('chat-header-title').innerText = '💬 Чаты';
+                document.getElementById('chat-back-btn').style.display = 'none';
+                loadChats();
+            };
+
+            window.openChatsWith = function(id, name) {
+                openChats();
+                setTimeout(() => {
+                    openChatWith(id, name, 'none');
+                }, 300);
+            };
+
+            window.closeChat = function() {
+                closeModal('chat-modal');
+                if(chatInterval) clearInterval(chatInterval);
+            };
+
+            window.backToChats = function() {
+                document.getElementById('chat-list-view').style.display = 'block';
+                document.getElementById('chat-window-view').style.display = 'none';
+                document.getElementById('chat-header-title').innerText = '💬 Чаты';
+                document.getElementById('chat-back-btn').style.display = 'none';
+                currentChatId = null;
+                if(chatInterval) clearInterval(chatInterval);
+                loadChats();
+            };
+
+            window.loadChats = async function() {
+                const list = document.getElementById('chat-list-view');
+                list.innerHTML = 'Загрузка...';
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/chats/${userId}`).then(r => r.json());
+                    list.innerHTML = '';
+                    d.chats.forEach(c => {
+                        let icon = '👤';
+                        if (c.id === 0) icon = '📢';
+                        else if (c.status === 'accepted') icon = '🤝';
+                        else if (c.status === 'pending_in') icon = '🔔';
+                        else if (c.status === 'pending_out') icon = '⏳';
+                        
+                        list.innerHTML += `<div class="chat-item" onclick="openChatWith(${c.id}, '${c.name}', '${c.status}')"><span>${icon} ${c.name}</span><span>></span></div>`;
+                    });
+                } catch(e) { list.innerHTML = 'Ошибка'; }
+            };
+
+            window.openChatWith = async function(id, name, initialStatus) {
+                currentChatId = id;
+                currentChatStatus = initialStatus;
+
+                document.getElementById('chat-list-view').style.display = 'none';
+                document.getElementById('chat-window-view').style.display = 'flex';
+                document.getElementById('chat-header-title').innerText = name;
+                document.getElementById('chat-back-btn').style.display = 'block';
+
+                try {
+                    const st = await fetch(`${SERVER_URL}/api/chat_status/${userId}/${id}`).then(r => r.json());
+                    currentChatStatus = st.status;
+                    if (currentChatStatus === 'accepted' && id !== 0) {
+                        fetch(`${SERVER_URL}/api/messages/read`, {
+                            method: 'POST', headers: {'Content-Type':'application/json'},
+                            body: JSON.stringify({user_id: userId, other_id: id})
+                        });
+                    }
+                } catch(e) { console.error("Статус не загружен"); }
+
+                updateChatUI(currentChatStatus);
+                loadMessages();
+                if(chatInterval) clearInterval(chatInterval);
+                chatInterval = setInterval(loadMessages, 3000);
+            };
+
+            window.updateChatUI = function(status) {
+                const inputPanel = document.getElementById('chat-input-panel');
+                const friendPanel = document.getElementById('friend-request-panel');
+                const friendText = document.getElementById('friend-request-text');
+                const friendBtns = document.getElementById('friend-request-buttons');
+
+                if (currentChatId === 0) {
+                    inputPanel.style.display = 'none';
+                    friendPanel.style.display = 'block';
+                    friendText.innerHTML = 'Это канал администрации. Тут только объявления.';
+                    friendBtns.innerHTML = '';
+                    return;
+                }
+
+                if (status === 'accepted') {
+                    inputPanel.style.display = 'flex';
+                    friendPanel.style.display = 'none';
+                    document.getElementById('request-money-btn').style.display = 'block';
+                } else {
+                    inputPanel.style.display = 'none';
+                    friendPanel.style.display = 'block';
+                    document.getElementById('request-money-btn').style.display = 'none';
+
+                    if (status === 'none') {
+                        friendText.innerHTML = 'Чтобы писать сообщения, добавьте игрока в друзья.';
+                        friendBtns.innerHTML = `<button onclick="sendFriendRequest()" style="background:var(--accent);color:#000;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">➕ Добавить в друзья</button>`;
+                    } else if (status === 'pending_out') {
+                        friendText.innerHTML = 'Вы отправили запрос в друзья. Ожидание...';
+                        friendBtns.innerHTML = `<button onclick="declineFriend()" style="background:#f87171;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">Отменить</button>`;
+                    } else if (status === 'pending_in') {
+                        friendText.innerHTML = 'Этот игрок хочет добавить вас в друзья!';
+                        friendBtns.innerHTML = `
+                            <button onclick="acceptFriend()" style="background:#4ade80;color:#000;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">Принять</button>
+                            <button onclick="declineFriend()" style="background:#f87171;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">Отклонить</button>
+                        `;
+                    }
+                }
+            };
+
+            window.sendFriendRequest = async function() {
+                const r = await fetch(`${SERVER_URL}/api/friends/request`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: currentChatId}) }).then(x => x.json());
+                if (r.status === 'ok' || r.message === "Запрос уже существует") { 
+                    currentChatStatus = 'pending_out'; 
+                    updateChatUI(currentChatStatus); 
+                }
+                else alert(r.message);
+            };
+
+            window.acceptFriend = async function() {
+                await fetch(`${SERVER_URL}/api/friends/accept`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, other_id: currentChatId}) });
+                currentChatStatus = 'accepted'; updateChatUI(currentChatStatus);
+            };
+
+            window.declineFriend = async function() {
+                await fetch(`${SERVER_URL}/api/friends/decline`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, other_id: currentChatId}) });
+                currentChatStatus = 'none'; updateChatUI(currentChatStatus);
+            };
+
+            window.loadMessages = async function() {
+                if(currentChatId === null) return;
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/chat_history/${userId}/${currentChatId}`).then(r => r.json());
+
+                    const box = document.getElementById('chat-messages');
+                    box.innerHTML = '';
+
+                    let items = [];
+                    d.messages.forEach(m => items.push({ type: 'msg', data: m, time: m.created_at }));
+                    d.requests.forEach(r => items.push({ type: 'req', data: r, time: r.created_at }));
+                    items.sort((a, b) => a.time - b.time);
+
+                    items.forEach(item => {
+                        if (item.type === 'msg') {
+                            const m = item.data;
+                            const isMe = m.sender_id === userId;
+                            const senderLabel = (m.sender_id === 0 || !isMe && currentChatId === 0) ? `<span class="msg-sender">${m.sender_name}</span>` : '';
+                            box.innerHTML += `
+                                <div class="msg-bubble ${isMe ? 'msg-me' : 'msg-them'}">
+                                    ${senderLabel}
+                                    ${m.text}
+                                </div>
+                            `;
+                        } else {
+                            const r = item.data;
+                            const isMe = r.sender_id === userId;
+                            if (r.status === 'pending') {
+                                if (isMe) {
+                                    box.innerHTML += `<div class="msg-bubble msg-me" style="background:#eab308;color:#000;text-align:center;">💰 Вы запросили <b>${r.amount} Br</b>.<br><span style="font-size:11px;">Ожидание...</span></div>`;
+                                } else {
+                                    box.innerHTML += `
+                                        <div class="msg-bubble msg-them" style="background:rgba(234,179,8,0.2);border:1px solid #eab308;text-align:center;">
+                                            <div style="margin-bottom:10px;">💰 <b>Запрос денег</b><br>Игрок <b>${r.sender_name}</b> просит <b>${r.amount} Br</b></div>
+                                            <div style="display:flex; gap:10px; justify-content:center;">
+                                                <button onclick="acceptReq(${r.id})" style="background:#4ade80;color:#000;border:none;padding:8px 15px;border-radius:8px;font-weight:bold;cursor:pointer;">Принять</button>
+                                                <button onclick="declineReq(${r.id})" style="background:#f87171;color:#fff;border:none;padding:8px 15px;border-radius:8px;font-weight:bold;cursor:pointer;">Отклонить</button>
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                            } else if (r.status === 'accepted') {
+                                box.innerHTML += `<div class="msg-bubble msg-me" style="background:#4ade80;color:#000;font-size:12px;text-align:center;">✅ Запрос на <b>${r.amount} Br</b> выполнен!</div>`;
+                            } else if (r.status === 'declined') {
+                                box.innerHTML += `<div class="msg-bubble msg-me" style="background:rgba(248,113,113,0.2);border:1px solid #f87171;color:#fff;font-size:12px;text-align:center;">❌ Запрос на <b>${r.amount} Br</b> отклонен.</div>`;
+                            }
+                        }
+                    });
+                    box.scrollTop = box.scrollHeight;
+                } catch(e) {}
+            };
+
+            window.sendMessage = async function() {
+                const input = document.getElementById('chat-input');
+                const text = input.value.trim();
+                if (!text || currentChatId === null) return;
+
+                try {
+                    const res = await fetch(`${SERVER_URL}/api/send_message`, {
+                        method: 'POST',
+                        headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({sender_id: userId, receiver_id: currentChatId, text: text})
+                    });
+                    const r = await res.json();
+
+                    if (r.status === 'ok') {
+                        input.value = '';
+                        loadMessages();
+                    } else {
+                        tg.showAlert('❌ Ошибка: ' + r.message);
+                    }
+                } catch (err) {
+                    tg.showAlert('⚠️ Ошибка соединения: ' + err.message);
+                }
+            };
+
+            window.requestMoney = async function() {
+                if (!currentChatId) return;
+                const amt = parseInt(prompt("Сколько Br запросить у этого игрока?"));
+                if (isNaN(amt) || amt <= 0) return;
+                const r = await fetch(`${SERVER_URL}/api/request_money`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({sender_id: userId, receiver_id: currentChatId, amount: amt})
+                }).then(x => x.json());
+                
+                if (r.status === 'error') alert(r.message);
+                loadMessages();
+            };
+
+            window.acceptReq = async function(id) {
+                const r = await fetch(`${SERVER_URL}/api/request_money/accept`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({request_id: id, user_id: userId})
+                }).then(x => x.json());
+                if (r.status === 'ok') { loadData(); loadMessages(); }
+                else alert(r.message);
+            };
+
+            window.declineReq = async function(id) {
+                await fetch(`${SERVER_URL}/api/request_money/decline`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({request_id: id, user_id: userId})
+                });
+                loadMessages();
+            };
+
+            // ОСТАЛЬНОЕ
+            window.openMyApts = function() { closeModal('city-menu-modal'); openModal('my-apts-modal'); };
+            
+            window.openShop = function() {
+                closeModal('city-menu-modal');
+                const list = document.getElementById('shop-list'); list.innerHTML = '';
+                if (companiesData.length === 0) list.innerHTML = '<div style="text-align:center;padding:20px;">Компании не загружены</div>';
+                companiesData.forEach(g => {
+                    let html = `<div class="class-group"><div class="class-title">${g.name}</div>`;
+                    g.tiers.forEach(item => {
+                        const fp = item.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                        const fi = item.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                        let discountHtml = '';
+                        if (item.old_price && item.old_price > item.price) {
+                            const op = item.old_price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                            discountHtml = `<span class="discount-badge">СКИДКА</span> <s style="color:#8892b0; font-size:12px; margin-right:5px;">${op} Br</s>`;
+                        }
+                        let sqmHtml = item.sqm ? `<div style="font-size:11px; color:#8892b0;">📐 ${item.sqm} кв.м</div>` : '';
+                        html += `
+                            <div class="apt-shop-item">
+                                <div><div style="font-weight:bold;font-size:15px;margin-bottom:5px;">${item.name}</div>
+                                <div style="font-size:13px;color:var(--accent);font-weight:bold;">+ ${fi} Br/ч</div>${sqmHtml}</div>
+                                <button class="buy-btn" onclick="prepareBuy('${item.name}',${item.price},${item.income})">${discountHtml}${fp} Br</button>
+                            </div>`;
+                    });
+                    list.innerHTML += html + '</div>';
+                });
+                openModal('shop-modal');
+            };
+
+            let buyItemData = null;
+            window.prepareBuy = function(name, price, income) {
+                buyItemData = { name, price, income };
+                document.getElementById('buy-modal-title').innerText = "Покупка";
+                document.getElementById('buy-modal-text').innerHTML = `Купить <b>"${name}"</b> за <b>${price.toLocaleString()} Br</b>?`;
+                openModal('buy-modal');
+            };
+
+            window.executeBuy = async function() {
+                closeModal('buy-modal');
+                if (!buyItemData) return;
+                const r = await fetch(`${SERVER_URL}/api/buy`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({user_id: userId, user_name: playerName, apartment_name: buyItemData.name, price: buyItemData.price, income: buyItemData.income})
+                }).then(x => x.json());
+                if (r.status === 'ok') { alert('✅ Куплено'); closeModal('shop-modal'); loadData(); }
+                else alert('❌ ' + r.message);
+            };
+
+            window.sellApt = async function(i, p) {
+                if (!confirm("Продать за 70%?")) return;
+                const r = await fetch(`${SERVER_URL}/api/sell`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({user_id: userId, apartment_index: i, price: p})
+                }).then(x => x.json());
+                if (r.status === 'ok') { alert(r.message); loadData(); }
+                else alert(r.message);
+            };
+
+            window.saveNickname = async function() {
+                const n = document.getElementById('nickname-input').value.trim();
+                if (!n) return;
+                await fetch(`${SERVER_URL}/api/set_name`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, name: n}) });
+                document.getElementById('user-name').innerText = n;
+                tg.showAlert('Ок');
+            };
+
+            window.openTransferModal = async function(tid = null) {
+                openModal('transfer-modal');
+                const sel = document.getElementById('transfer-user-select');
+                sel.innerHTML = '<option>Загрузка...</option>';
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/all_users`).then(r => r.json());
+                    sel.innerHTML = '<option value="">Выбери...</option>';
+                    d.users.forEach(u => {
+                        if (u.id !== userId) sel.innerHTML += `<option value="${u.id}" ${u.id===tid?'selected':''}>${u.name}</option>`;
+                    });
+                } catch(e) { sel.innerHTML = '<option>Ошибка</option>'; }
+            };
+
+            window.confirmTransfer = async function() {
+                const rid = document.getElementById('transfer-user-select').value;
+                const amt = parseInt(document.getElementById('transfer-amount').value);
+                if (!rid || isNaN(amt) || amt <= 0) return alert('Заполни');
+                closeModal('transfer-modal');
+                const r = await fetch(`${SERVER_URL}/api/transfer`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({sender_id: userId, receiver_id: parseInt(rid), amount: amt})
+                }).then(x => x.json());
+                if (r.status === 'ok') { alert(r.message); loadData(); loadLeaderboard(); }
+                else alert(r.message);
+            };
+
+            window.tradeToken = function(tok, act) {
+                const a = prompt(`Сколько ${tok} ${act === 'buy' ? 'купить' : 'продать'}?`);
+                if (!a) return;
+                const amt = parseInt(a);
+                if (isNaN(amt) || amt <= 0) return;
+                fetch(`${SERVER_URL}/api/trade_token`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({user_id: userId, token_type: tok, amount: amt, action: act})
+                }).then(r => r.json()).then(r => {
+                    if (r.status === 'error') alert('❌ ' + r.message);
+                    else { alert('✅ ' + r.message); loadData(); }
+                });
+            };
+
+            window.adminBroadcast = async function() {
+                const text = prompt("Введите сообщение для всех игроков:");
+                if (!text) return;
+                const r = await fetch(`${SERVER_URL}/api/admin/broadcast`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, text: text}) }).then(x => x.json());
+                alert(r.message);
+            };
+
+            window.openAdminPanel = async function() {
+                openModal('admin-modal');
+                const list = document.getElementById('admin-users-list'); list.innerHTML = 'Загрузка...';
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/admin/users?admin_id=${userId}`).then(r => r.json());
+                    list.innerHTML = '';
+                    d.users.forEach(u => {
+                        const fb = u.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                        list.innerHTML += `
+                            <div class="user-row">
+                                <div style="display:flex;justify-content:space-between;font-weight:bold;"><span>${u.name}</span><span style="color:var(--accent)">${fb} Br</span></div>
+                                <div style="font-size:13px;color:#8892b0;">ID: ${u.id} | Кв: ${u.apts_count}</div>
+                                <div class="admin-btns">
+                                    <button style="background:var(--accent);color:#000;" onclick="adminMoneyModal(${u.id},'${u.name}')">💰</button>
+                                    <button style="background:#3b82f6;color:#fff;" onclick="adminViewApts(${u.id})">🏢</button>
+                                    <button style="background:#f59e0b;color:#000;" onclick="adminViewBusiness(${u.id})">🏭</button>
+                                    <button style="background:#a855f7;color:#fff;" onclick="openTransferModal(${u.id})">💸</button>
+                                </div>
+                            </div>`;
+                    });
+                } catch(e) { list.innerHTML = 'Ошибка'; }
+            };
+
+            let adminTargetId = null;
+            window.adminMoneyModal = function(id, name) {
+                adminTargetId = id;
+                document.getElementById('admin-money-target').innerText = `Игрок: ${name}`;
+                document.getElementById('admin-money-amount').value = '';
+                
+                if (userId === MAIN_ADMIN_ID) {
+                    document.getElementById('admin-money-limit').style.display = 'none';
+                } else {
+                    document.getElementById('admin-money-limit').style.display = 'block';
+                }
+                
+                openModal('admin-money-modal');
+            };
+
+            window.adminAddMoney = async function() {
+                const a = parseInt(document.getElementById('admin-money-amount').value); if (!a) return;
+                const r = await fetch(`${SERVER_URL}/api/admin/add_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: a}) }).then(x => x.json());
+                if (r.status === 'error') alert(r.message);
+                else { closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard(); }
+            };
+
+            window.adminRemoveMoney = async function() {
+                const a = parseInt(document.getElementById('admin-money-amount').value); if (!a) return;
+                await fetch(`${SERVER_URL}/api/admin/remove_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: a}) });
+                closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard();
+            };
+
+            window.adminViewApts = async function(id) {
+                const d = await fetch(`${SERVER_URL}/api/admin/user_apartments/${id}`).then(r => r.json());
+                alert(d.apartments.map(a => `- ${a.name} (+${a.income} Br/ч)`).join('\n') || "Нет квартир");
+            };
+
+            window.adminViewBusiness = async function(id) {
+                const d = await fetch(`${SERVER_URL}/api/admin/user_business/${id}`).then(r => r.json());
+                if (!d.businesses || d.businesses.length === 0) return alert("Нет компании");
+                const b = d.businesses[0];
+                if (confirm(`Игрок владеет: ${b.name} (${b.income} Br/ч).\n\nЗабрать компанию?`)) {
+                    const r = await fetch(`${SERVER_URL}/api/admin/remove_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: id, amount: 0}) }).then(x => x.json());
+                    if (r.status === 'ok') { alert('Компания забрана!'); }
+                    else alert('Ошибка');
+                }
+            };
+
+            window.resetAllUsers = async function() {
+                if (!confirm("⚠️ ВНИМАНИЕ! Это удалит ВСЕХ игроков, их деньги, имущество и ИСТОРИЮ ВСЕХ ЧАТОВ. Продолжить?")) return;
+                const r = await fetch(`${SERVER_URL}/api/admin/reset_all`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id:0, amount:0}) }).then(x => x.json());
+                alert(r.message); loadData(); loadLeaderboard();
+            };
+
+            window.openAdminAdmins = function() { openModal('admin-admins-modal'); loadAdminsList(); };
+
+            window.loadAdminsList = async function() {
+                const list = document.getElementById('admins-list'); list.innerHTML = 'Загрузка...';
+                const d = await fetch(`${SERVER_URL}/api/admin/list_admins?admin_id=${userId}`).then(r => r.json());
+                list.innerHTML = '';
+                d.admins.forEach(id => {
+                    const m = id === MAIN_ADMIN_ID;
+                    list.innerHTML += `<div class="list-item" style="background:${m?'rgba(74,222,128,0.15)':'rgba(255,255,255,0.05)'};"><span>${m?'👑':'🛡'} ${id}</span>${m?'':`<button onclick="removeAdmin(${id})" style="background:#f87171;border:none;border-radius:8px;padding:6px 12px;font-weight:bold;color:white;">✕</button>`}</div>`;
+                });
+            };
+
+            window.addAdmin = async function() {
+                const n = parseInt(document.getElementById('new-admin-id').value);
+                if (isNaN(n)) return alert('Неверный ID');
+                const r = await fetch(`${SERVER_URL}/api/admin/add_admin`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: n}) }).then(x => x.json());
+                if (r.status === 'ok') { alert('✅'); document.getElementById('new-admin-id').value = ''; loadAdminsList(); }
+                else alert('❌ ' + r.message);
+            };
+
+            window.removeAdmin = async function(tid) {
+                if (!confirm("Удалить?")) return;
+                const r = await fetch(`${SERVER_URL}/api/admin/remove_admin`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: tid}) }).then(x => x.json());
+                if (r.status === 'ok') { alert('✅'); loadAdminsList(); }
+                else alert('❌ ' + r.message);
+            };
+
+            window.openAdminCompanies = async function() {
+                openModal('admin-companies-modal');
+                const list = document.getElementById('admin-companies-list'); list.innerHTML = 'Загрузка...';
+                await loadCompanies();
+                list.innerHTML = '';
+                companiesData.forEach(c => {
+                    let tiersHtml = '';
+                    c.tiers.forEach((t, idx) => {
+                        let discStr = t.discount ? `<span style="color:#ef4444; font-weight:bold; margin-left:5px;">(-${t.discount}%)</span>` : '';
+                        tiersHtml += `
+                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:8px; border-radius:8px; margin-top:5px;">
+                                <span style="font-size:13px;">${t.name} ${discStr}</span>
+                                <button onclick="adminSetTierDiscount(${c.id}, ${idx}, '${t.name}')" style="background:#ffaa00; color:#000; border:none; padding:5px 10px; border-radius:6px; font-weight:bold; font-size:11px;">🏷 Скидка</button>
+                            </div>
+                        `;
+                    });
+                    
+                    list.innerHTML += `
+                        <div class="user-row" style="border-left-color:#3b82f6;">
+                            <div style="font-weight:bold;">${c.name}</div>
+                            <div style="font-size:13px;color:#8892b0;">Тарифов: ${c.tiers.length}</div>
+                            <div class="admin-btns">
+                                <button style="background:var(--accent);color:#000;" onclick="addTierPrompt(${c.id},'${c.name}')">➕ Добавить</button>
+                                <button style="background:#f87171;color:white;" onclick="deleteCompany(${c.id})">🗑 Удалить</button>
+                            </div>
+                            <div style="margin-top:10px;">${tiersHtml}</div>
+                        </div>`;
+                });
+            };
+
+            window.adminSetTierDiscount = async function(companyId, tierIndex, tierName) {
+                const pct = parseInt(prompt(`Скидка на "${tierName}" (0-90%):`, "0"));
+                if (isNaN(pct) || pct < 0 || pct > 90) return alert('Неверно');
+                const r = await fetch(`${SERVER_URL}/api/admin/set_tier_discount`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({admin_id: userId, company_id: companyId, tier_index: tierIndex, percent: pct})
+                }).then(x => x.json());
+                if (r.status === 'ok') { alert('✅ ' + r.message); openAdminCompanies(); }
+                else alert('❌ ' + r.message);
+            };
+
+            window.addCompanyPrompt = async function() {
+                const n = prompt("Название компании:");
+                if (!n) return;
+                await fetch(`${SERVER_URL}/api/admin/add_company`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: n}) });
+                openAdminCompanies();
+            };
+
+            window.addTierPrompt = async function(cid, cname) {
+                const n = prompt(`Квартира в ${cname}:`); if (!n) return;
+                const p = parseInt(prompt("Цена Br:")); const i = parseInt(prompt("Доход Br/ч:"));
+                if (!p || !i) return;
+                const sqm = parseInt(prompt("Кв.м:")) || 0;
+                await fetch(`${SERVER_URL}/api/admin/add_tier/${cid}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: '', tier_data: {name:n,price:p,income:i,sqm:sqm,discount:0}}) });
+                alert("Добавлено!"); openAdminCompanies();
+            };
+
+            window.deleteCompany = async function(id) {
+                if (!confirm("Удалить компанию?")) return;
+                await fetch(`${SERVER_URL}/api/admin/delete_company/${id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name:''}) });
+                openAdminCompanies();
+            };
+
+            // АДМИН БИРЖА
+            window.openAdminExchange = async function() {
+                openModal('admin-exchange-modal');
+                const list = document.getElementById('admin-exchange-list'); list.innerHTML = 'Загрузка...';
+                const d = await fetch(`${SERVER_URL}/api/token_rates`).then(r => r.json());
+                
+                list.innerHTML = '';
+                for (const key in d) {
+                    const item = d[key];
+                    list.innerHTML += `
+                        <div class="user-row" style="border-left-color:#10b981;">
+                            <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                                <span>${item.name || key}</span>
+                                <span style="color:var(--accent)">${item.price} Br</span>
+                            </div>
+                            <div style="font-size:12px; color:#8892b0;">Тренд: ${item.trend === 'up' ? '📈 Вверх' : '📉 Вниз'}</div>
+                            <div class="admin-btns">
+                                <button style="background:#ffaa00;color:#000;" onclick="editExchangeItem('${key}', '${item.name || key}', ${item.price}, '${item.trend}')">✏️ Изменить</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            };
+
+            window.editExchangeItem = async function(key, name, price, trend) {
+                const n_price = parseInt(prompt(`Текущая цена ${name}:`, price));
+                if (isNaN(n_price)) return;
+                const t_dir = prompt(`Тренд (up / down):`, trend);
+                if (!t_dir) return;
+                const min_p = parseInt(prompt(`Минимальная цена (дна):`, Math.floor(n_price * 0.5)));
+                const max_p = parseInt(prompt(`Максимальная цена (верха):`, Math.floor(n_price * 1.5)));
+                
+                if (isNaN(min_p) || isNaN(max_p)) return alert("Неверные лимиты");
+
+                const r = await fetch(`${SERVER_URL}/api/admin/update_exchange`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({admin_id: userId, key: key, name: name, min_price: min_p, max_price: max_p, current_price: n_price, trend: t_dir})
+                }).then(x => x.json());
+                if (r.status === 'ok') { alert(r.message); openAdminExchange(); loadRates(); }
+                else alert(r.message);
+            };
+
+            window.addExchangePrompt = async function() {
+                const key = prompt("Ключ (англ, без пробелов, напр. silver):");
+                if (!key) return;
+                const name = prompt("Название (с эмодзи, напр. 🥈 Серебро):");
+                if (!name) return;
+                const base_p = parseInt(prompt("Стартовая цена:"));
+                const min_p = parseInt(prompt("Минимальная цена (дно):"));
+                const max_p = parseInt(prompt("Максимальная цена (верх):"));
+                
+                if (!base_p || !min_p || !max_p) return alert("Неверные цены");
+
+                const r = await fetch(`${SERVER_URL}/api/admin/add_exchange`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({admin_id: userId, key: key, name: name, min_price: min_p, max_price: max_p, base_price: base_p})
+                }).then(x => x.json());
+                if (r.status === 'ok') { alert(r.message); openAdminExchange(); loadRates(); }
+                else alert(r.message);
+            };
+
+            window.openModal = function(id) { document.getElementById(id).style.display = 'flex'; if (tg.BackButton) tg.BackButton.show(); };
+            window.closeModal = function(id) { document.getElementById(id).style.display = 'none'; if (tg.BackButton) tg.BackButton.hide(); };
+
+            // Запуск игры
             loadCompanies();
             checkNotifications();
             setInterval(checkNotifications, 10000);
-        };
-
-        // --- УВЕДОМЛЕНИЯ ---
-        async function checkNotifications() {
-            try {
-                const d = await fetch(`${SERVER_URL}/api/notifications/${userId}`).then(r => r.json());
-                const bar = document.getElementById('notification-bar');
-                
-                if (d.message && d.message.id !== lastNotifMsgId) {
-                    lastNotifMsgId = d.message.id;
-                    bar.innerHTML = `
-                        <div class="notif-badge" onclick="openChatsWith(${d.message.sender_id}, '${d.message.sender_name}')">
-                            <div><b>${d.message.sender_name}</b>: ${d.message.text.substring(0, 20)}...</div>
-                            <span>💬</span>
-                        </div>
-                    `;
-                    setTimeout(() => { 
-                        if (bar.innerHTML.includes(d.message.text.substring(0, 10))) bar.innerHTML = ''; 
-                    }, 5000);
-                } else if (d.broadcast && d.broadcast.id !== lastNotifBcastId) {
-                    lastNotifBcastId = d.broadcast.id;
-                    bar.innerHTML = `
-                        <div class="notif-badge broadcast" onclick="openChatsWith(0, '📢 Администрация')">
-                            <div><b>Администрация</b>: ${d.broadcast.text.substring(0, 20)}...</div>
-                            <span>📢</span>
-                        </div>
-                    `;
-                    setTimeout(() => { 
-                        if (bar.innerHTML.includes(d.broadcast.text.substring(0, 10))) bar.innerHTML = ''; 
-                    }, 7000);
-                }
-            } catch(e) {}
-        }
-
-        async function loadData() {
-            try {
-                const data = await fetch(`${SERVER_URL}/api/balance/${userId}?name=${encodeURIComponent(playerName)}`).then(r => r.json());
-                if (data.error) return tg.showAlert("Ошибка: " + data.error);
-                document.getElementById("user-name").innerText = data.name || playerName;
-                document.getElementById("nickname-input").value = data.name || playerName;
-                document.getElementById("user-balance").innerHTML = `${data.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} <span>Br</span>`;
-                
-                if (data.card_number) document.getElementById("card-number").innerText = data.card_number;
-                if (data.card_cvc) document.getElementById("card-cvc").innerText = "CVC: " + data.card_cvc;
-                document.getElementById("card-holder").innerText = data.name || playerName;
-                
-                userPortfolio = data.portfolio || {};
-                
-                loadRates();
-                
-                if (data.earned > 0) {
-                    const b = document.getElementById("income-badge");
-                    b.innerText = `+ ${data.earned} Br`; b.style.display = 'block';
-                    setTimeout(() => b.style.display = 'none', 5000);
-                }
-                renderApartments(data.apartments || []);
-                renderBusinesses(data.businesses || []);
-                loadDailyBusinesses();
-            } catch(e) { tg.showAlert("Ошибка загрузки данных"); }
-        }
-
-        async function loadLeaderboard() {
-            try {
-                const d = await fetch(`${SERVER_URL}/api/leaderboard`).then(r => r.json());
-                const list = document.getElementById('leaderboard-list'); list.innerHTML = '';
-                if (!d.leaders) return;
-                const medals = ["🥇", "🥈", "🥉", "🏅", "🏅"];
-                d.leaders.forEach((p, i) => {
-                    const fb = p.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                    list.innerHTML += `<div class="list-item"><span>${medals[i]} ${p.name}</span><span style="color:var(--accent);font-weight:bold;">${fb} Br</span></div>`;
-                });
-            } catch(e) {}
-        }
-
-        async function loadRates() {
-            try {
-                currentRates = await fetch(`${SERVER_URL}/api/token_rates`).then(r => r.json());
-                const list = document.getElementById('exchange-list'); list.innerHTML = '';
-                for (const key in currentRates) {
-                    const r = currentRates[key];
-                    const cls = r.trend === 'up' ? 'trend-up' : 'trend-down';
-                    const sym = r.trend === 'up' ? '▲' : '▼';
-                    const owned = userPortfolio[key] || 0;
-                    const displayName = r.name || key.toUpperCase();
-                    list.innerHTML += `
-                        <div class="exchange-card">
-                            <div class="exchange-header">
-                                <div><div class="rate-title">${displayName}</div><div class="rate-price">Цена: ${r.price} Br</div></div>
-                                <div class="rate-trend ${cls}">${sym}</div>
-                            </div>
-                            <div class="exchange-bottom">
-                                <div class="rate-owned">В наличии: ${owned}</div>
-                                <div class="exchange-buttons">
-                                    <button class="btn-buy" onclick="tradeToken('${key}','buy')">Купить</button>
-                                    <button class="btn-sell" onclick="tradeToken('${key}','sell')">Продать</button>
-                                </div>
-                            </div>
-                        </div>`;
-                }
-            } catch(e) {}
-        }
-
-        async function loadCompanies() {
-            try { 
-                const d = await fetch(`${SERVER_URL}/api/companies`).then(r => r.json());
-                companiesData = d.companies || []; 
-            } catch(e) {}
-        }
-
-        function renderApartments(apts) {
-            const list = document.getElementById('my-apartments-list-modal'); list.innerHTML = '';
-            let total = 0;
-            if (apts.length === 0) list.innerHTML = '<div style="text-align:center;color:#8892b0;padding:20px;">Нет квартир</div>';
-            apts.forEach((apt, i) => {
-                total += apt.income;
-                const fi = apt.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                list.innerHTML += `
-                    <div class="my-apt-card">
-                        <div><div class="my-apt-title">🏠 ${apt.name}</div><div class="my-apt-income">+ ${fi} Br/ч</div></div>
-                        <button class="sell-btn" onclick="sellApt(${i},${apt.buy_price||0})">Продать</button>
-                    </div>`;
-            });
-            document.getElementById("modal-total-income").innerText = `${total.toLocaleString()} Br/ч`;
-        }
-
-        function renderBusinesses(buses) {
-            const list = document.getElementById('my-businesses-list'); list.innerHTML = '';
-            if (buses.length === 0) {
-                list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Нет бизнесов</div>';
-                return;
-            }
-            buses.forEach(b => {
-                const fi = b.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                list.innerHTML += `
-                    <div class="bus-card bus-${b.rarity}" style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <div class="bus-title">${b.name} <span style="font-size:13px;color:#a3c2ff;">(${b.rarity})</span></div>
-                            <div class="bus-price">+ ${fi} Br/ч</div>
-                        </div>
-                        <button class="sell-btn" onclick="sellBusiness()">Продать</button>
-                    </div>`;
-            });
-        }
-
-        async function loadDailyBusinesses() {
-            try {
-                const d = await fetch(`${SERVER_URL}/api/businesses/${userId}`).then(r => r.json());
-                const list = document.getElementById('daily-businesses-list'); list.innerHTML = '';
-                if (d.businesses.length === 0) list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Жди 24ч</div>';
-                d.businesses.forEach((b, i) => {
-                    const fp = b.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                    const fi = b.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                    list.innerHTML += `
-                        <div class="bus-card bus-${b.rarity}">
-                            <div class="bus-title">${b.name} <span style="font-size:13px;color:#a3c2ff;">(${b.rarity})</span></div>
-                            <div class="bus-info">+${fi} Br/ч | Нужно кв: ${b.req}</div>
-                            <button class="buy-btn" style="margin-top:10px;width:100%;" onclick="buyBusiness(${i})">Купить за ${fp} Br</button>
-                        </div>`;
-                });
-            } catch(e) {}
-        }
-
-        async function buyBusiness(i) {
-            const r = await fetch(`${SERVER_URL}/api/buy_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, business_index: i}) }).then(x => x.json());
-            if (r.status === 'ok') { alert(r.message); loadData(); }
-            else alert(r.message);
-        }
-
-        async function sellBusiness() {
-            if (!confirm("Продать компанию за 70% стоимости?")) return;
-            const r = await fetch(`${SERVER_URL}/api/sell_business`, {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({user_id: userId})
-            }).then(x => x.json());
-            if (r.status === 'ok') { alert(r.message); loadData(); }
-            else alert(r.message);
-        }
-
-        // --- ЧАТЫ И ДРУЗЬЯ ---
-        let currentChatId = null;
-        let currentChatStatus = 'none';
-        let chatInterval = null;
-
-        function openChats() {
-            openModal('chat-modal');
-            document.getElementById('chat-list-view').style.display = 'block';
-            document.getElementById('chat-window-view').style.display = 'none';
-            document.getElementById('chat-header-title').innerText = '💬 Чаты';
-            document.getElementById('chat-back-btn').style.display = 'none';
-            loadChats();
-        }
-
-        function openChatsWith(id, name) {
-            openChats();
-            setTimeout(() => {
-                openChatWith(id, name, 'none');
-            }, 300);
-        }
-
-        function closeChat() {
-            closeModal('chat-modal');
-            if(chatInterval) clearInterval(chatInterval);
-        }
-
-        function backToChats() {
-            document.getElementById('chat-list-view').style.display = 'block';
-            document.getElementById('chat-window-view').style.display = 'none';
-            document.getElementById('chat-header-title').innerText = '💬 Чаты';
-            document.getElementById('chat-back-btn').style.display = 'none';
-            currentChatId = null;
-            if(chatInterval) clearInterval(chatInterval);
-            loadChats();
-        }
-
-        async function loadChats() {
-            const list = document.getElementById('chat-list-view');
-            list.innerHTML = 'Загрузка...';
-            try {
-                const d = await fetch(`${SERVER_URL}/api/chats/${userId}`).then(r => r.json());
-                list.innerHTML = '';
-                d.chats.forEach(c => {
-                    let icon = '👤';
-                    if (c.id === 0) icon = '📢';
-                    else if (c.status === 'accepted') icon = '🤝';
-                    else if (c.status === 'pending_in') icon = '🔔';
-                    else if (c.status === 'pending_out') icon = '⏳';
-                    
-                    list.innerHTML += `<div class="chat-item" onclick="openChatWith(${c.id}, '${c.name}', '${c.status}')"><span>${icon} ${c.name}</span><span>></span></div>`;
-                });
-            } catch(e) { list.innerHTML = 'Ошибка'; }
-        }
-
-        async function openChatWith(id, name, initialStatus) {
-            currentChatId = id;
-            currentChatStatus = initialStatus;
-
-            document.getElementById('chat-list-view').style.display = 'none';
-            document.getElementById('chat-window-view').style.display = 'flex';
-            document.getElementById('chat-header-title').innerText = name;
-            document.getElementById('chat-back-btn').style.display = 'block';
-
-            // МГНОВЕННО ЗАПРАШИВАЕМ СТАТУС У СЕРВЕРА
-            try {
-                const st = await fetch(`${SERVER_URL}/api/chat_status/${userId}/${id}`).then(r => r.json());
-                currentChatStatus = st.status;
-                if (currentChatStatus === 'accepted' && id !== 0) {
-                    fetch(`${SERVER_URL}/api/messages/read`, {
-                        method: 'POST', headers: {'Content-Type':'application/json'},
-                        body: JSON.stringify({user_id: userId, other_id: id})
-                    });
-                }
-            } catch(e) { console.error("Статус не загружен"); }
-
-            updateChatUI(currentChatStatus);
-            loadMessages();
-            if(chatInterval) clearInterval(chatInterval);
-            chatInterval = setInterval(loadMessages, 3000);
-        }
-
-        function updateChatUI(status) {
-            const inputPanel = document.getElementById('chat-input-panel');
-            const friendPanel = document.getElementById('friend-request-panel');
-            const friendText = document.getElementById('friend-request-text');
-            const friendBtns = document.getElementById('friend-request-buttons');
-
-            if (currentChatId === 0) {
-                inputPanel.style.display = 'none';
-                friendPanel.style.display = 'block';
-                friendText.innerHTML = 'Это канал администрации. Тут только объявления.';
-                friendBtns.innerHTML = '';
-                return;
-            }
-
-            if (status === 'accepted') {
-                inputPanel.style.display = 'flex';
-                friendPanel.style.display = 'none';
-                document.getElementById('request-money-btn').style.display = 'block';
-            } else {
-                inputPanel.style.display = 'none';
-                friendPanel.style.display = 'block';
-                document.getElementById('request-money-btn').style.display = 'none';
-
-                if (status === 'none') {
-                    friendText.innerHTML = 'Чтобы писать сообщения, добавьте игрока в друзья.';
-                    friendBtns.innerHTML = `<button onclick="sendFriendRequest()" style="background:var(--accent);color:#000;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">➕ Добавить в друзья</button>`;
-                } else if (status === 'pending_out') {
-                    friendText.innerHTML = 'Вы отправили запрос в друзья. Ожидание...';
-                    friendBtns.innerHTML = `<button onclick="declineFriend()" style="background:#f87171;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">Отменить</button>`;
-                } else if (status === 'pending_in') {
-                    friendText.innerHTML = 'Этот игрок хочет добавить вас в друзья!';
-                    friendBtns.innerHTML = `
-                        <button onclick="acceptFriend()" style="background:#4ade80;color:#000;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">Принять</button>
-                        <button onclick="declineFriend()" style="background:#f87171;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">Отклонить</button>
-                    `;
-                }
-            }
-        }
-
-        async function sendFriendRequest() {
-            const r = await fetch(`${SERVER_URL}/api/friends/request`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: currentChatId}) }).then(x => x.json());
-            if (r.status === 'ok' || r.message === "Запрос уже существует") { 
-                currentChatStatus = 'pending_out'; 
-                updateChatUI(currentChatStatus); 
-            }
-            else alert(r.message);
-        }
-
-        async function acceptFriend() {
-            await fetch(`${SERVER_URL}/api/friends/accept`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, other_id: currentChatId}) });
-            currentChatStatus = 'accepted'; updateChatUI(currentChatStatus);
-        }
-
-        async function declineFriend() {
-            await fetch(`${SERVER_URL}/api/friends/decline`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, other_id: currentChatId}) });
-            currentChatStatus = 'none'; updateChatUI(currentChatStatus);
-        }
-
-        async function loadMessages() {
-            if(currentChatId === null) return;
-            try {
-                const d = await fetch(`${SERVER_URL}/api/chat_history/${userId}/${currentChatId}`).then(r => r.json());
-
-                const box = document.getElementById('chat-messages');
-                box.innerHTML = '';
-
-                let items = [];
-                d.messages.forEach(m => items.push({ type: 'msg', data: m, time: m.created_at }));
-                d.requests.forEach(r => items.push({ type: 'req', data: r, time: r.created_at }));
-                items.sort((a, b) => a.time - b.time);
-
-                items.forEach(item => {
-                    if (item.type === 'msg') {
-                        const m = item.data;
-                        const isMe = m.sender_id === userId;
-                        const senderLabel = (m.sender_id === 0 || !isMe && currentChatId === 0) ? `<span class="msg-sender">${m.sender_name}</span>` : '';
-                        box.innerHTML += `
-                            <div class="msg-bubble ${isMe ? 'msg-me' : 'msg-them'}">
-                                ${senderLabel}
-                                ${m.text}
-                            </div>
-                        `;
-                    } else {
-                        const r = item.data;
-                        const isMe = r.sender_id === userId;
-                        if (r.status === 'pending') {
-                            if (isMe) {
-                                box.innerHTML += `<div class="msg-bubble msg-me" style="background:#eab308;color:#000;text-align:center;">💰 Вы запросили <b>${r.amount} Br</b>.<br><span style="font-size:11px;">Ожидание...</span></div>`;
-                            } else {
-                                box.innerHTML += `
-                                    <div class="msg-bubble msg-them" style="background:rgba(234,179,8,0.2);border:1px solid #eab308;text-align:center;">
-                                        <div style="margin-bottom:10px;">💰 <b>Запрос денег</b><br>Игрок <b>${r.sender_name}</b> просит <b>${r.amount} Br</b></div>
-                                        <div style="display:flex; gap:10px; justify-content:center;">
-                                            <button onclick="acceptReq(${r.id})" style="background:#4ade80;color:#000;border:none;padding:8px 15px;border-radius:8px;font-weight:bold;cursor:pointer;">Принять</button>
-                                            <button onclick="declineReq(${r.id})" style="background:#f87171;color:#fff;border:none;padding:8px 15px;border-radius:8px;font-weight:bold;cursor:pointer;">Отклонить</button>
-                                        </div>
-                                    </div>
-                                `;
-                            }
-                        } else if (r.status === 'accepted') {
-                            box.innerHTML += `<div class="msg-bubble msg-me" style="background:#4ade80;color:#000;font-size:12px;text-align:center;">✅ Запрос на <b>${r.amount} Br</b> выполнен!</div>`;
-                        } else if (r.status === 'declined') {
-                            box.innerHTML += `<div class="msg-bubble msg-me" style="background:rgba(248,113,113,0.2);border:1px solid #f87171;color:#fff;font-size:12px;text-align:center;">❌ Запрос на <b>${r.amount} Br</b> отклонен.</div>`;
-                        }
-                    }
-                });
-                box.scrollTop = box.scrollHeight;
-            } catch(e) {}
-        }
-
-        async function sendMessage() {
-            const input = document.getElementById('chat-input');
-            const text = input.value.trim();
-            if (!text || currentChatId === null) return;
-
-            try {
-                const res = await fetch(`${SERVER_URL}/api/send_message`, {
-                    method: 'POST',
-                    headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({sender_id: userId, receiver_id: currentChatId, text: text})
-                });
-                const r = await res.json();
-
-                if (r.status === 'ok') {
-                    input.value = '';
-                    loadMessages();
-                } else {
-                    tg.showAlert('❌ Ошибка: ' + r.message);
-                }
-            } catch (err) {
-                tg.showAlert('⚠️ Ошибка соединения: ' + err.message);
-            }
-        }
-
-        async function requestMoney() {
-            if (!currentChatId) return;
-            const amt = parseInt(prompt("Сколько Br запросить у этого игрока?"));
-            if (isNaN(amt) || amt <= 0) return;
-            const r = await fetch(`${SERVER_URL}/api/request_money`, {
-                method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({sender_id: userId, receiver_id: currentChatId, amount: amt})
-            }).then(x => x.json());
-            
-            if (r.status === 'error') alert(r.message);
-            loadMessages();
-        }
-
-        async function acceptReq(id) {
-            const r = await fetch(`${SERVER_URL}/api/request_money/accept`, {
-                method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({request_id: id, user_id: userId})
-            }).then(x => x.json());
-            if (r.status === 'ok') { loadData(); loadMessages(); }
-            else alert(r.message);
-        }
-
-        async function declineReq(id) {
-            await fetch(`${SERVER_URL}/api/request_money/decline`, {
-                method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({request_id: id, user_id: userId})
-            });
-            loadMessages();
-        }
-
-        // --- ОСТАЛЬНОЕ ---
-        function openMyApts()   { closeModal('city-menu-modal'); openModal('my-apts-modal'); }
-        
-        function openShop() {
-            closeModal('city-menu-modal');
-            const list = document.getElementById('shop-list'); list.innerHTML = '';
-            if (companiesData.length === 0) list.innerHTML = '<div style="text-align:center;padding:20px;">Компании не загружены</div>';
-            companiesData.forEach(g => {
-                let html = `<div class="class-group"><div class="class-title">${g.name}</div>`;
-                g.tiers.forEach(item => {
-                    const fp = item.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                    const fi = item.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                    let discountHtml = '';
-                    if (item.old_price && item.old_price > item.price) {
-                        const op = item.old_price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                        discountHtml = `<span class="discount-badge">СКИДКА</span> <s style="color:#8892b0; font-size:12px; margin-right:5px;">${op} Br</s>`;
-                    }
-                    let sqmHtml = item.sqm ? `<div style="font-size:11px; color:#8892b0;">📐 ${item.sqm} кв.м</div>` : '';
-                    html += `
-                        <div class="apt-shop-item">
-                            <div><div style="font-weight:bold;font-size:15px;margin-bottom:5px;">${item.name}</div>
-                            <div style="font-size:13px;color:var(--accent);font-weight:bold;">+ ${fi} Br/ч</div>${sqmHtml}</div>
-                            <button class="buy-btn" onclick="prepareBuy('${item.name}',${item.price},${item.income})">${discountHtml}${fp} Br</button>
-                        </div>`;
-                });
-                list.innerHTML += html + '</div>';
-            });
-            openModal('shop-modal');
-        }
-
-        let buyItemData = null;
-        function prepareBuy(name, price, income) {
-            buyItemData = { name, price, income };
-            document.getElementById('buy-modal-title').innerText = "Покупка";
-            document.getElementById('buy-modal-text').innerHTML = `Купить <b>"${name}"</b> за <b>${price.toLocaleString()} Br</b>?`;
-            openModal('buy-modal');
-        }
-        async function executeBuy() {
-            closeModal('buy-modal');
-            if (!buyItemData) return;
-            const r = await fetch(`${SERVER_URL}/api/buy`, {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({user_id: userId, user_name: playerName, apartment_name: buyItemData.name, price: buyItemData.price, income: buyItemData.income})
-            }).then(x => x.json());
-            if (r.status === 'ok') { alert('✅ Куплено'); closeModal('shop-modal'); loadData(); }
-            else alert('❌ ' + r.message);
-        }
-        async function sellApt(i, p) {
-            if (!confirm("Продать за 70%?")) return;
-            const r = await fetch(`${SERVER_URL}/api/sell`, {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({user_id: userId, apartment_index: i, price: p})
-            }).then(x => x.json());
-            if (r.status === 'ok') { alert(r.message); loadData(); }
-            else alert(r.message);
-        }
-
-        async function saveNickname() {
-            const n = document.getElementById('nickname-input').value.trim();
-            if (!n) return;
-            await fetch(`${SERVER_URL}/api/set_name`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, name: n}) });
-            document.getElementById('user-name').innerText = n;
-            tg.showAlert('Ок');
-        }
-
-        async function openTransferModal(tid = null) {
-            openModal('transfer-modal');
-            const sel = document.getElementById('transfer-user-select');
-            sel.innerHTML = '<option>Загрузка...</option>';
-            try {
-                const d = await fetch(`${SERVER_URL}/api/all_users`).then(r => r.json());
-                sel.innerHTML = '<option value="">Выбери...</option>';
-                d.users.forEach(u => {
-                    if (u.id !== userId) sel.innerHTML += `<option value="${u.id}" ${u.id===tid?'selected':''}>${u.name}</option>`;
-                });
-            } catch(e) { sel.innerHTML = '<option>Ошибка</option>'; }
-        }
-        async function confirmTransfer() {
-            const rid = document.getElementById('transfer-user-select').value;
-            const amt = parseInt(document.getElementById('transfer-amount').value);
-            if (!rid || isNaN(amt) || amt <= 0) return alert('Заполни');
-            closeModal('transfer-modal');
-            const r = await fetch(`${SERVER_URL}/api/transfer`, {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({sender_id: userId, receiver_id: parseInt(rid), amount: amt})
-            }).then(x => x.json());
-            if (r.status === 'ok') { alert(r.message); loadData(); loadLeaderboard(); }
-            else alert(r.message);
-        }
-        function tradeToken(tok, act) {
-            const a = prompt(`Сколько ${tok} ${act === 'buy' ? 'купить' : 'продать'}?`);
-            if (!a) return;
-            const amt = parseInt(a);
-            if (isNaN(amt) || amt <= 0) return;
-            fetch(`${SERVER_URL}/api/trade_token`, {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({user_id: userId, token_type: tok, amount: amt, action: act})
-            }).then(r => r.json()).then(r => {
-                if (r.status === 'error') alert('❌ ' + r.message);
-                else { alert('✅ ' + r.message); loadData(); }
-            });
-        }
-
-        async function adminBroadcast() {
-            const text = prompt("Введите сообщение для всех игроков:");
-            if (!text) return;
-            const r = await fetch(`${SERVER_URL}/api/admin/broadcast`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, text: text}) }).then(x => x.json());
-            alert(r.message);
-        }
-
-        async function openAdminPanel() {
-            openModal('admin-modal');
-            const list = document.getElementById('admin-users-list'); list.innerHTML = 'Загрузка...';
-            try {
-                const d = await fetch(`${SERVER_URL}/api/admin/users?admin_id=${userId}`).then(r => r.json());
-                list.innerHTML = '';
-                d.users.forEach(u => {
-                    const fb = u.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                    list.innerHTML += `
-                        <div class="user-row">
-                            <div style="display:flex;justify-content:space-between;font-weight:bold;"><span>${u.name}</span><span style="color:var(--accent)">${fb} Br</span></div>
-                            <div style="font-size:13px;color:#8892b0;">ID: ${u.id} | Кв: ${u.apts_count}</div>
-                            <div class="admin-btns">
-                                <button style="background:var(--accent);color:#000;" onclick="adminMoneyModal(${u.id},'${u.name}')">💰</button>
-                                <button style="background:#3b82f6;color:#fff;" onclick="adminViewApts(${u.id})">🏢</button>
-                                <button style="background:#f59e0b;color:#000;" onclick="adminViewBusiness(${u.id})">🏭</button>
-                                <button style="background:#a855f7;color:#fff;" onclick="openTransferModal(${u.id})">💸</button>
-                            </div>
-                        </div>`;
-                });
-            } catch(e) { list.innerHTML = 'Ошибка'; }
-        }
-        let adminTargetId = null;
-        function adminMoneyModal(id, name) {
-            adminTargetId = id;
-            document.getElementById('admin-money-target').innerText = `Игрок: ${name}`;
-            document.getElementById('admin-money-amount').value = '';
-            
-            if (userId === MAIN_ADMIN_ID) {
-                document.getElementById('admin-money-limit').style.display = 'none';
-            } else {
-                document.getElementById('admin-money-limit').style.display = 'block';
-            }
-            
-            openModal('admin-money-modal');
-        }
-        async function adminAddMoney() {
-            const a = parseInt(document.getElementById('admin-money-amount').value); if (!a) return;
-            const r = await fetch(`${SERVER_URL}/api/admin/add_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: a}) }).then(x => x.json());
-            if (r.status === 'error') alert(r.message);
-            else { closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard(); }
-        }
-        async function adminRemoveMoney() {
-            const a = parseInt(document.getElementById('admin-money-amount').value); if (!a) return;
-            await fetch(`${SERVER_URL}/api/admin/remove_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: a}) });
-            closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard();
-        }
-        async function adminViewApts(id) {
-            const d = await fetch(`${SERVER_URL}/api/admin/user_apartments/${id}`).then(r => r.json());
-            alert(d.apartments.map(a => `- ${a.name} (+${a.income} Br/ч)`).join('\n') || "Нет квартир");
-        }
-        async function adminViewBusiness(id) {
-            const d = await fetch(`${SERVER_URL}/api/admin/user_business/${id}`).then(r => r.json());
-            if (!d.businesses || d.businesses.length === 0) return alert("Нет компании");
-            const b = d.businesses[0];
-            if (confirm(`Игрок владеет: ${b.name} (${b.income} Br/ч).\n\nЗабрать компанию?`)) {
-                const r = await fetch(`${SERVER_URL}/api/admin/remove_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: id, amount: 0}) }).then(x => x.json());
-                if (r.status === 'ok') { alert('Компания забрана!'); }
-                else alert('Ошибка');
-            }
-        }
-        async function resetAllUsers() {
-            if (!confirm("⚠️ ВНИМАНИЕ! Это удалит ВСЕХ игроков, их деньги, имущество и ИСТОРИЮ ВСЕХ ЧАТОВ. Продолжить?")) return;
-            const r = await fetch(`${SERVER_URL}/api/admin/reset_all`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id:0, amount:0}) }).then(x => x.json());
-            alert(r.message); loadData(); loadLeaderboard();
-        }
-        async function openAdminAdmins() { openModal('admin-admins-modal'); loadAdminsList(); }
-        async function loadAdminsList() {
-            const list = document.getElementById('admins-list'); list.innerHTML = 'Загрузка...';
-            const d = await fetch(`${SERVER_URL}/api/admin/list_admins?admin_id=${userId}`).then(r => r.json());
-            list.innerHTML = '';
-            d.admins.forEach(id => {
-                const m = id === MAIN_ADMIN_ID;
-                list.innerHTML += `<div class="list-item" style="background:${m?'rgba(74,222,128,0.15)':'rgba(255,255,255,0.05)'};"><span>${m?'👑':'🛡'} ${id}</span>${m?'':`<button onclick="removeAdmin(${id})" style="background:#f87171;border:none;border-radius:8px;padding:6px 12px;font-weight:bold;color:white;">✕</button>`}</div>`;
-            });
-        }
-        async function addAdmin() {
-            const n = parseInt(document.getElementById('new-admin-id').value);
-            if (isNaN(n)) return alert('Неверный ID');
-            const r = await fetch(`${SERVER_URL}/api/admin/add_admin`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: n}) }).then(x => x.json());
-            if (r.status === 'ok') { alert('✅'); document.getElementById('new-admin-id').value = ''; loadAdminsList(); }
-            else alert('❌ ' + r.message);
-        }
-        async function removeAdmin(tid) {
-            if (!confirm("Удалить?")) return;
-            const r = await fetch(`${SERVER_URL}/api/admin/remove_admin`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: tid}) }).then(x => x.json());
-            if (r.status === 'ok') { alert('✅'); loadAdminsList(); }
-            else alert('❌ ' + r.message);
-        }
-        async function openAdminCompanies() {
-            openModal('admin-companies-modal');
-            const list = document.getElementById('admin-companies-list'); list.innerHTML = 'Загрузка...';
-            await loadCompanies();
-            list.innerHTML = '';
-            companiesData.forEach(c => {
-                let tiersHtml = '';
-                c.tiers.forEach((t, idx) => {
-                    let discStr = t.discount ? `<span style="color:#ef4444; font-weight:bold; margin-left:5px;">(-${t.discount}%)</span>` : '';
-                    tiersHtml += `
-                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:8px; border-radius:8px; margin-top:5px;">
-                            <span style="font-size:13px;">${t.name} ${discStr}</span>
-                            <button onclick="adminSetTierDiscount(${c.id}, ${idx}, '${t.name}')" style="background:#ffaa00; color:#000; border:none; padding:5px 10px; border-radius:6px; font-weight:bold; font-size:11px;">🏷 Скидка</button>
-                        </div>
-                    `;
-                });
-                
-                list.innerHTML += `
-                    <div class="user-row" style="border-left-color:#3b82f6;">
-                        <div style="font-weight:bold;">${c.name}</div>
-                        <div style="font-size:13px;color:#8892b0;">Тарифов: ${c.tiers.length}</div>
-                        <div class="admin-btns">
-                            <button style="background:var(--accent);color:#000;" onclick="addTierPrompt(${c.id},'${c.name}')">➕ Добавить</button>
-                            <button style="background:#f87171;color:white;" onclick="deleteCompany(${c.id})">🗑 Удалить</button>
-                        </div>
-                        <div style="margin-top:10px;">${tiersHtml}</div>
-                    </div>`;
-            });
-        }
-        async function adminSetTierDiscount(companyId, tierIndex, tierName) {
-            const pct = parseInt(prompt(`Скидка на "${tierName}" (0-90%):`, "0"));
-            if (isNaN(pct) || pct < 0 || pct > 90) return alert('Неверно');
-            const r = await fetch(`${SERVER_URL}/api/admin/set_tier_discount`, {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({admin_id: userId, company_id: companyId, tier_index: tierIndex, percent: pct})
-            }).then(x => x.json());
-            if (r.status === 'ok') { alert('✅ ' + r.message); openAdminCompanies(); }
-            else alert('❌ ' + r.message);
-        }
-        async function addCompanyPrompt() {
-            const n = prompt("Название компании:");
-            if (!n) return;
-            await fetch(`${SERVER_URL}/api/admin/add_company`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: n}) });
-            openAdminCompanies();
-        }
-        async function addTierPrompt(cid, cname) {
-            const n = prompt(`Квартира в ${cname}:`); if (!n) return;
-            const p = parseInt(prompt("Цена Br:")); const i = parseInt(prompt("Доход Br/ч:"));
-            if (!p || !i) return;
-            const sqm = parseInt(prompt("Кв.м:")) || 0;
-            await fetch(`${SERVER_URL}/api/admin/add_tier/${cid}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: '', tier_data: {name:n,price:p,income:i,sqm:sqm,discount:0}}) });
-            alert("Добавлено!"); openAdminCompanies();
-        }
-        async function deleteCompany(id) {
-            if (!confirm("Удалить компанию?")) return;
-            await fetch(`${SERVER_URL}/api/admin/delete_company/${id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name:''}) });
-            openAdminCompanies();
-        }
-
-        // --- АДМИН БИРЖА ---
-        async function openAdminExchange() {
-            openModal('admin-exchange-modal');
-            const list = document.getElementById('admin-exchange-list'); list.innerHTML = 'Загрузка...';
-            const d = await fetch(`${SERVER_URL}/api/token_rates`).then(r => r.json());
-            
-            list.innerHTML = '';
-            for (const key in d) {
-                const item = d[key];
-                list.innerHTML += `
-                    <div class="user-row" style="border-left-color:#10b981;">
-                        <div style="display:flex; justify-content:space-between; font-weight:bold;">
-                            <span>${item.name || key}</span>
-                            <span style="color:var(--accent)">${item.price} Br</span>
-                        </div>
-                        <div style="font-size:12px; color:#8892b0;">Тренд: ${item.trend === 'up' ? '📈 Вверх' : '📉 Вниз'}</div>
-                        <div class="admin-btns">
-                            <button style="background:#ffaa00;color:#000;" onclick="editExchangeItem('${key}', '${item.name || key}', ${item.price}, '${item.trend}')">✏️ Изменить</button>
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        async function editExchangeItem(key, name, price, trend) {
-            const n_price = parseInt(prompt(`Текущая цена ${name}:`, price));
-            if (isNaN(n_price)) return;
-            const t_dir = prompt(`Тренд (up / down):`, trend);
-            if (!t_dir) return;
-            const min_p = parseInt(prompt(`Минимальная цена (дна):`, Math.floor(n_price * 0.5)));
-            const max_p = parseInt(prompt(`Максимальная цена (верха):`, Math.floor(n_price * 1.5)));
-            
-            if (isNaN(min_p) || isNaN(max_p)) return alert("Неверные лимиты");
-
-            const r = await fetch(`${SERVER_URL}/api/admin/update_exchange`, {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({admin_id: userId, key: key, name: name, min_price: min_p, max_price: max_p, current_price: n_price, trend: t_dir})
-            }).then(x => x.json());
-            if (r.status === 'ok') { alert(r.message); openAdminExchange(); loadRates(); }
-            else alert(r.message);
-        }
-
-        async function addExchangePrompt() {
-            const key = prompt("Ключ (англ, без пробелов, напр. silver):");
-            if (!key) return;
-            const name = prompt("Название (с эмодзи, напр. 🥈 Серебро):");
-            if (!name) return;
-            const base_p = parseInt(prompt("Стартовая цена:"));
-            const min_p = parseInt(prompt("Минимальная цена (дно):"));
-            const max_p = parseInt(prompt("Максимальная цена (верх):"));
-            
-            if (!base_p || !min_p || !max_p) return alert("Неверные цены");
-
-            const r = await fetch(`${SERVER_URL}/api/admin/add_exchange`, {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({admin_id: userId, key: key, name: name, min_price: min_p, max_price: max_p, base_price: base_p})
-            }).then(x => x.json());
-            if (r.status === 'ok') { alert(r.message); openAdminExchange(); loadRates(); }
-            else alert(r.message);
-        }
-
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; if (tg.BackButton) tg.BackButton.show(); }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; if (tg.BackButton) tg.BackButton.hide(); }
-
-        loadData();
-        loadLeaderboard();
+            loadData();
+            loadLeaderboard();
+        });
     </script>
 </body>
 </html>
