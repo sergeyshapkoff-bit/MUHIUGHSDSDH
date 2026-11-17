@@ -145,49 +145,40 @@ def init_db():
                 cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_roll bigint DEFAULT 0;")
                 cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_broadcast_id bigint DEFAULT 0;")
 
-                cur.execute("DROP TABLE IF EXISTS companies")
-                cur.execute("CREATE TABLE companies (id serial primary key, name text, tiers jsonb default '[]'::jsonb);")
+                # Безопасное обновление компаний и биржи без удаления таблиц
+                cur.execute("CREATE TABLE IF NOT EXISTS companies (id serial primary key, name text, tiers jsonb default '[]'::jsonb);")
+                cur.execute("TRUNCATE TABLE companies RESTART IDENTITY;")
                 
-                cur.execute("DROP TABLE IF EXISTS exchange_items")
-                cur.execute("""
-                    CREATE TABLE exchange_items (
-                        key text primary key, name text, min_price bigint, max_price bigint,
-                        current_price bigint, trend text, updated_at bigint
-                    );
-                """)
+                cur.execute("CREATE TABLE IF NOT EXISTS exchange_items (key text primary key, name text, min_price bigint, max_price bigint, current_price bigint, trend text, updated_at bigint);")
+                cur.execute("TRUNCATE TABLE exchange_items;")
 
                 cur.execute("CREATE TABLE IF NOT EXISTS admins (user_id bigint primary key);")
                 
-                # ОЧИСТКА ТАБЛИЦ ЧАТОВ ДЛЯ ИСПРАВЛЕНИЯ ОШИБОК
-                cur.execute("DROP TABLE IF EXISTS messages")
                 cur.execute("""
-                    CREATE TABLE messages (
+                    CREATE TABLE IF NOT EXISTS messages (
                         id serial primary key, sender_id bigint, sender_name text,
                         receiver_id bigint, text text, created_at bigint,
                         is_read boolean default false
                     );
                 """)
+                cur.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read boolean DEFAULT false;")
                 
-                cur.execute("DROP TABLE IF EXISTS money_requests")
                 cur.execute("""
-                    CREATE TABLE money_requests (
+                    CREATE TABLE IF NOT EXISTS money_requests (
                         id serial primary key, sender_id bigint, sender_name text,
                         receiver_id bigint, amount bigint, status text default 'pending', created_at bigint
                     );
                 """)
                 
-                cur.execute("DROP TABLE IF EXISTS friends")
                 cur.execute("""
-                    CREATE TABLE friends (
+                    CREATE TABLE IF NOT EXISTS friends (
                         id serial primary key, user1_id bigint, user2_id bigint,
                         status text default 'pending', action_user_id bigint, created_at bigint,
                         UNIQUE(user1_id, user2_id)
                     );
                 """)
 
-                cur.execute("""
-                    CREATE TABLE IF NOT EXISTS settings (key text primary key, value text);
-                """)
+                cur.execute("CREATE TABLE IF NOT EXISTS settings (key text primary key, value text);")
                 cur.execute("INSERT INTO settings (key, value) VALUES ('apt_discount', '0') ON CONFLICT DO NOTHING;")
                 
                 for comp in DEFAULT_COMPANIES:
