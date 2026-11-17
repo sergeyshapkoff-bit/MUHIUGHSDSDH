@@ -1,767 +1,1192 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from psycopg2 import OperationalError
-import json, time, random, contextlib
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Стройка</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root { --bg-1: #1a1a2e; --bg-3: #0f3460; --accent: #4ade80; --card-bg: rgba(255,255,255,0.08); }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; padding: 0; height: 100vh; background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-3) 100%); color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px; flex-shrink: 0; }
+        .user-info { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+        .avatar { width: 38px; height: 38px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 18px; }
+        .icons { display: flex; gap: 15px; font-size: 22px; opacity: 0.8; cursor: pointer; }
+        
+        #notification-bar { position: absolute; top: 70px; left: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+        .notif-badge { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 12px 16px; border-radius: 12px; font-size: 14px; box-shadow: 0 5px 15px rgba(0,0,0,0.4); display: flex; justify-content: space-between; align-items: center; animation: slideDown 0.4s ease-out; pointer-events: auto; cursor: pointer; }
+        .notif-badge.broadcast { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+        #swipe-container { flex: 1; position: relative; overflow: hidden; }
+        main { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 0 20px 100px 20px; overflow-y: auto; display: none; }
+        main.active { display: block; animation: fadeIn 0.3s; }
+        
+        /* КАРТА */
+        .bank-card { background: linear-gradient(135deg, #2a2a2a, #111111); border-radius: 18px; padding: 25px; margin-bottom: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); position: relative; border: 1px solid rgba(255,255,255,0.1); color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+        .card-shine { position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%); transform: rotate(30deg); pointer-events: none; }
+        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
+        .card-label { font-size: 14px; font-weight: 500; color: #aaa; letter-spacing: 0.5px; }
+        .card-balance { font-size: 28px; font-weight: 700; color: var(--accent); margin-top: 5px; text-shadow: 0 2px 10px rgba(74,222,128,0.2); }
+        .card-balance span { font-size: 16px; color: #ccc; font-weight: normal; }
+        .card-chip { width: 45px; height: 35px; background: linear-gradient(135deg, #fcd34d, #b45309); border-radius: 6px; position: relative; margin-bottom: 15px; box-shadow: inset 0 0 5px rgba(0,0,0,0.3); }
+        .card-chip::after { content: ''; position: absolute; top: 10px; left: 0; width: 100%; height: 2px; background: rgba(0,0,0,0.2); }
+        .card-chip::before { content: ''; position: absolute; top: 20px; left: 0; width: 100%; height: 2px; background: rgba(0,0,0,0.2); }
+        .card-number { font-size: 22px; letter-spacing: 2px; font-family: 'Courier New', Courier, monospace; margin-bottom: 15px; font-weight: 600; display: flex; justify-content: space-between; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); cursor: pointer; }
+        .card-bottom { display: flex; justify-content: space-between; align-items: flex-end; }
+        .card-holder-label { font-size: 9px; color: #777; letter-spacing: 1px; margin-bottom: 2px; }
+        .card-holder { font-size: 14px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
+        .card-expiry-label { font-size: 9px; color: #777; letter-spacing: 1px; margin-bottom: 2px; }
+        .card-expiry { font-size: 14px; font-weight: 500; }
+        .card-cvc { display: flex; align-items: center; cursor: pointer; }
+        
+        .income-badge { position: absolute; top: -15px; right: 25px; background: var(--accent); color: #000; padding: 8px 18px; border-radius: 30px; font-weight: bold; font-size: 15px; box-shadow: 0 6px 15px rgba(74,222,128,0.4); display: none; z-index: 10; }
+        .section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); padding: 16px; border-radius: 18px; margin-bottom: 10px; font-size: 15px; }
+        .btn-action { width: 100%; background: var(--accent); color: #000; border: none; padding: 18px; border-radius: 18px; font-weight: bold; font-size: 17px; margin-top: 10px; cursor: pointer; transition: 0.2s; }
+        .btn-action:active { transform: scale(0.96); }
+        .my-apt-card { background: var(--card-bg); border-left: 4px solid var(--accent); border-radius: 18px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .my-apt-title { font-weight: 700; font-size: 16px; margin-bottom: 6px; }
+        .my-apt-income { font-size: 14px; color: var(--accent); font-weight: bold; }
+        .sell-btn { background: rgba(248,113,113,0.2); color: #f87171; border: 1px solid rgba(248,113,113,0.3); padding: 10px 15px; border-radius: 12px; font-weight: bold; font-size: 13px; cursor: pointer; }
+        .fab-container { position: absolute; bottom: 90px; left: 0; width: 100%; display: flex; justify-content: center; pointer-events: none; z-index: 10; }
+        .fab { width: 65px; height: 65px; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 34px; box-shadow: 0 8px 25px rgba(106,17,203,0.6); border: 3px solid rgba(255,255,255,0.2); pointer-events: auto; cursor: pointer; }
+        .fab:active { transform: scale(0.85); }
+        nav { display: flex; justify-content: space-between; background: rgba(15,23,42,0.95); padding: 12px 10px calc(12px + env(safe-area-inset-bottom)) 10px; border-top-left-radius: 25px; border-top-right-radius: 25px; position: absolute; bottom: 0; width: 100%; z-index: 5; backdrop-filter: blur(10px); }
+        .nav-btn { background: none; border: none; color: #8892b0; font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; flex: 1; }
+        .nav-btn span { font-size: 22px; }
+        .nav-btn.active { color: #ffffff; }
+        .nav-btn.active span { transform: scale(1.15) translateY(-3px); }
+        
+        .exchange-card { background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 18px; margin-bottom: 15px; }
+        .exchange-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .rate-title { font-size: 17px; font-weight: 700; }
+        .rate-price { font-size: 13px; color: #a3c2ff; }
+        .rate-trend { font-size: 18px; font-weight: bold; }
+        .trend-up { color: var(--accent); } .trend-down { color: #f87171; }
+        .exchange-bottom { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; }
+        .rate-owned { font-size: 14px; color: #ffd700; font-weight: bold; background: rgba(255,215,0,0.1); padding: 5px 10px; border-radius: 8px; }
+        .exchange-buttons { display: flex; gap: 8px; }
+        .exchange-buttons button { padding: 8px 15px; border-radius: 10px; border: none; font-weight: bold; font-size: 13px; cursor: pointer; }
+        .btn-buy { background: var(--accent); color: #000; }
+        .btn-sell { background: rgba(248,113,113,0.8); color: white; }
+        
+        .bus-card { background: var(--card-bg); border-radius: 18px; padding: 18px; margin-bottom: 15px; }
+        .bus-Common { border-left: 5px solid #9ca3af; } .bus-Rare { border-left: 5px solid #3b82f6; }
+        .bus-Epic { border-left: 5px solid #a855f7; } .bus-Mythic { border-left: 5px solid #ef4444; }
+        .bus-Legendary { border-left: 5px solid #f59e0b; } .bus-Chromatic { border-left: 5px solid transparent; border-image: linear-gradient(to bottom, #ff0000, #00ff00, #0000ff) 1; }
+        .bus-title { font-size: 17px; font-weight: 700; }
+        .bus-info { font-size: 13px; color: #a3c2ff; }
+        .bus-price { font-size: 15px; color: var(--accent); font-weight: bold; }
+        .buy-btn { background: var(--accent); color: #000; border: none; padding: 12px 18px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 100; display: none; flex-direction: column; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #1e293b; }
+        .modal-header h2 { margin: 0; font-size: 20px; }
+        .close-btn { background: rgba(255,255,255,0.1); border: none; color: white; font-size: 20px; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
+        .modal-content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 50px; }
+        .class-group { margin-bottom: 25px; }
+        .class-title { font-size: 16px; font-weight: 700; color: #a3c2ff; margin-bottom: 12px; }
+        .apt-shop-item { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 16px; border-radius: 16px; margin-bottom: 10px; }
+        .admin-btn { width: 100%; background: #ffaa00; color: #000; padding: 16px; border-radius: 16px; border: none; font-weight: bold; font-size: 16px; margin-top: 20px; cursor: pointer; }
+        .user-row { display: flex; flex-direction: column; gap: 8px; background: var(--card-bg); padding: 16px; border-radius: 16px; margin-bottom: 12px; border-left: 4px solid #ffaa00; }
+        .admin-btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+        .admin-btns button { flex: 1; padding: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 13px; }
+        
+        .custom-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 999; display: none; justify-content: center; align-items: center; }
+        .custom-box { background: #1e293b; padding: 25px 22px; border-radius: 24px; width: 90%; max-width: 350px; max-height: 85vh; overflow-y: auto; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+        .custom-box h3 { margin: 0 0 18px 0; font-size: 22px; }
+        .custom-box p { font-size: 15px; color: #a3c2ff; margin-bottom: 15px; }
+        .custom-box input, .custom-box select { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white; font-size: 16px; outline: none; }
+        select option { color: black; background-color: white; }
+        .modal-actions { display: flex; gap: 10px; }
+        .modal-actions button { padding: 14px; border-radius: 14px; border: none; font-weight: bold; font-size: 16px; cursor: pointer; flex: 1; }
+        .btn-cancel { background: rgba(255,255,255,0.1); color: white; }
+        .btn-confirm { background: var(--accent); color: #000; }
+        .btn-danger { background: #f87171; color: white; }
+        .color-inputs { display: flex; gap: 15px; margin-bottom: 25px; }
+        .color-picker-wrapper { display: flex; flex-direction: column; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 18px; flex: 1; }
+        input[type="color"] { -webkit-appearance: none; border: none; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; padding: 0; background: none; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: 3px solid rgba(255,255,255,0.2); border-radius: 50%; }
+        .menu-btn { width: 100%; padding: 15px; border-radius: 14px; border: none; font-weight: bold; font-size: 16px; margin-bottom: 10px; cursor: pointer; }
+        
+        .chat-container { display: flex; flex-direction: column; height: 100%; }
+        .chat-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .chat-item { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .chat-item:active { background: rgba(255,255,255,0.05); }
+        .chat-window { display: none; flex-direction: column; height: 100%; background: #0f172a; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .msg-bubble { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
+        .msg-me { align-self: flex-end; background: var(--accent); color: #000; border-bottom-right-radius: 4px; }
+        .msg-them { align-self: flex-start; background: rgba(255,255,255,0.1); color: white; border-bottom-left-radius: 4px; }
+        .msg-sender { font-size: 10px; opacity: 0.7; margin-bottom: 3px; display: block; }
+        .chat-input-area { display: flex; padding: 10px; background: #1e293b; gap: 10px; align-items: center; }
+        .chat-input-area input { flex: 1; padding: 12px; border-radius: 20px; border: none; background: rgba(255,255,255,0.1); color: white; outline: none; }
+        
+        .discount-badge { background: #ef4444; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 5px; font-weight: bold; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div id="notification-bar"></div>
 
-DATABASE_URL = (
-    "postgresql://postgres.zmfepxqnxcvkvdjonzhp:p0LwFeRg9NJ7Cusj"
-    "@aws-0-eu-west-1.pooler.supabase.com:6543/postgres"
-    "?sslmode=require"
-)
-MAIN_ADMIN_ID = 5634302903
-GUEST_USER_ID = 123456789
+    <header>
+        <div class="user-info"><div class="avatar">👤</div><span id="user-name">Загрузка...</span></div>
+        <div class="icons">
+            <span onclick="openChats()">💬</span>
+            <span onclick="openModal('settings-modal')">⚙️</span>
+        </div>
+    </header>
 
+    <div id="swipe-container">
+        <main id="tab-balance" class="active">
+            <div class="bank-card" id="main-card">
+                <div class="card-shine"></div>
+                <div id="income-badge" class="income-badge">+ 0 Br</div>
+                <div class="card-top">
+                    <div>
+                        <div class="card-label">Credit Card</div>
+                        <div class="card-balance" id="user-balance">0 <span>Br</span></div>
+                    </div>
+                    <div class="card-label" style="text-align:right;">Bank Name</div>
+                </div>
+                
+                <div class="card-chip"></div>
+                <div class="card-number" onclick="copyText(document.getElementById('card-number').innerText)">
+                    <span id="card-number">**** **** **** ****</span> <span class="copy-icon">📋</span>
+                </div>
+                
+                <div class="card-bottom">
+                    <div>
+                        <div class="card-holder-label">Card Holder</div>
+                        <div class="card-holder" id="card-holder">NAME</div>
+                    </div>
+                    <div>
+                        <div class="card-expiry-label">Valid Thru</div>
+                        <div class="card-expiry">01/80</div>
+                    </div>
+                    <div class="card-cvc" onclick="copyText(document.getElementById('card-cvc').innerText.replace('CVC: ', ''))">
+                        <span id="card-cvc" style="font-family:monospace;">CVC: ***</span> <span class="copy-icon">📋</span>
+                    </div>
+                </div>
+            </div>
+            <button class="btn-action" onclick="openTransferModal()">💸 Перевести Br</button>
+            <div class="section-title" style="margin-top:25px;">Топ по балансу</div>
+            <div id="leaderboard-list"></div>
+        </main>
 
-def get_db(max_retries: int = 3):
-    last_err = None
-    for i in range(max_retries):
-        try:
-            return psycopg2.connect(DATABASE_URL, connect_timeout=10)
-        except OperationalError as e:
-            last_err = e
-            if any(x in str(e).lower() for x in ("too many", "remaining", "timeout", "could not", "closed", "refused")):
-                time.sleep(0.5 * (i + 1)); continue
-            raise
-    raise last_err
+        <main id="tab-businesses">
+            <div class="section-title">Твои Бизнесы</div>
+            <div id="my-businesses-list"></div>
+            <div class="section-title" style="margin-top:25px; color:#ffaa00;">Доступны сегодня (24ч):</div>
+            <div id="daily-businesses-list"></div>
+        </main>
 
+        <main id="tab-trades">
+            <div class="section-title">📈 Биржа (Курсы меняются каждый час)</div>
+            <div id="exchange-list"></div>
+        </main>
+    </div>
 
-@contextlib.contextmanager
-def db_conn():
-    conn = get_db()
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        try: conn.rollback()
-        except Exception: pass
-        raise
-    finally:
-        try: conn.close()
-        except Exception: pass
+    <div class="fab-container"><div class="fab" onclick="openModal('city-menu-modal')">+</div></div>
 
+    <nav>
+        <button class="nav-btn active" onclick="switchTab(0,this)"><span>💰</span>Баланс</button>
+        <button class="nav-btn" onclick="switchTab(1,this)"><span>🏭</span>Бизнесы</button>
+        <button class="nav-btn" onclick="switchTab(2,this)"><span>📈</span>Биржа</button>
+    </nav>
 
-def is_admin(uid: int) -> bool:
-    if uid == MAIN_ADMIN_ID: return True
-    try:
-        with db_conn() as conn:
-            cur = conn.cursor()
-            cur.execute("SELECT 1 FROM admins WHERE user_id = %s", (uid,))
-            r = cur.fetchone(); cur.close()
-            return bool(r)
-    except Exception: return False
+    <!-- ЧАТЫ -->
+    <div id="chat-modal" class="modal-overlay">
+        <div class="modal-header">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <button id="chat-back-btn" style="display:none; background:rgba(255,255,255,0.1); border:none; color:white; padding:8px 12px; border-radius:10px; font-weight:bold; cursor:pointer;" onclick="backToChats()">← Назад</button>
+                <h2 id="chat-header-title">💬 Чаты</h2>
+            </div>
+            <button class="close-btn" onclick="closeChat()">✕</button>
+        </div>
+        <div class="chat-container">
+            <div id="chat-list-view" class="chat-list"></div>
+            <div id="chat-window-view" class="chat-window">
+                <div id="chat-messages" class="chat-messages"></div>
+                
+                <div id="friend-request-panel" style="display:none; padding: 15px; text-align: center; background: #1e293b;">
+                    <div id="friend-request-text" style="margin-bottom: 10px; font-size: 14px;"></div>
+                    <div id="friend-request-buttons" style="display:flex; gap:10px; justify-content:center;"></div>
+                </div>
 
+                <div id="chat-input-panel" class="chat-input-area" style="display:none;">
+                    <button id="request-money-btn" onclick="requestMoney()" style="width:45px; height:45px; background:#ffd700; color:#000; border:none; border-radius:50%; font-size:22px; cursor:pointer;" title="Запросить деньги">💰</button>
+                    <input type="text" id="chat-input" placeholder="Сообщение...">
+                    <button onclick="sendMessage()" style="background:var(--accent); color:#000; border:none; border-radius:50%; width:45px; height:45px; font-size:20px; cursor:pointer;">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-def get_current_rates():
-    now = int(time.time())
-    hour = now // 3600
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM exchange_items")
-        items = cur.fetchall()
-        rates = {}
-        for item in items:
-            name = item['name'] if item['name'] else item['key'].upper()
+    <div id="city-menu-modal" class="custom-modal">
+        <div class="custom-box">
+            <h3>🏙 Недвижимость</h3>
+            <button class="menu-btn" style="background:#3b82f6;color:#fff;" onclick="openMyApts()">🏢 Мои квартиры</button>
+            <button class="menu-btn" style="background:var(--accent);color:#000;" onclick="openShop()">🛒 Купить квартиру</button>
+            <button class="btn-cancel" style="width:100%;padding:13px;border-radius:14px;border:none;font-weight:bold;font-size:15px;" onclick="closeModal('city-menu-modal')">Закрыть</button>
+        </div>
+    </div>
+
+    <div id="my-apts-modal" class="modal-overlay">
+        <div class="modal-header"><h2>🏢 Мои квартиры</h2><button class="close-btn" onclick="closeModal('my-apts-modal')">✕</button></div>
+        <div class="modal-content">
+            <div class="section-title">Доход: <span style="color:var(--accent)" id="modal-total-income">0 Br/ч</span></div>
+            <div id="my-apartments-list-modal"></div>
+        </div>
+    </div>
+    
+    <div id="shop-modal" class="modal-overlay">
+        <div class="modal-header"><h2>🛒 Магазин квартир</h2><button class="close-btn" onclick="closeModal('shop-modal')">✕</button></div>
+        <div class="modal-content" id="shop-list"></div>
+    </div>
+
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal-header"><h2>⚙️ Настройки</h2><button class="close-btn" onclick="closeModal('settings-modal')">✕</button></div>
+        <div class="modal-content">
+            <div class="list-item"><span>Твой ID: <span id="settings-user-id" style="color:var(--accent);float:right;"></span></span></div>
+            <div class="list-item" style="flex-direction:column;align-items:stretch;gap:10px;">
+                <span>Изменить ник:</span>
+                <div style="display:flex;gap:10px;">
+                    <input type="text" id="nickname-input" style="flex:1;padding:10px;border-radius:10px;border:none;background:rgba(255,255,255,0.1);color:white;">
+                    <button onclick="saveNickname()" style="background:var(--accent);border:none;border-radius:10px;padding:0 15px;font-weight:bold;">ОК</button>
+                </div>
+            </div>
+            <div class="section-title" style="margin-top:25px;">Цвета</div>
+            <div class="color-inputs">
+                <div class="color-picker-wrapper"><span>Фон 1</span><input type="color" id="bg-color-1" oninput="setCustomColor('bg1',this.value)"></div>
+                <div class="color-picker-wrapper"><span>Фон 2</span><input type="color" id="bg-color-2" oninput="setCustomColor('bg2',this.value)"></div>
+                <div class="color-picker-wrapper"><span>Карта</span><input type="color" id="card-color" oninput="setCustomColor('card',this.value)"></div>
+            </div>
+            <button id="admin-btn" class="admin-btn" style="display:none;" onclick="openAdminPanel()">👑 Панель Админа</button>
+        </div>
+    </div>
+
+    <!-- АДМИНКА -->
+    <div id="admin-modal" class="modal-overlay">
+        <div class="modal-header"><h2>👑 Админ</h2><button class="close-btn" onclick="closeModal('admin-modal')">✕</button></div>
+        <div class="modal-content">
+            <button class="btn-action" style="background:#3b82f6;color:#fff;margin-bottom:10px;" onclick="openAdminCompanies()">🏢 Компании и Скидки</button>
+            <button class="btn-action" style="background:#10b981;color:#fff;margin-bottom:10px;" onclick="openAdminExchange()">📈 Настроить Биржу</button>
+            <button class="btn-action" style="background:#a855f7;color:#fff;margin-bottom:10px;" onclick="openAdminAdmins()">👥 Админы</button>
             
-            if now - item['updated_at'] > 3600:
-                rng = random.Random(hour + hash(item['key']))
-                change = rng.uniform(-0.05, 0.05)
-                new_price = int(item['current_price'] * (1 + change))
-                new_price = max(item['min_price'], min(item['max_price'], new_price))
-                trend = "up" if change > 0 else "down"
-                cur.execute("UPDATE exchange_items SET current_price = %s, trend = %s, updated_at = %s WHERE key = %s", (new_price, trend, now, item['key']))
-                rates[item['key']] = {"price": new_price, "trend": trend, "name": name}
-            else:
-                rates[item['key']] = {"price": item['current_price'], "trend": item['trend'], "name": name}
-        return rates
-
-DEFAULT_COMPANIES = [
-    {"name": "Эконом - Класс", "tiers": [
-        {"name": "ЖК «Мапид»", "price": 200000, "income": 1650, "sqm": 7},
-        {"name": "Грушевка", "price": 345000, "income": 2860, "sqm": 11},
-        {"name": "ЖК «Малиновый Рай»", "price": 500000, "income": 3750, "sqm": 12}
-    ]},
-    {"name": "Комфорт - Класс", "tiers": [
-        {"name": "ЖК «Новая Боровая»", "price": 1450000, "income": 10000, "sqm": 15},
-        {"name": "Северный Берег", "price": 3000000, "income": 16500, "sqm": 15},
-        {"name": "ЖК «Речной порт»", "price": 3500000, "income": 22000, "sqm": 23},
-        {"name": "Михалово", "price": 5250000, "income": 29500, "sqm": 24},
-        {"name": "ЖК «Саввинская 17»", "price": 11500000, "income": 55000, "sqm": 28},
-        {"name": "ЖК «Изумрудный бор»", "price": 16700000, "income": 75000, "sqm": 31}
-    ]},
-    {"name": "Премиум - Комфорт", "tiers": [
-        {"name": "ЖК - Minsk World", "price": 25000000, "income": 140500, "sqm": 35},
-        {"name": "ЖК «Пирс»", "price": 27500000, "income": 185500, "sqm": 43}
-    ]},
-    {"name": "Бизнес - Класс", "tiers": [
-        {"name": "ЖК «Солнечный»", "price": 35555500, "income": 250000, "sqm": 50},
-        {"name": "ЖК «Зелёная гавань»", "price": 50000000, "income": 350000, "sqm": 50},
-        {"name": "Квартал Depo", "price": 150000000, "income": 500000, "sqm": 50},
-        {"name": "ЖК «Айвазовский City»", "price": 255000000, "income": 625000, "sqm": 55}
-    ]},
-    {"name": "Люкс", "tiers": [
-        {"name": "Central Park Tower", "price": 500000000, "income": 1350000, "sqm": 64},
-        {"name": "ЖК «Француз»", "price": 1000000000, "income": 5000000, "sqm": 100},
-        {"name": "ЖК «АДМ»", "price": 1500000000, "income": 17000000, "sqm": 105}
-    ]},
-    {"name": "Бизнес - Люкс", "tiers": [
-        {"name": "Хрущевка", "price": 15000000000, "income": 80000000, "sqm": 18}
-    ]}
-]
-
-DEFAULT_EXCHANGE = [
-    {"key": "gold", "name": "Золото", "min": 500, "max": 1200, "base": 850},
-    {"key": "ring", "name": "Сплав золота и серебра (кольцо)", "min": 1800, "max": 4000, "base": 2900},
-    {"key": "tesla", "name": "Машина тесла", "min": 35000, "max": 42350, "base": 38000},
-    {"key": "mcdonalds", "name": "Акции макдональса", "min": 45500, "max": 55000, "base": 50000},
-    {"key": "bitcoin", "name": "Биткоин", "min": 60000, "max": 72280, "base": 65000},
-]
-
-def init_db():
-    for attempt in range(1, 4):
-        try:
-            with db_conn() as conn:
-                cur = conn.cursor()
-                cur.execute("""
-                    CREATE TABLE IF NOT EXISTS users (
-                        id bigint primary key, name text, amount bigint default 510000,
-                        apartments jsonb default '[]'::jsonb, businesses jsonb default '[]'::jsonb,
-                        last_payout bigint, last_roll bigint default 0,
-                        daily_businesses jsonb default '[]'::jsonb,
-                        card_number text, card_cvc text,
-                        portfolio jsonb default '{}'::jsonb,
-                        last_broadcast_id bigint default 0
-                    );
-                """)
-                cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS portfolio jsonb DEFAULT '{}'::jsonb;")
-                cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS apartments jsonb DEFAULT '[]'::jsonb;")
-                cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS businesses jsonb DEFAULT '[]'::jsonb;")
-                cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_businesses jsonb DEFAULT '[]'::jsonb;")
-                cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_roll bigint DEFAULT 0;")
-                cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_broadcast_id bigint DEFAULT 0;")
-
-                cur.execute("CREATE TABLE IF NOT EXISTS companies (id serial primary key, name text, tiers jsonb default '[]'::jsonb);")
-                cur.execute("TRUNCATE TABLE companies RESTART IDENTITY;")
-                
-                cur.execute("CREATE TABLE IF NOT EXISTS exchange_items (key text primary key, name text, min_price bigint, max_price bigint, current_price bigint, trend text, updated_at bigint);")
-                cur.execute("TRUNCATE TABLE exchange_items;")
-
-                cur.execute("CREATE TABLE IF NOT EXISTS admins (user_id bigint primary key);")
-                
-                cur.execute("""
-                    CREATE TABLE IF NOT EXISTS messages (
-                        id serial primary key, sender_id bigint, sender_name text,
-                        receiver_id bigint, text text, created_at bigint,
-                        is_read boolean default false
-                    );
-                """)
-                cur.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read boolean DEFAULT false;")
-                
-                cur.execute("""
-                    CREATE TABLE IF NOT EXISTS money_requests (
-                        id serial primary key, sender_id bigint, sender_name text,
-                        receiver_id bigint, amount bigint, status text default 'pending', created_at bigint
-                    );
-                """)
-                
-                cur.execute("""
-                    CREATE TABLE IF NOT EXISTS friends (
-                        id serial primary key, user1_id bigint, user2_id bigint,
-                        status text default 'pending', action_user_id bigint, created_at bigint,
-                        UNIQUE(user1_id, user2_id)
-                    );
-                """)
-
-                cur.execute("CREATE TABLE IF NOT EXISTS settings (key text primary key, value text);")
-                cur.execute("INSERT INTO settings (key, value) VALUES ('apt_discount', '0') ON CONFLICT DO NOTHING;")
-                
-                for comp in DEFAULT_COMPANIES:
-                    cur.execute("INSERT INTO companies (name, tiers) VALUES (%s, %s)", (comp['name'], json.dumps(comp['tiers'])))
-                
-                now = int(time.time())
-                for ex in DEFAULT_EXCHANGE:
-                    cur.execute("INSERT INTO exchange_items (key, name, min_price, max_price, current_price, trend, updated_at) VALUES (%s, %s, %s, %s, %s, 'up', %s)", 
-                                (ex['key'], ex['name'], ex['min'], ex['max'], ex['base'], now))
-
-                cur.close()
-            print(f"✅ init_db OK")
-            return True
-        except Exception as e:
-            print(f"❌ init_db attempt {attempt} failed: {e}")
-            if attempt < 3: time.sleep(2 * attempt)
-    return False
-
-init_db()
-
-class BuyRequest(BaseModel): user_id: int; user_name: str; apartment_name: str; price: int; income: int
-class SellRequest(BaseModel): user_id: int; apartment_index: int; price: int
-class TransferRequest(BaseModel): sender_id: int; receiver_id: int; amount: int
-class TokenRequest(BaseModel): user_id: int; token_type: str; amount: int; action: str
-class BusinessBuyRequest(BaseModel): user_id: int; business_index: int
-class SellBusinessRequest(BaseModel): user_id: int
-class SetNameRequest(BaseModel): user_id: int; name: str
-class AdminMoneyRequest(BaseModel): admin_id: int; target_id: int; amount: int
-class AdminCompanyRequest(BaseModel): admin_id: int; company_name: str; tier_data: dict = None
-class AdminAdminRequest(BaseModel): admin_id: int; target_id: int
-class MessageRequest(BaseModel): sender_id: int; receiver_id: int; text: str
-class BroadcastRequest(BaseModel): admin_id: int; text: str
-class TierDiscountRequest(BaseModel): admin_id: int; company_id: int; tier_index: int; percent: int
-class MoneyRequestModel(BaseModel): sender_id: int; receiver_id: int; amount: int
-class RequestAction(BaseModel): request_id: int; user_id: int
-class FriendRequest(BaseModel): sender_id: int; receiver_id: int
-class FriendAction(BaseModel): user_id: int; other_id: int
-class ExchangeUpdateRequest(BaseModel): admin_id: int; key: str; name: str; min_price: int; max_price: int; current_price: int; trend: str
-class ExchangeAddRequest(BaseModel): admin_id: int; key: str; name: str; min_price: int; max_price: int; base_price: int
-
-
-def safe_json_load(data, default):
-    if isinstance(data, str):
-        try: return json.loads(data)
-        except: return default
-    elif isinstance(data, (list, dict)): return data
-    return default
-
-def calculate_income(amount, apts, buses, last_payout):
-    now = int(time.time())
-    if not last_payout: last_payout = now
-    h = (now - last_payout) // 3600
-    if h > 0:
-        apt_inc = sum(int(a.get("income", 0)) for a in apts if isinstance(a, dict))
-        bus_inc = sum(int(b.get("income", 0)) for b in buses if isinstance(b, dict))
-        earned = (apt_inc + bus_inc) * h
-        return amount + earned, last_payout + h * 3600, earned
-    return amount, last_payout, 0
-
-@app.get("/api/notifications/{user_id}")
-def get_notifications(user_id: int):
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT id, sender_id, sender_name, text, created_at FROM messages WHERE receiver_id = %s AND sender_id != 0 AND is_read = false ORDER BY created_at DESC LIMIT 1", (user_id,))
-        msg = cur.fetchone()
-        
-        cur.execute("SELECT last_broadcast_id FROM users WHERE id = %s", (user_id,))
-        u = cur.fetchone()
-        last_b_id = u['last_broadcast_id'] if u else 0
-        
-        cur.execute("SELECT id, text, created_at FROM messages WHERE receiver_id = 0 AND id > %s ORDER BY created_at DESC LIMIT 1", (last_b_id,))
-        broadcast = cur.fetchone()
-        
-        if broadcast:
-            cur.execute("UPDATE users SET last_broadcast_id = %s WHERE id = %s", (broadcast['id'], user_id))
-        cur.close()
-    return {"message": msg, "broadcast": broadcast}
-
-@app.post("/api/messages/read")
-def mark_messages_read(req: FriendAction):
-    with db_conn() as conn:
-        cur = conn.cursor()
-        cur.execute("UPDATE messages SET is_read = true WHERE receiver_id = %s AND sender_id = %s", (req.user_id, req.other_id))
-        cur.close()
-    return {"status": "ok"}
-
-@app.get("/api/token_rates")
-def get_rates(): return get_current_rates()
-
-@app.post("/api/admin/update_exchange")
-def admin_update_exchange(req: ExchangeUpdateRequest):
-    if not is_admin(req.admin_id): return {"status": "error"}
-    with db_conn() as conn:
-        cur = conn.cursor()
-        cur.execute("""
-            UPDATE exchange_items 
-            SET name = %s, min_price = %s, max_price = %s, current_price = %s, trend = %s, updated_at = %s
-            WHERE key = %s
-        """, (req.name, req.min_price, req.max_price, req.current_price, req.trend, int(time.time()), req.key))
-        cur.close()
-    return {"status": "ok", "message": "Биржа обновлена!"}
-
-@app.post("/api/admin/add_exchange")
-def admin_add_exchange(req: ExchangeAddRequest):
-    if not is_admin(req.admin_id): return {"status": "error"}
-    with db_conn() as conn:
-        cur = conn.cursor()
-        try:
-            cur.execute("""
-                INSERT INTO exchange_items (key, name, min_price, max_price, current_price, trend, updated_at)
-                VALUES (%s, %s, %s, %s, %s, 'up', %s)
-            """, (req.key, req.name, req.min_price, req.max_price, req.base_price, int(time.time())))
-            cur.close()
-            return {"status": "ok", "message": "Актив добавлен!"}
-        except Exception as e:
-            return {"status": "error", "message": "Такой ключ уже существует"}
-
-@app.post("/api/trade_token")
-def trade_token(req: TokenRequest):
-    rates = get_current_rates()
-    if req.token_type not in rates: return {"status": "error", "message": "Неизвестный актив"}
-    cost = req.amount * rates[req.token_type]['price']
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT amount, portfolio FROM users WHERE id = %s", (req.user_id,)); row = cur.fetchone()
-        port = safe_json_load(row['portfolio'], {}); cur_qty = int(port.get(req.token_type, 0))
-        if req.action == "buy":
-            if int(row['amount']) < cost: return {"status": "error", "message": "Мало Br"}
-            port[req.token_type] = cur_qty + req.amount
-            cur.execute("UPDATE users SET amount = amount - %s, portfolio = %s WHERE id = %s", (cost, json.dumps(port), req.user_id))
-        else:
-            if cur_qty < req.amount: return {"status": "error", "message": "Мало активов"}
-            port[req.token_type] = cur_qty - req.amount
-            cur.execute("UPDATE users SET amount = amount + %s, portfolio = %s WHERE id = %s", (cost, json.dumps(port), req.user_id))
-        cur.close()
-    return {"status": "ok", "message": "Сделка успешна!"}
-
-@app.get("/api/chats/{user_id}")
-def get_chats(user_id: int):
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM friends WHERE user1_id = %s OR user2_id = %s", (user_id, user_id))
-        friendships = cur.fetchall()
-        friend_map = {}
-        for f in friendships:
-            other = f['user2_id'] if f['user1_id'] == user_id else f['user1_id']
-            if f['status'] == 'accepted': friend_map[other] = 'accepted'
-            elif f['status'] == 'pending': friend_map[other] = 'pending_out' if f['action_user_id'] == user_id else 'pending_in'
-
-        cur.execute("""
-            SELECT u.id, u.name, MAX(m.created_at) as last_msg
-            FROM users u LEFT JOIN messages m ON (m.sender_id = u.id AND m.receiver_id = %s) OR (m.sender_id = %s AND m.receiver_id = u.id)
-            WHERE u.id != %s GROUP BY u.id, u.name ORDER BY last_msg DESC NULLS LAST, u.amount DESC LIMIT 100
-        """, (user_id, user_id, user_id))
-        users = cur.fetchall()
-        
-        chats = [{"id": 0, "name": "📢 Администрация", "status": "admin"}]
-        for u in users:
-            chats.append({"id": u['id'], "name": u['name'], "status": friend_map.get(u['id'], 'none')})
-        cur.close()
-    return {"chats": chats}
-
-@app.get("/api/chat_status/{user_id}/{other_id}")
-def get_chat_status(user_id: int, other_id: int):
-    if other_id == 0: return {"status": "admin"}
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM friends WHERE (user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s)", (user_id, other_id, other_id, user_id))
-        row = cur.fetchone()
-        cur.close()
-        if not row: return {"status": "none"}
-        if row['status'] == 'accepted': return {"status": "accepted"}
-        if row['action_user_id'] == user_id: return {"status": "pending_out"}
-        return {"status": "pending_in"}
-
-# ИСПРАВЛЕННАЯ ФУНКЦИЯ ИСТОРИИ ЧАТА
-@app.get("/api/chat_history/{user_id}/{other_id}")
-def get_chat_history(user_id: int, other_id: int):
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        
-        if other_id == 0:
-            cur.execute("SELECT * FROM messages WHERE receiver_id = 0 ORDER BY created_at ASC LIMIT 100")
-            msgs = cur.fetchall()
-        else:
-            # СНАЧАЛА ДЕЛАЕМ SELECT И ЗАБИРАЕМ РЕЗУЛЬТАТ
-            cur.execute("SELECT * FROM messages WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s) ORDER BY created_at ASC LIMIT 100", (user_id, other_id, other_id, user_id))
-            msgs = cur.fetchall()
+            <button class="btn-action" style="background:#f59e0b;color:#000;margin-bottom:20px;" onclick="adminBroadcast()">📢 Рассылка всем</button>
             
-            # ПОТОМ СТАВИМ ПРОЧИТАНО
-            cur.execute("UPDATE messages SET is_read = true WHERE receiver_id = %s AND sender_id = %s", (user_id, other_id))
+            <div class="section-title">Игроки</div>
+            <div id="admin-users-list"></div>
+            <button class="admin-btn" style="background:#f87171;margin-top:20px;" onclick="resetAllUsers()">⚠️ Сбросить ВСЕХ</button>
+        </div>
+    </div>
+    
+    <!-- Модалка биржи админа -->
+    <div id="admin-exchange-modal" class="modal-overlay">
+        <div class="modal-header"><h2>📈 Биржа</h2><button class="close-btn" onclick="closeModal('admin-exchange-modal')">✕</button></div>
+        <div class="modal-content">
+            <button class="btn-action" style="background:var(--accent);color:#000;margin-bottom:20px;" onclick="addExchangePrompt()">➕ Добавить актив</button>
+            <div id="admin-exchange-list"></div>
+        </div>
+    </div>
 
-        if other_id == 0: 
-            reqs = []
-        else:
-            cur.execute("SELECT * FROM money_requests WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s) ORDER BY created_at ASC LIMIT 100", (user_id, other_id, other_id, user_id))
-            reqs = cur.fetchall()
+    <div id="admin-admins-modal" class="modal-overlay">
+        <div class="modal-header"><h2>👥 Админы</h2><button class="close-btn" onclick="closeModal('admin-admins-modal')">✕</button></div>
+        <div class="modal-content">
+            <div class="list-item" style="gap:10px;">
+                <input type="number" id="new-admin-id" placeholder="ID" style="flex:1;padding:10px;border-radius:10px;border:none;background:rgba(255,255,255,0.1);color:white;">
+                <button onclick="addAdmin()" style="background:var(--accent);border:none;border-radius:10px;padding:0 15px;font-weight:bold;">Доб.</button>
+            </div>
+            <div class="section-title" style="margin-top:25px;">Админы</div>
+            <div id="admins-list"></div>
+        </div>
+    </div>
+
+    <div id="admin-companies-modal" class="modal-overlay">
+        <div class="modal-header"><h2>🏢 Компании</h2><button class="close-btn" onclick="closeModal('admin-companies-modal')">✕</button></div>
+        <div class="modal-content">
+            <button class="btn-action" style="background:var(--accent);color:#000;margin-bottom:20px;" onclick="addCompanyPrompt()">➕ Добавить компанию</button>
+            <div id="admin-companies-list"></div>
+        </div>
+    </div>
+
+    <div id="transfer-modal" class="custom-modal">
+        <div class="custom-box">
+            <h3>💸 Перевод</h3>
+            <select id="transfer-user-select"></select>
+            <input type="number" id="transfer-amount" placeholder="Сумма Br">
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('transfer-modal')">Отмена</button><button class="btn-confirm" onclick="confirmTransfer()">Отправить</button></div>
+        </div>
+    </div>
+    
+    <div id="buy-modal" class="custom-modal">
+        <div class="custom-box">
+            <h3 id="buy-modal-title">Купить?</h3>
+            <p id="buy-modal-text"></p>
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('buy-modal')">Отмена</button><button class="btn-confirm" onclick="executeBuy()">Купить</button></div>
+        </div>
+    </div>
+    
+    <div id="admin-money-modal" class="custom-modal">
+        <div class="custom-box">
+            <h3>Деньги</h3>
+            <p id="admin-money-target"></p>
+            <input type="number" id="admin-money-amount" placeholder="Сумма Br">
+            <p id="admin-money-limit" style="font-size:12px;color:#ffaa00;margin-top:-10px;margin-bottom:15px;display:none;">Лимит: 500 000 Br за раз</p>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal('admin-money-modal')">Отмена</button>
+                <button class="btn-confirm" onclick="adminAddMoney()">Выдать</button>
+                <button class="btn-danger" onclick="adminRemoveMoney()">Забрать</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tg = window.Telegram.WebApp || {};
+            if (tg.expand) tg.expand();
+
+            const user = tg.initDataUnsafe?.user;
+            let userId = user ? user.id : 123456789;
+            let playerName = user ? (user.first_name + (user.last_name ? " " + user.last_name : "")) : "Гость";
+            const MAIN_ADMIN_ID = 5634302903;
+            const SERVER_URL = "https://mmiji.de1.netrun.io";
+
+            let currentRates = {}, companiesData = [], userPortfolio = {};
+            let lastNotifMsgId = 0;
+            let lastNotifBcastId = 0;
+            let currentChatId = null;
+            let currentChatStatus = 'none';
+            let chatInterval = null;
+
+            document.getElementById("settings-user-id").innerText = userId;
+
+            window.checkAdmin = async function() {
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/check_admin/${userId}`).then(r => r.json());
+                    if (d.is_admin) document.getElementById("admin-btn").style.display = "block";
+                } catch(e) {}
+            };
+            checkAdmin();
+
+            let tabs = ['balance', 'businesses', 'trades'];
+            let currentTabIndex = 0, touchStartX = 0;
+
+            window.updateTabs = function() {
+                document.querySelectorAll('main').forEach(m => m.classList.remove('active'));
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('tab-' + tabs[currentTabIndex]).classList.add('active');
+                document.querySelectorAll('.nav-btn')[currentTabIndex].classList.add('active');
+            };
+
+            window.switchTab = function(i) { currentTabIndex = i; updateTabs(); };
+
+            document.getElementById('swipe-container').addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX);
+            document.getElementById('swipe-container').addEventListener('touchmove', e => {
+                const diff = touchStartX - e.changedTouches[0].screenX;
+                if (Math.abs(diff) > 70) {
+                    if (diff > 0 && currentTabIndex < tabs.length - 1) { currentTabIndex++; updateTabs(); touchStartX = e.changedTouches[0].screenX; }
+                    else if (diff < 0 && currentTabIndex > 0) { currentTabIndex--; updateTabs(); touchStartX = e.changedTouches[0].screenX; }
+                }
+            });
+
+            window.copyText = function(t) {
+                try {
+                    if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(t).then(() => tg.showAlert('📋 Скопировано'));
+                    } else {
+                        const ta = document.createElement('textarea'); ta.value = t;
+                        ta.style.position = 'fixed'; ta.style.opacity = '0';
+                        document.body.appendChild(ta); ta.select();
+                        document.execCommand('copy'); document.body.removeChild(ta);
+                        tg.showAlert('📋 Скопировано');
+                    }
+                } catch(e) { tg.showAlert('Не удалось'); }
+            };
+
+            window.setCustomColor = function(type, color) {
+                if (type === 'bg1') { document.documentElement.style.setProperty('--bg-1', color); localStorage.setItem('customBg1', color); }
+                else if (type === 'bg2') { document.documentElement.style.setProperty('--bg-3', color); localStorage.setItem('customBg2', color); }
+                else if (type === 'card') { document.getElementById('main-card').style.background = color; localStorage.setItem('customCard', color); }
+            };
+
+            const bg1 = localStorage.getItem('customBg1') || '#1a1a2e';
+            const bg2 = localStorage.getItem('customBg2') || '#0f3460';
+            document.documentElement.style.setProperty('--bg-1', bg1);
+            document.documentElement.style.setProperty('--bg-3', bg2);
+            document.getElementById('bg-color-1').value = bg1;
+            document.getElementById('bg-color-2').value = bg2;
+            const cardColor = localStorage.getItem('customCard');
+            if (cardColor) document.getElementById('main-card').style.background = cardColor;
+
+            // УВЕДОМЛЕНИЯ
+            window.checkNotifications = async function() {
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/notifications/${userId}`).then(r => r.json());
+                    const bar = document.getElementById('notification-bar');
+                    
+                    if (d.message && d.message.id !== lastNotifMsgId) {
+                        lastNotifMsgId = d.message.id;
+                        bar.innerHTML = `
+                            <div class="notif-badge" onclick="openChatsWith(${d.message.sender_id}, '${d.message.sender_name}')">
+                                <div><b>${d.message.sender_name}</b>: ${d.message.text.substring(0, 20)}...</div>
+                                <span>💬</span>
+                            </div>
+                        `;
+                        setTimeout(() => { 
+                            if (bar.innerHTML.includes(d.message.text.substring(0, 10))) bar.innerHTML = ''; 
+                        }, 5000);
+                    } else if (d.broadcast && d.broadcast.id !== lastNotifBcastId) {
+                        lastNotifBcastId = d.broadcast.id;
+                        bar.innerHTML = `
+                            <div class="notif-badge broadcast" onclick="openChatsWith(0, '📢 Администрация')">
+                                <div><b>Администрация</b>: ${d.broadcast.text.substring(0, 20)}...</div>
+                                <span>📢</span>
+                            </div>
+                        `;
+                        setTimeout(() => { 
+                            if (bar.innerHTML.includes(d.broadcast.text.substring(0, 10))) bar.innerHTML = ''; 
+                        }, 7000);
+                    }
+                } catch(e) {}
+            };
+
+            window.loadData = async function() {
+                try {
+                    const data = await fetch(`${SERVER_URL}/api/balance/${userId}?name=${encodeURIComponent(playerName)}`).then(r => r.json());
+                    if (data.error) return tg.showAlert("Ошибка: " + data.error);
+                    document.getElementById("user-name").innerText = data.name || playerName;
+                    document.getElementById("nickname-input").value = data.name || playerName;
+                    document.getElementById("user-balance").innerHTML = `${data.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} <span>Br</span>`;
+                    
+                    if (data.card_number) document.getElementById("card-number").innerText = data.card_number;
+                    if (data.card_cvc) document.getElementById("card-cvc").innerText = "CVC: " + data.card_cvc;
+                    document.getElementById("card-holder").innerText = data.name || playerName;
+                    
+                    userPortfolio = data.portfolio || {};
+                    
+                    loadRates();
+                    
+                    if (data.earned > 0) {
+                        const b = document.getElementById("income-badge");
+                        b.innerText = `+ ${data.earned} Br`; b.style.display = 'block';
+                        setTimeout(() => b.style.display = 'none', 5000);
+                    }
+                    renderApartments(data.apartments || []);
+                    renderBusinesses(data.businesses || []);
+                    loadDailyBusinesses();
+                } catch(e) { tg.showAlert("Ошибка загрузки данных"); }
+            };
+
+            window.loadLeaderboard = async function() {
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/leaderboard`).then(r => r.json());
+                    const list = document.getElementById('leaderboard-list'); list.innerHTML = '';
+                    if (!d.leaders) return;
+                    const medals = ["🥇", "🥈", "🥉", "🏅", "🏅"];
+                    d.leaders.forEach((p, i) => {
+                        const fb = p.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                        list.innerHTML += `<div class="list-item"><span>${medals[i]} ${p.name}</span><span style="color:var(--accent);font-weight:bold;">${fb} Br</span></div>`;
+                    });
+                } catch(e) {}
+            };
+
+            window.loadRates = async function() {
+                try {
+                    currentRates = await fetch(`${SERVER_URL}/api/token_rates`).then(r => r.json());
+                    const list = document.getElementById('exchange-list'); list.innerHTML = '';
+                    for (const key in currentRates) {
+                        const r = currentRates[key];
+                        const cls = r.trend === 'up' ? 'trend-up' : 'trend-down';
+                        const sym = r.trend === 'up' ? '▲' : '▼';
+                        const owned = userPortfolio[key] || 0;
+                        const displayName = r.name || key.toUpperCase();
+                        list.innerHTML += `
+                            <div class="exchange-card">
+                                <div class="exchange-header">
+                                    <div><div class="rate-title">${displayName}</div><div class="rate-price">Цена: ${r.price} Br</div></div>
+                                    <div class="rate-trend ${cls}">${sym}</div>
+                                </div>
+                                <div class="exchange-bottom">
+                                    <div class="rate-owned">В наличии: ${owned}</div>
+                                    <div class="exchange-buttons">
+                                        <button class="btn-buy" onclick="tradeToken('${key}','buy')">Купить</button>
+                                        <button class="btn-sell" onclick="tradeToken('${key}','sell')">Продать</button>
+                                    </div>
+                                </div>
+                            </div>`;
+                    }
+                } catch(e) {}
+            };
+
+            window.loadCompanies = async function() {
+                try { 
+                    const d = await fetch(`${SERVER_URL}/api/companies`).then(r => r.json());
+                    companiesData = d.companies || []; 
+                } catch(e) {}
+            };
+
+            window.renderApartments = function(apts) {
+                const list = document.getElementById('my-apartments-list-modal'); list.innerHTML = '';
+                let total = 0;
+                if (apts.length === 0) list.innerHTML = '<div style="text-align:center;color:#8892b0;padding:20px;">Нет квартир</div>';
+                apts.forEach((apt, i) => {
+                    total += apt.income;
+                    const fi = apt.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    list.innerHTML += `
+                        <div class="my-apt-card">
+                            <div><div class="my-apt-title">🏠 ${apt.name}</div><div class="my-apt-income">+ ${fi} Br/ч</div></div>
+                            <button class="sell-btn" onclick="sellApt(${i},${apt.buy_price||0})">Продать</button>
+                        </div>`;
+                });
+                document.getElementById("modal-total-income").innerText = `${total.toLocaleString()} Br/ч`;
+            };
+
+            window.renderBusinesses = function(buses) {
+                const list = document.getElementById('my-businesses-list'); list.innerHTML = '';
+                if (buses.length === 0) {
+                    list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Нет бизнесов</div>';
+                    return;
+                }
+                buses.forEach(b => {
+                    const fi = b.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                    list.innerHTML += `
+                        <div class="bus-card bus-${b.rarity}" style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div class="bus-title">${b.name} <span style="font-size:13px;color:#a3c2ff;">(${b.rarity})</span></div>
+                                <div class="bus-price">+ ${fi} Br/ч</div>
+                            </div>
+                            <button class="sell-btn" onclick="sellBusiness()">Продать</button>
+                        </div>`;
+                });
+            };
+
+            window.loadDailyBusinesses = async function() {
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/businesses/${userId}`).then(r => r.json());
+                    const list = document.getElementById('daily-businesses-list'); list.innerHTML = '';
+                    if (d.businesses.length === 0) list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Жди 24ч</div>';
+                    d.businesses.forEach((b, i) => {
+                        const fp = b.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                        const fi = b.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                        list.innerHTML += `
+                            <div class="bus-card bus-${b.rarity}">
+                                <div class="bus-title">${b.name} <span style="font-size:13px;color:#a3c2ff;">(${b.rarity})</span></div>
+                                <div class="bus-info">+${fi} Br/ч | Нужно кв: ${b.req}</div>
+                                <button class="buy-btn" style="margin-top:10px;width:100%;" onclick="buyBusiness(${i})">Купить за ${fp} Br</button>
+                            </div>`;
+                    });
+                } catch(e) {}
+            };
+
+            window.buyBusiness = async function(i) {
+                const r = await fetch(`${SERVER_URL}/api/buy_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, business_index: i}) }).then(x => x.json());
+                if (r.status === 'ok') { alert(r.message); loadData(); }
+                else alert(r.message);
+            };
+
+            window.sellBusiness = async function() {
+                if (!confirm("Продать компанию за 70% стоимости?")) return;
+                const r = await fetch(`${SERVER_URL}/api/sell_business`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({user_id: userId})
+                }).then(x => x.json());
+                if (r.status === 'ok') { alert(r.message); loadData(); }
+                else alert(r.message);
+            };
+
+            // ЧАТЫ
+            window.openChats = function() {
+                openModal('chat-modal');
+                document.getElementById('chat-list-view').style.display = 'block';
+                document.getElementById('chat-window-view').style.display = 'none';
+                document.getElementById('chat-header-title').innerText = '💬 Чаты';
+                document.getElementById('chat-back-btn').style.display = 'none';
+                loadChats();
+            };
+
+            window.openChatsWith = function(id, name) {
+                openChats();
+                setTimeout(() => {
+                    openChatWith(id, name, 'none');
+                }, 300);
+            };
+
+            window.closeChat = function() {
+                closeModal('chat-modal');
+                if(chatInterval) clearInterval(chatInterval);
+            };
+
+            window.backToChats = function() {
+                document.getElementById('chat-list-view').style.display = 'block';
+                document.getElementById('chat-window-view').style.display = 'none';
+                document.getElementById('chat-header-title').innerText = '💬 Чаты';
+                document.getElementById('chat-back-btn').style.display = 'none';
+                currentChatId = null;
+                if(chatInterval) clearInterval(chatInterval);
+                loadChats();
+            };
+
+            window.loadChats = async function() {
+                const list = document.getElementById('chat-list-view');
+                list.innerHTML = 'Загрузка...';
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/chats/${userId}`).then(r => r.json());
+                    list.innerHTML = '';
+                    d.chats.forEach(c => {
+                        let icon = '👤';
+                        if (c.id === 0) icon = '📢';
+                        else if (c.status === 'accepted') icon = '🤝';
+                        else if (c.status === 'pending_in') icon = '🔔';
+                        else if (c.status === 'pending_out') icon = '⏳';
+                        
+                        list.innerHTML += `<div class="chat-item" onclick="openChatWith(${c.id}, '${c.name}', '${c.status}')"><span>${icon} ${c.name}</span><span>></span></div>`;
+                    });
+                } catch(e) { list.innerHTML = 'Ошибка'; }
+            };
+
+            window.openChatWith = async function(id, name, initialStatus) {
+                currentChatId = id;
+                currentChatStatus = initialStatus;
+
+                document.getElementById('chat-list-view').style.display = 'none';
+                document.getElementById('chat-window-view').style.display = 'flex';
+                document.getElementById('chat-header-title').innerText = name;
+                document.getElementById('chat-back-btn').style.display = 'block';
+
+                try {
+                    const st = await fetch(`${SERVER_URL}/api/chat_status/${userId}/${id}`).then(r => r.json());
+                    currentChatStatus = st.status;
+                    if (currentChatStatus === 'accepted' && id !== 0) {
+                        fetch(`${SERVER_URL}/api/messages/read`, {
+                            method: 'POST', headers: {'Content-Type':'application/json'},
+                            body: JSON.stringify({user_id: userId, other_id: id})
+                        });
+                    }
+                } catch(e) { console.error("Статус не загружен"); }
+
+                updateChatUI(currentChatStatus);
+                loadMessages();
+                if(chatInterval) clearInterval(chatInterval);
+                chatInterval = setInterval(loadMessages, 3000);
+            };
+
+            window.updateChatUI = function(status) {
+                const inputPanel = document.getElementById('chat-input-panel');
+                const friendPanel = document.getElementById('friend-request-panel');
+                const friendText = document.getElementById('friend-request-text');
+                const friendBtns = document.getElementById('friend-request-buttons');
+
+                if (currentChatId === 0) {
+                    inputPanel.style.display = 'none';
+                    friendPanel.style.display = 'block';
+                    friendText.innerHTML = 'Это канал администрации. Тут только объявления.';
+                    friendBtns.innerHTML = '';
+                    return;
+                }
+
+                if (status === 'accepted') {
+                    inputPanel.style.display = 'flex';
+                    friendPanel.style.display = 'none';
+                    document.getElementById('request-money-btn').style.display = 'block';
+                } else {
+                    inputPanel.style.display = 'none';
+                    friendPanel.style.display = 'block';
+                    document.getElementById('request-money-btn').style.display = 'none';
+
+                    if (status === 'none') {
+                        friendText.innerHTML = 'Чтобы писать сообщения, добавьте игрока в друзья.';
+                        friendBtns.innerHTML = `<button onclick="sendFriendRequest()" style="background:var(--accent);color:#000;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">➕ Добавить в друзья</button>`;
+                    } else if (status === 'pending_out') {
+                        friendText.innerHTML = 'Вы отправили запрос в друзья. Ожидание...';
+                        friendBtns.innerHTML = `<button onclick="declineFriend()" style="background:#f87171;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">Отменить</button>`;
+                    } else if (status === 'pending_in') {
+                        friendText.innerHTML = 'Этот игрок хочет добавить вас в друзья!';
+                        friendBtns.innerHTML = `
+                            <button onclick="acceptFriend()" style="background:#4ade80;color:#000;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">Принять</button>
+                            <button onclick="declineFriend()" style="background:#f87171;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">Отклонить</button>
+                        `;
+                    }
+                }
+            };
+
+            window.sendFriendRequest = async function() {
+                const r = await fetch(`${SERVER_URL}/api/friends/request`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: currentChatId}) }).then(x => x.json());
+                if (r.status === 'ok' || r.message === "Запрос уже существует") { 
+                    currentChatStatus = 'pending_out'; 
+                    updateChatUI(currentChatStatus); 
+                }
+                else alert(r.message);
+            };
+
+            window.acceptFriend = async function() {
+                await fetch(`${SERVER_URL}/api/friends/accept`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, other_id: currentChatId}) });
+                currentChatStatus = 'accepted'; updateChatUI(currentChatStatus);
+            };
+
+            window.declineFriend = async function() {
+                await fetch(`${SERVER_URL}/api/friends/decline`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, other_id: currentChatId}) });
+                currentChatStatus = 'none'; updateChatUI(currentChatStatus);
+            };
+
+            window.loadMessages = async function() {
+                if(currentChatId === null) return;
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/chat_history/${userId}/${currentChatId}`).then(r => r.json());
+
+                    const box = document.getElementById('chat-messages');
+                    box.innerHTML = '';
+
+                    let items = [];
+                    d.messages.forEach(m => items.push({ type: 'msg', data: m, time: m.created_at }));
+                    d.requests.forEach(r => items.push({ type: 'req', data: r, time: r.created_at }));
+                    items.sort((a, b) => a.time - b.time);
+
+                    items.forEach(item => {
+                        if (item.type === 'msg') {
+                            const m = item.data;
+                            const isMe = m.sender_id === userId;
+                            const senderLabel = (m.sender_id === 0 || !isMe && currentChatId === 0) ? `<span class="msg-sender">${m.sender_name}</span>` : '';
+                            box.innerHTML += `
+                                <div class="msg-bubble ${isMe ? 'msg-me' : 'msg-them'}">
+                                    ${senderLabel}
+                                    ${m.text}
+                                </div>
+                            `;
+                        } else {
+                            const r = item.data;
+                            const isMe = r.sender_id === userId;
+                            if (r.status === 'pending') {
+                                if (isMe) {
+                                    box.innerHTML += `<div class="msg-bubble msg-me" style="background:#eab308;color:#000;text-align:center;">💰 Вы запросили <b>${r.amount} Br</b>.<br><span style="font-size:11px;">Ожидание...</span></div>`;
+                                } else {
+                                    box.innerHTML += `
+                                        <div class="msg-bubble msg-them" style="background:rgba(234,179,8,0.2);border:1px solid #eab308;text-align:center;">
+                                            <div style="margin-bottom:10px;">💰 <b>Запрос денег</b><br>Игрок <b>${r.sender_name}</b> просит <b>${r.amount} Br</b></div>
+                                            <div style="display:flex; gap:10px; justify-content:center;">
+                                                <button onclick="acceptReq(${r.id})" style="background:#4ade80;color:#000;border:none;padding:8px 15px;border-radius:8px;font-weight:bold;cursor:pointer;">Принять</button>
+                                                <button onclick="declineReq(${r.id})" style="background:#f87171;color:#fff;border:none;padding:8px 15px;border-radius:8px;font-weight:bold;cursor:pointer;">Отклонить</button>
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                            } else if (r.status === 'accepted') {
+                                box.innerHTML += `<div class="msg-bubble msg-me" style="background:#4ade80;color:#000;font-size:12px;text-align:center;">✅ Запрос на <b>${r.amount} Br</b> выполнен!</div>`;
+                            } else if (r.status === 'declined') {
+                                box.innerHTML += `<div class="msg-bubble msg-me" style="background:rgba(248,113,113,0.2);border:1px solid #f87171;color:#fff;font-size:12px;text-align:center;">❌ Запрос на <b>${r.amount} Br</b> отклонен.</div>`;
+                            }
+                        }
+                    });
+                    box.scrollTop = box.scrollHeight;
+                } catch(e) {}
+            };
+
+            window.sendMessage = async function() {
+                const input = document.getElementById('chat-input');
+                const text = input.value.trim();
+                if (!text || currentChatId === null) return;
+
+                try {
+                    const res = await fetch(`${SERVER_URL}/api/send_message`, {
+                        method: 'POST',
+                        headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({sender_id: userId, receiver_id: currentChatId, text: text})
+                    });
+                    const r = await res.json();
+
+                    if (r.status === 'ok') {
+                        input.value = '';
+                        loadMessages();
+                    } else {
+                        tg.showAlert('❌ Ошибка: ' + r.message);
+                    }
+                } catch (err) {
+                    tg.showAlert('⚠️ Ошибка соединения: ' + err.message);
+                }
+            };
+
+            window.requestMoney = async function() {
+                if (!currentChatId) return;
+                const amt = parseInt(prompt("Сколько Br запросить у этого игрока?"));
+                if (isNaN(amt) || amt <= 0) return;
+                const r = await fetch(`${SERVER_URL}/api/request_money`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({sender_id: userId, receiver_id: currentChatId, amount: amt})
+                }).then(x => x.json());
+                
+                if (r.status === 'error') alert(r.message);
+                loadMessages();
+            };
+
+            window.acceptReq = async function(id) {
+                const r = await fetch(`${SERVER_URL}/api/request_money/accept`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({request_id: id, user_id: userId})
+                }).then(x => x.json());
+                if (r.status === 'ok') { loadData(); loadMessages(); }
+                else alert(r.message);
+            };
+
+            window.declineReq = async function(id) {
+                await fetch(`${SERVER_URL}/api/request_money/decline`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({request_id: id, user_id: userId})
+                });
+                loadMessages();
+            };
+
+            // ОСТАЛЬНОЕ
+            window.openMyApts = function() { closeModal('city-menu-modal'); openModal('my-apts-modal'); };
             
-        cur.close()
-    return {"messages": msgs, "requests": reqs}
+            window.openShop = function() {
+                closeModal('city-menu-modal');
+                const list = document.getElementById('shop-list'); list.innerHTML = '';
+                if (companiesData.length === 0) list.innerHTML = '<div style="text-align:center;padding:20px;">Компании не загружены</div>';
+                companiesData.forEach(g => {
+                    let html = `<div class="class-group"><div class="class-title">${g.name}</div>`;
+                    g.tiers.forEach(item => {
+                        const fp = item.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                        const fi = item.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                        let discountHtml = '';
+                        if (item.old_price && item.old_price > item.price) {
+                            const op = item.old_price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                            discountHtml = `<span class="discount-badge">СКИДКА</span> <s style="color:#8892b0; font-size:12px; margin-right:5px;">${op} Br</s>`;
+                        }
+                        let sqmHtml = item.sqm ? `<div style="font-size:11px; color:#8892b0;">📐 ${item.sqm} кв.м</div>` : '';
+                        html += `
+                            <div class="apt-shop-item">
+                                <div><div style="font-weight:bold;font-size:15px;margin-bottom:5px;">${item.name}</div>
+                                <div style="font-size:13px;color:var(--accent);font-weight:bold;">+ ${fi} Br/ч</div>${sqmHtml}</div>
+                                <button class="buy-btn" onclick="prepareBuy('${item.name}',${item.price},${item.income})">${discountHtml}${fp} Br</button>
+                            </div>`;
+                    });
+                    list.innerHTML += html + '</div>';
+                });
+                openModal('shop-modal');
+            };
 
-@app.post("/api/send_message")
-def send_message(req: MessageRequest):
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        if req.receiver_id != 0:
-            cur.execute("SELECT 1 FROM friends WHERE status = 'accepted' AND ((user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s))", (req.sender_id, req.receiver_id, req.receiver_id, req.sender_id))
-            if not cur.fetchone(): return {"status": "error", "message": "Вы не друзья!"}
+            let buyItemData = null;
+            window.prepareBuy = function(name, price, income) {
+                buyItemData = { name, price, income };
+                document.getElementById('buy-modal-title').innerText = "Покупка";
+                document.getElementById('buy-modal-text').innerHTML = `Купить <b>"${name}"</b> за <b>${price.toLocaleString()} Br</b>?`;
+                openModal('buy-modal');
+            };
 
-        cur.execute("SELECT name FROM users WHERE id = %s", (req.sender_id,))
-        row = cur.fetchone(); s_name = row['name'] if row else "Игрок"
-        cur.execute("INSERT INTO messages (sender_id, sender_name, receiver_id, text, created_at) VALUES (%s, %s, %s, %s, %s)", (req.sender_id, s_name, req.receiver_id, req.text, int(time.time())))
-        cur.close()
-    return {"status": "ok"}
+            window.executeBuy = async function() {
+                closeModal('buy-modal');
+                if (!buyItemData) return;
+                const r = await fetch(`${SERVER_URL}/api/buy`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({user_id: userId, user_name: playerName, apartment_name: buyItemData.name, price: buyItemData.price, income: buyItemData.income})
+                }).then(x => x.json());
+                if (r.status === 'ok') { alert('✅ Куплено'); closeModal('shop-modal'); loadData(); }
+                else alert('❌ ' + r.message);
+            };
 
-@app.post("/api/friends/request")
-def friend_request(req: FriendRequest):
-    if req.sender_id == req.receiver_id: return {"status": "error"}
-    with db_conn() as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT 1 FROM friends WHERE (user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s)", (req.sender_id, req.receiver_id, req.receiver_id, req.sender_id))
-        if cur.fetchone(): return {"status": "error", "message": "Запрос уже существует"}
-        u1, u2 = min(req.sender_id, req.receiver_id), max(req.sender_id, req.receiver_id)
-        cur.execute("INSERT INTO friends (user1_id, user2_id, status, action_user_id, created_at) VALUES (%s, %s, 'pending', %s, %s)", (u1, u2, req.sender_id, int(time.time())))
-        cur.close()
-    return {"status": "ok"}
+            window.sellApt = async function(i, p) {
+                if (!confirm("Продать за 70%?")) return;
+                const r = await fetch(`${SERVER_URL}/api/sell`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({user_id: userId, apartment_index: i, price: p})
+                }).then(x => x.json());
+                if (r.status === 'ok') { alert(r.message); loadData(); }
+                else alert(r.message);
+            };
 
-@app.post("/api/friends/accept")
-def friend_accept(req: FriendAction):
-    with db_conn() as conn:
-        cur = conn.cursor()
-        u1, u2 = min(req.user_id, req.other_id), max(req.user_id, req.other_id)
-        cur.execute("UPDATE friends SET status = 'accepted' WHERE user1_id = %s AND user2_id = %s AND action_user_id != %s", (u1, u2, req.user_id))
-        cur.close()
-    return {"status": "ok"}
+            window.saveNickname = async function() {
+                const n = document.getElementById('nickname-input').value.trim();
+                if (!n) return;
+                await fetch(`${SERVER_URL}/api/set_name`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, name: n}) });
+                document.getElementById('user-name').innerText = n;
+                tg.showAlert('Ок');
+            };
 
-@app.post("/api/friends/decline")
-def friend_decline(req: FriendAction):
-    with db_conn() as conn:
-        cur = conn.cursor()
-        u1, u2 = min(req.user_id, req.other_id), max(req.user_id, req.other_id)
-        cur.execute("DELETE FROM friends WHERE user1_id = %s AND user2_id = %s", (u1, u2))
-        cur.close()
-    return {"status": "ok"}
+            window.openTransferModal = async function(tid = null) {
+                openModal('transfer-modal');
+                const sel = document.getElementById('transfer-user-select');
+                sel.innerHTML = '<option>Загрузка...</option>';
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/all_users`).then(r => r.json());
+                    sel.innerHTML = '<option value="">Выбери...</option>';
+                    d.users.forEach(u => {
+                        if (u.id !== userId) sel.innerHTML += `<option value="${u.id}" ${u.id===tid?'selected':''}>${u.name}</option>`;
+                    });
+                } catch(e) { sel.innerHTML = '<option>Ошибка</option>'; }
+            };
 
-@app.post("/api/request_money")
-def create_money_request(req: MoneyRequestModel):
-    if req.amount <= 0: return {"status": "error"}
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT 1 FROM friends WHERE status = 'accepted' AND ((user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s))", (req.sender_id, req.receiver_id, req.receiver_id, req.sender_id))
-        if not cur.fetchone(): return {"status": "error", "message": "Вы не друзья!"}
-        cur.execute("SELECT name FROM users WHERE id = %s", (req.sender_id,))
-        row = cur.fetchone(); s_name = row['name'] if row else "Игрок"
-        cur.execute("INSERT INTO money_requests (sender_id, sender_name, receiver_id, amount, created_at) VALUES (%s, %s, %s, %s, %s)", (req.sender_id, s_name, req.receiver_id, req.amount, int(time.time())))
-        cur.close()
-    return {"status": "ok"}
+            window.confirmTransfer = async function() {
+                const rid = document.getElementById('transfer-user-select').value;
+                const amt = parseInt(document.getElementById('transfer-amount').value);
+                if (!rid || isNaN(amt) || amt <= 0) return alert('Заполни');
+                closeModal('transfer-modal');
+                const r = await fetch(`${SERVER_URL}/api/transfer`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({sender_id: userId, receiver_id: parseInt(rid), amount: amt})
+                }).then(x => x.json());
+                if (r.status === 'ok') { alert(r.message); loadData(); loadLeaderboard(); }
+                else alert(r.message);
+            };
 
-@app.post("/api/request_money/accept")
-def accept_request(req: RequestAction):
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM money_requests WHERE id = %s AND status = 'pending'", (req.request_id,))
-        r = cur.fetchone()
-        if not r or r['receiver_id'] != req.user_id: return {"status":"error","message":"Нет прав"}
-        cur.execute("SELECT amount FROM users WHERE id = %s", (req.user_id,))
-        u = cur.fetchone()
-        if int(u['amount']) < r['amount']: return {"status":"error","message":"Мало Br"}
-        cur.execute("UPDATE users SET amount = amount - %s WHERE id = %s", (r['amount'], r['receiver_id']))
-        cur.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (r['amount'], r['sender_id']))
-        cur.execute("UPDATE money_requests SET status = 'accepted' WHERE id = %s", (req.request_id,))
-        cur.execute("INSERT INTO messages (sender_id, sender_name, receiver_id, text, created_at) VALUES (%s, %s, %s, %s, %s)", (r['receiver_id'], "Система", r['sender_id'], f"✅ Запрос на {r['amount']} Br принят!", int(time.time())))
-        cur.close()
-    return {"status":"ok"}
+            window.tradeToken = function(tok, act) {
+                const a = prompt(`Сколько ${tok} ${act === 'buy' ? 'купить' : 'продать'}?`);
+                if (!a) return;
+                const amt = parseInt(a);
+                if (isNaN(amt) || amt <= 0) return;
+                fetch(`${SERVER_URL}/api/trade_token`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({user_id: userId, token_type: tok, amount: amt, action: act})
+                }).then(r => r.json()).then(r => {
+                    if (r.status === 'error') alert('❌ ' + r.message);
+                    else { alert('✅ ' + r.message); loadData(); }
+                });
+            };
 
-@app.post("/api/request_money/decline")
-def decline_request(req: RequestAction):
-    with db_conn() as conn:
-        cur = conn.cursor()
-        cur.execute("UPDATE money_requests SET status = 'declined' WHERE id = %s AND receiver_id = %s", (req.request_id, req.user_id))
-        cur.close()
-    return {"status":"ok"}
+            window.adminBroadcast = async function() {
+                const text = prompt("Введите сообщение для всех игроков:");
+                if (!text) return;
+                const r = await fetch(`${SERVER_URL}/api/admin/broadcast`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, text: text}) }).then(x => x.json());
+                alert(r.message);
+            };
 
-@app.post("/api/admin/broadcast")
-def admin_broadcast(req: BroadcastRequest):
-    if not is_admin(req.admin_id): return {"status": "error"}
-    with db_conn() as conn:
-        cur = conn.cursor()
-        cur.execute("INSERT INTO messages (sender_id, sender_name, receiver_id, text, created_at) VALUES (%s, %s, 0, %s, %s)", (MAIN_ADMIN_ID, "📢 Администрация", req.text, int(time.time())))
-        cur.close()
-    return {"status": "ok", "message": "Рассылка отправлена!"}
+            window.openAdminPanel = async function() {
+                openModal('admin-modal');
+                const list = document.getElementById('admin-users-list'); list.innerHTML = 'Загрузка...';
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/admin/users?admin_id=${userId}`).then(r => r.json());
+                    list.innerHTML = '';
+                    d.users.forEach(u => {
+                        const fb = u.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                        list.innerHTML += `
+                            <div class="user-row">
+                                <div style="display:flex;justify-content:space-between;font-weight:bold;"><span>${u.name}</span><span style="color:var(--accent)">${fb} Br</span></div>
+                                <div style="font-size:13px;color:#8892b0;">ID: ${u.id} | Кв: ${u.apts_count}</div>
+                                <div class="admin-btns">
+                                    <button style="background:var(--accent);color:#000;" onclick="adminMoneyModal(${u.id},'${u.name}')">💰</button>
+                                    <button style="background:#3b82f6;color:#fff;" onclick="adminViewApts(${u.id})">🏢</button>
+                                    <button style="background:#f59e0b;color:#000;" onclick="adminViewBusiness(${u.id})">🏭</button>
+                                    <button style="background:#a855f7;color:#fff;" onclick="openTransferModal(${u.id})">💸</button>
+                                </div>
+                            </div>`;
+                    });
+                } catch(e) { list.innerHTML = 'Ошибка'; }
+            };
 
-@app.post("/api/admin/set_tier_discount")
-def admin_set_tier_discount(req: TierDiscountRequest):
-    if not is_admin(req.admin_id): return {"status": "error"}
-    if req.percent < 0 or req.percent > 90: return {"status": "error"}
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT tiers FROM companies WHERE id = %s", (req.company_id,))
-        row = cur.fetchone()
-        if not row: return {"status": "error"}
-        tiers = safe_json_load(row['tiers'], [])
-        if 0 <= req.tier_index < len(tiers):
-            tiers[req.tier_index]['discount'] = req.percent
-            cur.execute("UPDATE companies SET tiers = %s WHERE id = %s", (json.dumps(tiers), req.company_id))
-            cur.close()
-            return {"status": "ok", "message": f"Скидка {req.percent}% установлена!"}
-        cur.close()
-    return {"status": "error"}
+            let adminTargetId = null;
+            window.adminMoneyModal = function(id, name) {
+                adminTargetId = id;
+                document.getElementById('admin-money-target').innerText = `Игрок: ${name}`;
+                document.getElementById('admin-money-amount').value = '';
+                
+                if (userId === MAIN_ADMIN_ID) {
+                    document.getElementById('admin-money-limit').style.display = 'none';
+                } else {
+                    document.getElementById('admin-money-limit').style.display = 'block';
+                }
+                
+                openModal('admin-money-modal');
+            };
 
-@app.post("/api/admin/add_money")
-def admin_add_money(req: AdminMoneyRequest):
-    if not is_admin(req.admin_id): return {"status": "error"}
-    if req.admin_id != MAIN_ADMIN_ID and req.amount > 500000:
-        return {"status": "error", "message": "❌ Лимит! Обычные админы могут выдать не более 500 000 Br."}
-    with db_conn() as conn:
-        cur = conn.cursor(); cur.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, req.target_id)); cur.close()
-    return {"status": "ok"}
+            window.adminAddMoney = async function() {
+                const a = parseInt(document.getElementById('admin-money-amount').value); if (!a) return;
+                const r = await fetch(`${SERVER_URL}/api/admin/add_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: a}) }).then(x => x.json());
+                if (r.status === 'error') alert(r.message);
+                else { closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard(); }
+            };
 
-BUSINESS_POOL = [
-    {"name": "Киоск", "rarity": "Common", "price": 50000, "income": 1000, "req": 1, "weight": 50},
-    {"name": "Кофейня", "rarity": "Rare", "price": 250000, "income": 6000, "req": 2, "weight": 25},
-    {"name": "Автосервис", "rarity": "Epic", "price": 1500000, "income": 40000, "req": 3, "weight": 15},
-    {"name": "Завод", "rarity": "Mythic", "price": 15000000, "income": 450000, "req": 5, "weight": 7},
-    {"name": "Нефтевышка", "rarity": "Legendary", "price": 150000000, "income": 5000000, "req": 8, "weight": 2.5},
-    {"name": "Космопорт", "rarity": "Chromatic", "price": 2000000000, "income": 80000000, "req": 12, "weight": 0.5}
-]
+            window.adminRemoveMoney = async function() {
+                const a = parseInt(document.getElementById('admin-money-amount').value); if (!a) return;
+                await fetch(`${SERVER_URL}/api/admin/remove_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: a}) });
+                closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard();
+            };
 
-def get_weighted_business():
-    total = sum(b['weight'] for b in BUSINESS_POOL)
-    r = random.uniform(0, total); upto = 0
-    for b in BUSINESS_POOL:
-        if upto + b['weight'] >= r: return b
-        upto += b['weight']
-    return BUSINESS_POOL[0]
+            window.adminViewApts = async function(id) {
+                const d = await fetch(`${SERVER_URL}/api/admin/user_apartments/${id}`).then(r => r.json());
+                alert(d.apartments.map(a => `- ${a.name} (+${a.income} Br/ч)`).join('\n') || "Нет квартир");
+            };
 
-@app.get("/api/businesses/{user_id}")
-def get_businesses(user_id: int):
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT last_roll, daily_businesses FROM users WHERE id = %s", (user_id,))
-        row = cur.fetchone()
-        now = int(time.time())
-        if now - int(row['last_roll'] or 0) > 86400:
-            rolled = []
-            while len(rolled) < 2:
-                b = get_weighted_business()
-                if b not in rolled: rolled.append(b)
-            cur.execute("UPDATE users SET last_roll = %s, daily_businesses = %s WHERE id = %s", (now, json.dumps(rolled), user_id))
-            daily = rolled
-        else:
-            daily = safe_json_load(row['daily_businesses'], [])
-        cur.close()
-    return {"businesses": daily}
+            window.adminViewBusiness = async function(id) {
+                const d = await fetch(`${SERVER_URL}/api/admin/user_business/${id}`).then(r => r.json());
+                if (!d.businesses || d.businesses.length === 0) return alert("Нет компании");
+                const b = d.businesses[0];
+                if (confirm(`Игрок владеет: ${b.name} (${b.income} Br/ч).\n\nЗабрать компанию?`)) {
+                    const r = await fetch(`${SERVER_URL}/api/admin/remove_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: id, amount: 0}) }).then(x => x.json());
+                    if (r.status === 'ok') { alert('Компания забрана!'); }
+                    else alert('Ошибка');
+                }
+            };
 
-@app.post("/api/buy_business")
-def buy_business(req: BusinessBuyRequest):
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT amount, apartments, businesses, daily_businesses FROM users WHERE id = %s", (req.user_id,))
-        row = cur.fetchone()
-        daily = safe_json_load(row['daily_businesses'], [])
-        owned = safe_json_load(row['businesses'], [])
-        apts = safe_json_load(row['apartments'], [])
-        
-        if len(owned) >= 1:
-            return {"status": "error", "message": "У вас уже есть компания! Максимум 1."}
-            
-        if req.business_index < 0 or req.business_index >= len(daily): return {"status": "error", "message": "Бизнес не найден"}
-        bus = daily[req.business_index]
-        if len(apts) < bus['req']: return {"status": "error", "message": f"Нужно {bus['req']} квартир!"}
-        if int(row['amount']) < bus['price']: return {"status": "error", "message": "Мало Br"}
-        
-        new_amount = int(row['amount']) - bus['price']
-        owned.append({"name": bus['name'], "income": bus['income'], "rarity": bus['rarity'], "buy_price": bus['price']})
-        daily.pop(req.business_index)
-        cur.execute("UPDATE users SET amount=%s, businesses=%s, daily_businesses=%s WHERE id=%s", (new_amount, json.dumps(owned), json.dumps(daily), req.user_id))
-        cur.close()
-    return {"status": "ok", "message": f"Куплен {bus['name']}!"}
+            window.resetAllUsers = async function() {
+                if (!confirm("⚠️ ВНИМАНИЕ! Это удалит ВСЕХ игроков, их деньги, имущество и ИСТОРИЮ ВСЕХ ЧАТОВ. Продолжить?")) return;
+                const r = await fetch(`${SERVER_URL}/api/admin/reset_all`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id:0, amount:0}) }).then(x => x.json());
+                alert(r.message); loadData(); loadLeaderboard();
+            };
 
-@app.post("/api/sell_business")
-def sell_business(req: SellBusinessRequest):
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT amount, businesses FROM users WHERE id = %s", (req.user_id,))
-        row = cur.fetchone()
-        bus = safe_json_load(row['businesses'], [])
-        if len(bus) == 0: return {"status": "error", "message": "Нет компании"}
-        
-        b = bus[0]
-        price = b.get('buy_price', 50000)
-        sell_price = int(price * 0.7)
-        
-        cur.execute("UPDATE users SET amount = amount + %s, businesses = '[]'::jsonb WHERE id = %s", (sell_price, req.user_id))
-        cur.close()
-    return {"status": "ok", "message": f"Продано за {sell_price} Br"}
+            window.openAdminAdmins = function() { openModal('admin-admins-modal'); loadAdminsList(); };
 
-@app.get("/api/companies")
-def get_companies():
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT id, name, tiers FROM companies ORDER BY id ASC")
-        rows = cur.fetchall(); cur.close()
-    comps = []
-    for r in rows:
-        tiers = safe_json_load(r['tiers'], [])
-        for t in tiers:
-            disc = t.get('discount', 0)
-            t['old_price'] = t['price']
-            t['price'] = int(t['price'] * (1 - disc / 100.0))
-        tiers.sort(key=lambda x: x['price'])
-        comps.append({"id": r['id'], "name": r['name'], "tiers": tiers})
-    comps.sort(key=lambda x: x['tiers'][0]['price'] if x['tiers'] else 0)
-    return {"companies": comps}
+            window.loadAdminsList = async function() {
+                const list = document.getElementById('admins-list'); list.innerHTML = 'Загрузка...';
+                const d = await fetch(`${SERVER_URL}/api/admin/list_admins?admin_id=${userId}`).then(r => r.json());
+                list.innerHTML = '';
+                d.admins.forEach(id => {
+                    const m = id === MAIN_ADMIN_ID;
+                    list.innerHTML += `<div class="list-item" style="background:${m?'rgba(74,222,128,0.15)':'rgba(255,255,255,0.05)'};"><span>${m?'👑':'🛡'} ${id}</span>${m?'':`<button onclick="removeAdmin(${id})" style="background:#f87171;border:none;border-radius:8px;padding:6px 12px;font-weight:bold;color:white;">✕</button>`}</div>`;
+                });
+            };
 
-@app.get("/api/balance/{user_id}")
-def get_balance(user_id: int, name: str = "Игрок"):
-    try:
-        with db_conn() as conn:
-            cur = conn.cursor(cursor_factory=RealDictCursor)
-            cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-            row = cur.fetchone()
-            now = int(time.time())
-            if not row:
-                card_num = "1234" + "".join(str(random.randint(0, 9)) for _ in range(12))
-                card_fmt = " ".join(card_num[i:i+4] for i in range(0, 16, 4))
-                cvc = str(random.randint(100, 999))
-                cur.execute("INSERT INTO users (id, name, amount, last_payout, card_number, card_cvc) VALUES (%s, %s, %s, %s, %s, %s)", (user_id, name, 510000, now, card_fmt, cvc))
-                cur.close()
-                return {"balance": 510000, "apartments": [], "businesses": [], "earned": 0, "card_number": card_fmt, "card_cvc": cvc, "name": name, "portfolio": {}}
+            window.addAdmin = async function() {
+                const n = parseInt(document.getElementById('new-admin-id').value);
+                if (isNaN(n)) return alert('Неверный ID');
+                const r = await fetch(`${SERVER_URL}/api/admin/add_admin`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: n}) }).then(x => x.json());
+                if (r.status === 'ok') { alert('✅'); document.getElementById('new-admin-id').value = ''; loadAdminsList(); }
+                else alert('❌ ' + r.message);
+            };
 
-            cb = int(row['amount'])
-            apts = safe_json_load(row['apartments'], [])
-            buses = safe_json_load(row['businesses'], [])
-            port = safe_json_load(row.get('portfolio'), {})
-            lp = int(row['last_payout']) if row['last_payout'] else now
+            window.removeAdmin = async function(tid) {
+                if (!confirm("Удалить?")) return;
+                const r = await fetch(`${SERVER_URL}/api/admin/remove_admin`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: tid}) }).then(x => x.json());
+                if (r.status === 'ok') { alert('✅'); loadAdminsList(); }
+                else alert('❌ ' + r.message);
+            };
 
-            if len(buses) > 1:
-                buses.sort(key=lambda x: x.get('buy_price', 0), reverse=True)
-                buses = [buses[0]]
-                cur.execute("UPDATE users SET businesses = %s WHERE id = %s", (json.dumps(buses), user_id))
+            window.openAdminCompanies = async function() {
+                openModal('admin-companies-modal');
+                const list = document.getElementById('admin-companies-list'); list.innerHTML = 'Загрузка...';
+                await loadCompanies();
+                list.innerHTML = '';
+                companiesData.forEach(c => {
+                    let tiersHtml = '';
+                    c.tiers.forEach((t, idx) => {
+                        let discStr = t.discount ? `<span style="color:#ef4444; font-weight:bold; margin-left:5px;">(-${t.discount}%)</span>` : '';
+                        tiersHtml += `
+                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:8px; border-radius:8px; margin-top:5px;">
+                                <span style="font-size:13px;">${t.name} ${discStr}</span>
+                                <button onclick="adminSetTierDiscount(${c.id}, ${idx}, '${t.name}')" style="background:#ffaa00; color:#000; border:none; padding:5px 10px; border-radius:6px; font-weight:bold; font-size:11px;">🏷 Скидка</button>
+                            </div>
+                        `;
+                    });
+                    
+                    list.innerHTML += `
+                        <div class="user-row" style="border-left-color:#3b82f6;">
+                            <div style="font-weight:bold;">${c.name}</div>
+                            <div style="font-size:13px;color:#8892b0;">Тарифов: ${c.tiers.length}</div>
+                            <div class="admin-btns">
+                                <button style="background:var(--accent);color:#000;" onclick="addTierPrompt(${c.id},'${c.name}')">➕ Добавить</button>
+                                <button style="background:#f87171;color:white;" onclick="deleteCompany(${c.id})">🗑 Удалить</button>
+                            </div>
+                            <div style="margin-top:10px;">${tiersHtml}</div>
+                        </div>`;
+                });
+            };
 
-            nb, nl, earned = calculate_income(cb, apts, buses, lp)
-            cur.execute("UPDATE users SET amount = %s, last_payout = %s WHERE id = %s", (nb, nl, user_id))
-            cur.close()
-        return {"balance": nb, "apartments": apts, "businesses": buses, "earned": earned, "card_number": row['card_number'], "card_cvc": row['card_cvc'], "name": row['name'], "portfolio": port}
-    except Exception as e: return {"balance": 0, "error": str(e)}
+            window.adminSetTierDiscount = async function(companyId, tierIndex, tierName) {
+                const pct = parseInt(prompt(`Скидка на "${tierName}" (0-90%):`, "0"));
+                if (isNaN(pct) || pct < 0 || pct > 90) return alert('Неверно');
+                const r = await fetch(`${SERVER_URL}/api/admin/set_tier_discount`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({admin_id: userId, company_id: companyId, tier_index: tierIndex, percent: pct})
+                }).then(x => x.json());
+                if (r.status === 'ok') { alert('✅ ' + r.message); openAdminCompanies(); }
+                else alert('❌ ' + r.message);
+            };
 
-@app.get("/api/check_admin/{user_id}")
-def check_admin(user_id: int): return {"is_admin": is_admin(user_id)}
+            window.addCompanyPrompt = async function() {
+                const n = prompt("Название компании:");
+                if (!n) return;
+                await fetch(`${SERVER_URL}/api/admin/add_company`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: n}) });
+                openAdminCompanies();
+            };
 
-@app.post("/api/set_name")
-def set_name(req: SetNameRequest):
-    with db_conn() as conn:
-        cur = conn.cursor(); cur.execute("UPDATE users SET name = %s WHERE id = %s", (req.name, req.user_id)); cur.close()
-    return {"status": "ok"}
+            window.addTierPrompt = async function(cid, cname) {
+                const n = prompt(`Квартира в ${cname}:`); if (!n) return;
+                const p = parseInt(prompt("Цена Br:")); const i = parseInt(prompt("Доход Br/ч:"));
+                if (!p || !i) return;
+                const sqm = parseInt(prompt("Кв.м:")) || 0;
+                await fetch(`${SERVER_URL}/api/admin/add_tier/${cid}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: '', tier_data: {name:n,price:p,income:i,sqm:sqm,discount:0}}) });
+                alert("Добавлено!"); openAdminCompanies();
+            };
 
-@app.get("/api/all_users")
-def get_all_users_for_transfer():
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT id, name FROM users ORDER BY amount DESC LIMIT 50"); rows = cur.fetchall(); cur.close()
-    return {"users": [{"id": r['id'], "name": r['name']} for r in rows]}
+            window.deleteCompany = async function(id) {
+                if (!confirm("Удалить компанию?")) return;
+                await fetch(`${SERVER_URL}/api/admin/delete_company/${id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name:''}) });
+                openAdminCompanies();
+            };
 
-@app.post("/api/admin/add_company")
-def add_company(req: AdminCompanyRequest):
-    if not is_admin(req.admin_id): return {"status": "error"}
-    with db_conn() as conn:
-        cur = conn.cursor(); cur.execute("INSERT INTO companies (name, tiers) VALUES (%s, '[]')", (req.company_name,)); cur.close()
-    return {"status": "ok"}
+            // АДМИН БИРЖА
+            window.openAdminExchange = async function() {
+                openModal('admin-exchange-modal');
+                const list = document.getElementById('admin-exchange-list'); list.innerHTML = 'Загрузка...';
+                const d = await fetch(`${SERVER_URL}/api/token_rates`).then(r => r.json());
+                
+                list.innerHTML = '';
+                for (const key in d) {
+                    const item = d[key];
+                    list.innerHTML += `
+                        <div class="user-row" style="border-left-color:#10b981;">
+                            <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                                <span>${item.name || key}</span>
+                                <span style="color:var(--accent)">${item.price} Br</span>
+                            </div>
+                            <div style="font-size:12px; color:#8892b0;">Тренд: ${item.trend === 'up' ? '📈 Вверх' : '📉 Вниз'}</div>
+                            <div class="admin-btns">
+                                <button style="background:#ffaa00;color:#000;" onclick="editExchangeItem('${key}', '${item.name || key}', ${item.price}, '${item.trend}')">✏️ Изменить</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            };
 
-@app.post("/api/admin/add_tier/{company_id}")
-def add_tier(company_id: int, req: AdminCompanyRequest):
-    if not is_admin(req.admin_id): return {"status": "error"}
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT tiers FROM companies WHERE id = %s", (company_id,))
-        tiers = safe_json_load(cur.fetchone()['tiers'], []); tiers.append(req.tier_data)
-        cur.execute("UPDATE companies SET tiers = %s WHERE id = %s", (json.dumps(tiers), company_id)); cur.close()
-    return {"status": "ok"}
+            window.editExchangeItem = async function(key, name, price, trend) {
+                const n_price = parseInt(prompt(`Текущая цена ${name}:`, price));
+                if (isNaN(n_price)) return;
+                const t_dir = prompt(`Тренд (up / down):`, trend);
+                if (!t_dir) return;
+                const min_p = parseInt(prompt(`Минимальная цена (дна):`, Math.floor(n_price * 0.5)));
+                const max_p = parseInt(prompt(`Максимальная цена (верха):`, Math.floor(n_price * 1.5)));
+                
+                if (isNaN(min_p) || isNaN(max_p)) return alert("Неверные лимиты");
 
-@app.post("/api/admin/delete_company/{company_id}")
-def delete_company(company_id: int, req: AdminCompanyRequest):
-    if not is_admin(req.admin_id): return {"status": "error"}
-    with db_conn() as conn:
-        cur = conn.cursor(); cur.execute("DELETE FROM companies WHERE id = %s", (company_id,)); cur.close()
-    return {"status": "ok"}
+                const r = await fetch(`${SERVER_URL}/api/admin/update_exchange`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({admin_id: userId, key: key, name: name, min_price: min_p, max_price: max_p, current_price: n_price, trend: t_dir})
+                }).then(x => x.json());
+                if (r.status === 'ok') { alert(r.message); openAdminExchange(); loadRates(); }
+                else alert(r.message);
+            };
 
-@app.post("/api/buy")
-def buy_apartment(req: BuyRequest):
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT amount, apartments FROM users WHERE id = %s", (req.user_id,)); row = cur.fetchone()
-        if int(row['amount']) < req.price: return {"status": "error", "message": "Мало Br"}
-        apts = safe_json_load(row['apartments'], []); apts.append({"name": req.apartment_name, "income": req.income, "buy_price": req.price})
-        cur.execute("UPDATE users SET amount = amount - %s, apartments = %s WHERE id = %s", (req.price, json.dumps(apts), req.user_id)); cur.close()
-    return {"status": "ok", "message": "Куплено!"}
+            window.addExchangePrompt = async function() {
+                const key = prompt("Ключ (англ, без пробелов, напр. silver):");
+                if (!key) return;
+                const name = prompt("Название (с эмодзи, напр. 🥈 Серебро):");
+                if (!name) return;
+                const base_p = parseInt(prompt("Стартовая цена:"));
+                const min_p = parseInt(prompt("Минимальная цена (дно):"));
+                const max_p = parseInt(prompt("Максимальная цена (верх):"));
+                
+                if (!base_p || !min_p || !max_p) return alert("Неверные цены");
 
-@app.post("/api/sell")
-def sell_apartment(req: SellRequest):
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT amount, apartments FROM users WHERE id = %s", (req.user_id,)); row = cur.fetchone()
-        apts = safe_json_load(row['apartments'], [])
-        if req.apartment_index < 0 or req.apartment_index >= len(apts): return {"status": "error"}
-        sell_price = int(req.price * 0.7); apts.pop(req.apartment_index)
-        cur.execute("UPDATE users SET amount = amount + %s, apartments = %s WHERE id = %s", (sell_price, json.dumps(apts), req.user_id)); cur.close()
-    return {"status": "ok", "message": f"Продана за {sell_price} Br"}
+                const r = await fetch(`${SERVER_URL}/api/admin/add_exchange`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({admin_id: userId, key: key, name: name, min_price: min_p, max_price: max_p, base_price: base_p})
+                }).then(x => x.json());
+                if (r.status === 'ok') { alert(r.message); openAdminExchange(); loadRates(); }
+                else alert(r.message);
+            };
 
-@app.post("/api/transfer")
-def transfer_money(req: TransferRequest):
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT amount FROM users WHERE id = %s", (req.sender_id,)); sender = cur.fetchone()
-        if not sender or int(sender['amount']) < req.amount: return {"status": "error", "message": "Мало средств"}
-        cur.execute("SELECT name FROM users WHERE id = %s", (req.receiver_id,)); r = cur.fetchone()
-        if not r: return {"status": "error", "message": "Игрок не найден"}
-        cur.execute("UPDATE users SET amount = amount - %s WHERE id = %s", (req.amount, req.sender_id))
-        cur.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, req.receiver_id)); cur.close()
-    return {"status": "ok", "message": f"Переведено {req.amount} Br игроку {r['name']}"}
+            window.openModal = function(id) { document.getElementById(id).style.display = 'flex'; if (tg.BackButton) tg.BackButton.show(); };
+            window.closeModal = function(id) { document.getElementById(id).style.display = 'none'; if (tg.BackButton) tg.BackButton.hide(); };
 
-@app.get("/api/leaderboard")
-def get_leaderboard():
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT name, amount FROM users ORDER BY amount DESC LIMIT 5"); rows = cur.fetchall(); cur.close()
-    return {"leaders": [{"name": r['name'], "balance": int(r['amount'])} for r in rows]}
-
-@app.get("/api/admin/users")
-def admin_get_users(admin_id: int):
-    if not is_admin(admin_id): return {"users": []}
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT id, name, amount, apartments FROM users"); rows = cur.fetchall(); cur.close()
-    return {"users": [{"id": r['id'], "name": r['name'], "balance": int(r['amount']), "apts_count": len(safe_json_load(r['apartments'], []))} for r in rows]}
-
-@app.post("/api/admin/remove_money")
-def admin_remove_money(req: AdminMoneyRequest):
-    if not is_admin(req.admin_id): return {"status": "error"}
-    with db_conn() as conn:
-        cur = conn.cursor(); cur.execute("UPDATE users SET amount = GREATEST(0, amount - %s) WHERE id = %s", (req.amount, req.target_id)); cur.close()
-    return {"status": "ok"}
-
-@app.get("/api/admin/user_apartments/{user_id}")
-def admin_get_user_apts(user_id: int):
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT apartments FROM users WHERE id = %s", (user_id,)); row = cur.fetchone(); cur.close()
-    return {"apartments": safe_json_load(row['apartments'], []) if row else []}
-
-@app.get("/api/admin/user_business/{user_id}")
-def admin_get_user_business(user_id: int):
-    with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT businesses FROM users WHERE id = %s", (user_id,)); row = cur.fetchone(); cur.close()
-    return {"businesses": safe_json_load(row['businesses'], []) if row else []}
-
-@app.post("/api/admin/remove_business")
-def admin_remove_business(req: AdminMoneyRequest):
-    if not is_admin(req.admin_id): return {"status": "error"}
-    with db_conn() as conn:
-        cur = conn.cursor(); cur.execute("UPDATE users SET businesses = '[]'::jsonb WHERE id = %s", (req.target_id,)); cur.close()
-    return {"status": "ok"}
-
-@app.post("/api/admin/reset_all")
-def admin_reset_all(req: AdminMoneyRequest):
-    if req.admin_id != MAIN_ADMIN_ID: return {"status": "error"}
-    with db_conn() as conn:
-        cur = conn.cursor()
-        cur.execute("DELETE FROM users"); cur.execute("DELETE FROM messages"); cur.execute("DELETE FROM money_requests"); cur.execute("DELETE FROM friends")
-        cur.close()
-    return {"status": "ok", "message": "Все сброшено!"}
-
-@app.post("/api/admin/add_admin")
-def add_admin(req: AdminAdminRequest):
-    if req.admin_id != MAIN_ADMIN_ID: return {"status": "error"}
-    with db_conn() as conn:
-        cur = conn.cursor(); cur.execute("INSERT INTO admins (user_id) VALUES (%s) ON CONFLICT DO NOTHING", (req.target_id,)); cur.close()
-    return {"status": "ok"}
-
-@app.post("/api/admin/remove_admin")
-def remove_admin(req: AdminAdminRequest):
-    if req.admin_id != MAIN_ADMIN_ID: return {"status": "error"}
-    with db_conn() as conn:
-        cur = conn.cursor(); cur.execute("DELETE FROM admins WHERE user_id = %s", (req.target_id,)); cur.close()
-    return {"status": "ok"}
-
-@app.get("/api/admin/list_admins")
-def list_admins(admin_id: int):
-    if not is_admin(admin_id): return {"admins": []}
-    with db_conn() as conn:
-        cur = conn.cursor(); cur.execute("SELECT user_id FROM admins"); rows = cur.fetchall(); cur.close()
-    return {"admins": [MAIN_ADMIN_ID] + [r[0] for r in rows]}
+            // Запуск игры
+            loadCompanies();
+            checkNotifications();
+            setInterval(checkNotifications, 10000);
+            loadData();
+            loadLeaderboard();
+        });
+    </script>
+</body>
+</html>
