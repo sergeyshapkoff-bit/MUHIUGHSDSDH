@@ -658,20 +658,17 @@
             document.getElementById('chat-header-title').innerText = name;
             document.getElementById('chat-back-btn').style.display = 'block';
 
-            // ВСЕГДА ЗАПРАШИВАЕМ РЕАЛЬНЫЙ СТАТУС У СЕРВЕРА
+            // МГНОВЕННО ЗАПРАШИВАЕМ СТАТУС У СЕРВЕРА
             try {
-                const d = await fetch(`${SERVER_URL}/api/chats/${userId}`).then(r => r.json());
-                const thisChat = d.chats.find(c => c.id === id);
-                if (thisChat) {
-                    currentChatStatus = thisChat.status;
-                    if (currentChatStatus === 'accepted' && id !== 0) {
-                         fetch(`${SERVER_URL}/api/messages/read`, {
-                            method: 'POST', headers: {'Content-Type':'application/json'},
-                            body: JSON.stringify({user_id: userId, other_id: id})
-                        });
-                    }
+                const st = await fetch(`${SERVER_URL}/api/chat_status/${userId}/${id}`).then(r => r.json());
+                currentChatStatus = st.status;
+                if (currentChatStatus === 'accepted' && id !== 0) {
+                    fetch(`${SERVER_URL}/api/messages/read`, {
+                        method: 'POST', headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({user_id: userId, other_id: id})
+                    });
                 }
-            } catch(e) {}
+            } catch(e) { console.error("Статус не загружен"); }
 
             updateChatUI(currentChatStatus);
             loadMessages();
@@ -720,7 +717,6 @@
 
         async function sendFriendRequest() {
             const r = await fetch(`${SERVER_URL}/api/friends/request`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: currentChatId}) }).then(x => x.json());
-            // Если запрос уже существует, все равно меняем интерфейс на "Ожидание"
             if (r.status === 'ok' || r.message === "Запрос уже существует") { 
                 currentChatStatus = 'pending_out'; 
                 updateChatUI(currentChatStatus); 
@@ -742,15 +738,6 @@
             if(currentChatId === null) return;
             try {
                 const d = await fetch(`${SERVER_URL}/api/chat_history/${userId}/${currentChatId}`).then(r => r.json());
-                
-                if (currentChatId !== 0 && currentChatStatus !== 'accepted') {
-                    const chats = await fetch(`${SERVER_URL}/api/chats/${userId}`).then(r => r.json());
-                    const thisChat = chats.chats.find(c => c.id === currentChatId);
-                    if (thisChat && thisChat.status === 'accepted') {
-                        currentChatStatus = 'accepted';
-                        updateChatUI(currentChatStatus);
-                    }
-                }
 
                 const box = document.getElementById('chat-messages');
                 box.innerHTML = '';
