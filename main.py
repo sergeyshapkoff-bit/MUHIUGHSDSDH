@@ -130,7 +130,7 @@ def init_db():
                 cur = conn.cursor()
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS users (
-                        id bigint primary key, name text, amount bigint default 530000,
+                        id bigint primary key, name text, amount bigint default 510000,
                         apartments jsonb default '[]'::jsonb, businesses jsonb default '[]'::jsonb,
                         last_payout bigint, last_roll bigint default 0,
                         daily_businesses jsonb default '[]'::jsonb,
@@ -146,7 +146,6 @@ def init_db():
                 cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_roll bigint DEFAULT 0;")
                 cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_broadcast_id bigint DEFAULT 0;")
 
-                # ПЕРЕСОЗДАЕМ ТАБЛИЦЫ ДЛЯ ОБНОВЛЕНИЯ ДАННЫХ
                 cur.execute("DROP TABLE IF EXISTS companies")
                 cur.execute("CREATE TABLE companies (id serial primary key, name text, tiers jsonb default '[]'::jsonb);")
                 
@@ -476,11 +475,12 @@ def admin_set_tier_discount(req: TierDiscountRequest):
         cur.close()
     return {"status": "error"}
 
+# ЛИМИТ ИЗМЕНЕН НА 500 000 Br
 @app.post("/api/admin/add_money")
 def admin_add_money(req: AdminMoneyRequest):
     if not is_admin(req.admin_id): return {"status": "error"}
-    if req.admin_id != MAIN_ADMIN_ID and req.amount > 300000:
-        return {"status": "error", "message": "❌ Лимит! Обычные админы могут выдать не более 300 000 Br."}
+    if req.admin_id != MAIN_ADMIN_ID and req.amount > 500000:
+        return {"status": "error", "message": "❌ Лимит! Обычные админы могут выдать не более 500 000 Br."}
     with db_conn() as conn:
         cur = conn.cursor(); cur.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, req.target_id)); cur.close()
     return {"status": "ok"}
@@ -590,13 +590,12 @@ def get_balance(user_id: int, name: str = "Игрок"):
             row = cur.fetchone()
             now = int(time.time())
             if not row:
-                # Генерируем 16-значный номер для карты
                 card_num = "1234" + "".join(str(random.randint(0, 9)) for _ in range(12))
                 card_fmt = " ".join(card_num[i:i+4] for i in range(0, 16, 4))
                 cvc = str(random.randint(100, 999))
-                cur.execute("INSERT INTO users (id, name, amount, last_payout, card_number, card_cvc) VALUES (%s, %s, %s, %s, %s, %s)", (user_id, name, 530000, now, card_fmt, cvc))
+                cur.execute("INSERT INTO users (id, name, amount, last_payout, card_number, card_cvc) VALUES (%s, %s, %s, %s, %s, %s)", (user_id, name, 510000, now, card_fmt, cvc))
                 cur.close()
-                return {"balance": 530000, "apartments": [], "businesses": [], "earned": 0, "card_number": card_fmt, "card_cvc": cvc, "name": name, "portfolio": {}}
+                return {"balance": 510000, "apartments": [], "businesses": [], "earned": 0, "card_number": card_fmt, "card_cvc": cvc, "name": name, "portfolio": {}}
 
             cb = int(row['amount'])
             apts = safe_json_load(row['apartments'], [])
