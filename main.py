@@ -80,7 +80,6 @@ def get_current_rates():
                 rates[item['key']] = {"price": item['current_price'], "trend": item['trend'], "name": name}
         return rates
 
-# ДАННЫЕ ИЗ ДОКУМЕНТА
 DEFAULT_COMPANIES = [
     {"name": "Эконом - Класс", "tiers": [
         {"name": "ЖК «Мапид»", "price": 200000, "income": 1650, "sqm": 7},
@@ -159,24 +158,27 @@ def init_db():
 
                 cur.execute("CREATE TABLE IF NOT EXISTS admins (user_id bigint primary key);")
                 
+                # ОЧИСТКА ТАБЛИЦ ЧАТОВ ДЛЯ ИСПРАВЛЕНИЯ ОШИБОК
+                cur.execute("DROP TABLE IF EXISTS messages")
                 cur.execute("""
-                    CREATE TABLE IF NOT EXISTS messages (
+                    CREATE TABLE messages (
                         id serial primary key, sender_id bigint, sender_name text,
                         receiver_id bigint, text text, created_at bigint,
                         is_read boolean default false
                     );
                 """)
-                cur.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read boolean DEFAULT false;")
                 
+                cur.execute("DROP TABLE IF EXISTS money_requests")
                 cur.execute("""
-                    CREATE TABLE IF NOT EXISTS money_requests (
+                    CREATE TABLE money_requests (
                         id serial primary key, sender_id bigint, sender_name text,
                         receiver_id bigint, amount bigint, status text default 'pending', created_at bigint
                     );
                 """)
                 
+                cur.execute("DROP TABLE IF EXISTS friends")
                 cur.execute("""
-                    CREATE TABLE IF NOT EXISTS friends (
+                    CREATE TABLE friends (
                         id serial primary key, user1_id bigint, user2_id bigint,
                         status text default 'pending', action_user_id bigint, created_at bigint,
                         UNIQUE(user1_id, user2_id)
@@ -348,6 +350,19 @@ def get_chats(user_id: int):
         cur.close()
     return {"chats": chats}
 
+@app.get("/api/chat_status/{user_id}/{other_id}")
+def get_chat_status(user_id: int, other_id: int):
+    if other_id == 0: return {"status": "admin"}
+    with db_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT * FROM friends WHERE (user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s)", (user_id, other_id, other_id, user_id))
+        row = cur.fetchone()
+        cur.close()
+        if not row: return {"status": "none"}
+        if row['status'] == 'accepted': return {"status": "accepted"}
+        if row['action_user_id'] == user_id: return {"status": "pending_out"}
+        return {"status": "pending_in"}
+
 @app.get("/api/chat_history/{user_id}/{other_id}")
 def get_chat_history(user_id: int, other_id: int):
     with db_conn() as conn:
@@ -475,7 +490,6 @@ def admin_set_tier_discount(req: TierDiscountRequest):
         cur.close()
     return {"status": "error"}
 
-# ЛИМИТ ИЗМЕНЕН НА 500 000 Br
 @app.post("/api/admin/add_money")
 def admin_add_money(req: AdminMoneyRequest):
     if not is_admin(req.admin_id): return {"status": "error"}
