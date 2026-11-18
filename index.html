@@ -11,7 +11,7 @@
         body { margin: 0; padding: 0; height: 100vh; background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-3) 100%); color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
         header { display: flex; justify-content: space-between; align-items: center; padding: 20px; flex-shrink: 0; }
         .user-info { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
-        .avatar { width: 38px; height: 38px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 18px; }
+        .avatar { width: 38px; height: 38px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 18px; cursor: pointer; }
         .icons { display: flex; gap: 15px; font-size: 22px; opacity: 0.8; cursor: pointer; }
         
         #notification-bar { position: absolute; top: 70px; left: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
@@ -150,7 +150,11 @@
     <div id="notification-bar"></div>
 
     <header>
-        <div class="user-info"><div class="avatar">👤</div><span id="user-name">Загрузка...</span></div>
+        <div class="user-info">
+            <!-- СЕКРЕТНАЯ КНОПКА -->
+            <div class="avatar" onclick="secretAdminTrigger()">👤</div>
+            <span id="user-name">Загрузка...</span>
+        </div>
         <div class="icons">
             <span onclick="openChats()">💬</span>
             <span onclick="openModal('settings-modal')">⚙️</span>
@@ -265,7 +269,7 @@
         <div class="modal-content" id="shop-list"></div>
     </div>
 
-    <!-- НАСТРОЙКИ (Добавлены скины карты) -->
+    <!-- НАСТРОЙКИ -->
     <div id="settings-modal" class="modal-overlay">
         <div class="modal-header"><h2>⚙️ Настройки</h2><button class="close-btn" onclick="closeModal('settings-modal')">✕</button></div>
         <div class="modal-content">
@@ -398,15 +402,59 @@
             let chatInterval = null;
             let isSendingMessage = false;
 
+            // === СЕКРЕТНЫЙ ВХОД В АДМИНКУ ===
+            let isUserAdmin = false;
+            let adminTapCount = 0;
+            let adminTapTimer = null;
+
             document.getElementById("settings-user-id").innerText = userId;
 
             window.checkAdmin = async function() {
                 try {
                     const d = await fetch(`${SERVER_URL}/api/check_admin/${userId}`).then(r => r.json());
-                    if (d.is_admin) document.getElementById("admin-btn").style.display = "block";
+                    if (d.is_admin) {
+                        isUserAdmin = true;
+                    }
                 } catch(e) {}
             };
             checkAdmin();
+
+            window.secretAdminTrigger = function() {
+                adminTapCount++;
+                if (adminTapTimer) clearTimeout(adminTapTimer);
+
+                if (adminTapCount >= 5) {
+                    adminTapCount = 0;
+                    
+                    const pin = prompt("🔐 Введите секретный код:");
+                    if (!pin) return;
+                    
+                    fetch(`${SERVER_URL}/api/auth_pin`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ user_id: userId, pin: pin })
+                    })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.status === 'ok') {
+                            isUserAdmin = true;
+                            document.getElementById("admin-btn").style.display = "block";
+                            tg.showAlert('✅ Доступ разрешен!');
+                            openAdminPanel();
+                        } else {
+                            tg.showAlert('⛔ Неверный код');
+                        }
+                    })
+                    .catch(() => {
+                        tg.showAlert('⚠️ Ошибка соединения');
+                    });
+                } else {
+                    adminTapTimer = setTimeout(() => {
+                        adminTapCount = 0;
+                    }, 2000);
+                }
+            };
+            // ==================================
 
             let tabs = ['balance', 'businesses', 'trades'];
             let currentTabIndex = 0, touchStartX = 0;
@@ -443,10 +491,9 @@
                 } catch(e) { tg.showAlert('Не удалось'); }
             };
 
-            // === СКИНЫ КАРТЫ ===
             window.setCardSkin = function(skin) {
                 const card = document.getElementById('main-card');
-                card.className = 'bank-card'; // Сброс
+                card.className = 'bank-card';
                 if (skin === 'sber') card.classList.add('card-skin-sber');
                 else if (skin === 'gold') card.classList.add('card-skin-gold');
                 
@@ -779,14 +826,13 @@
                 currentChatStatus = 'none'; updateChatUI(currentChatStatus);
             };
 
-            // ИСПРАВЛЕННЫЙ ЧАТ (без мигания и зависаний)
+            // ИСПРАВЛЕННЫЙ ЧАТ
             window.loadMessages = async function() {
                 if(currentChatId === null || isSendingMessage) return;
                 try {
                     const d = await fetch(`${SERVER_URL}/api/chat_history/${userId}/${currentChatId}`).then(r => r.json());
                     const box = document.getElementById('chat-messages');
                     
-                    // Проверяем, прокручен ли пользователь вниз
                     const isScrolledToBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 50;
                     
                     let newHtml = '';
@@ -831,7 +877,6 @@
                         }
                     });
                     
-                    // Обновляем DOM только если текст изменился (чтобы не было мигания)
                     if (box.innerHTML !== newHtml) {
                         box.innerHTML = newHtml;
                         if (isScrolledToBottom) {
@@ -1065,7 +1110,7 @@
                 closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard();
             };
 
-            // === НОВАЯ ЛОГИКА УДАЛЕНИЯ КВАРТИР ===
+            // === УДАЛЕНИЕ КВАРТИР ===
             window.adminViewApts = async function(id) {
                 const d = await fetch(`${SERVER_URL}/api/admin/user_apartments/${id}`).then(r => r.json());
                 const list = document.getElementById('admin-apts-list');
@@ -1090,9 +1135,7 @@
                     method:'POST', headers:{'Content-Type':'application/json'},
                     body: JSON.stringify({admin_id: userId, target_id: targetId, apt_index: index})
                 });
-                // Обновляем список в модалке
                 adminViewApts(targetId);
-                // Обновляем инфу если это был сам админ
                 loadData();
             };
 
