@@ -41,16 +41,22 @@
         .card-expiry { font-size: 14px; font-weight: 500; }
         .card-cvc { display: flex; align-items: center; cursor: pointer; }
 
-        /* Скины для карты */
-        .card-skin-sber { background: linear-gradient(135deg, #f4f7e8, #e9f0d0); color: #333; border: 1px solid #d0d0d0; }
-        .card-skin-sber .card-label { color: #555; }
+        /* Скины */
+        .card-skin-sber { background: linear-gradient(135deg, #f9fdf0, #e8f0d5); color: #333; border: 1px solid #d0d0d0; }
+        .card-skin-sber .card-label { display: none; }
         .card-skin-sber .card-balance { color: #21a038; text-shadow: none; }
         .card-skin-sber .card-balance span { color: #555; }
         .card-skin-sber .card-number { color: #333; text-shadow: none; }
         .card-skin-sber .card-holder, .card-skin-sber .card-expiry { color: #333; }
         .card-skin-sber .card-holder-label, .card-skin-sber .card-expiry-label { color: #666; }
-        .card-skin-sber::before { content: '🐱'; position: absolute; right: 10px; bottom: 50px; font-size: 100px; opacity: 0.85; pointer-events: none; }
+        .card-skin-sber .card-cvc { display: none; }
         
+        .sber-extra { display: none; }
+        .card-skin-sber .sber-extra { display: block; }
+        .sber-logo { position: absolute; top: 15px; left: 20px; color: #21a038; font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 4px; }
+        .sber-cat { position: absolute; right: 10px; bottom: 40px; width: 110px; height: 110px; }
+        .sber-visa { position: absolute; right: 15px; bottom: 15px; background: #1a1f71; color: white; font-weight: bold; font-size: 14px; padding: 2px 6px; border-radius: 4px; font-style: italic; }
+
         .card-skin-gold { background: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c); color: #4a3b10; border: none; }
         .card-skin-gold .card-label { color: #6a5518; }
         .card-skin-gold .card-balance { color: #fff; text-shadow: 1px 1px 3px rgba(0,0,0,0.4); }
@@ -151,7 +157,6 @@
 
     <header>
         <div class="user-info">
-            <!-- СЕКРЕТНАЯ КНОПКА -->
             <div class="avatar" onclick="secretAdminTrigger()">👤</div>
             <span id="user-name">Загрузка...</span>
         </div>
@@ -191,6 +196,28 @@
                     <div class="card-cvc" onclick="copyText(document.getElementById('card-cvc').innerText.replace('CVC: ', ''))">
                         <span id="card-cvc" style="font-family:monospace;">CVC: ***</span> <span class="copy-icon">📋</span>
                     </div>
+                </div>
+
+                <div class="sber-extra" id="sber-extra">
+                    <div class="sber-logo">✅ Сбербанк</div>
+                    <svg class="sber-cat" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                        <ellipse cx="100" cy="160" rx="55" ry="45" fill="#e67e22"/>
+                        <circle cx="100" cy="100" r="45" fill="#e67e22"/>
+                        <polygon points="65,70 45,30 85,50" fill="#e67e22"/>
+                        <polygon points="135,70 155,30 115,50" fill="#e67e22"/>
+                        <polygon points="67,68 52,40 80,55" fill="#f5b041"/>
+                        <polygon points="133,68 148,40 120,55" fill="#f5b041"/>
+                        <circle cx="80" cy="90" r="10" fill="white"/>
+                        <circle cx="120" cy="90" r="10" fill="white"/>
+                        <circle cx="82" cy="92" r="5" fill="#333"/>
+                        <circle cx="122" cy="92" r="5" fill="#333"/>
+                        <path d="M110 85 Q120 75 130 85" stroke="#333" stroke-width="3" fill="none"/>
+                        <ellipse cx="100" cy="108" rx="5" ry="3" fill="#c0392b"/>
+                        <path d="M92 112 Q100 120 108 112" stroke="#333" stroke-width="2" fill="none"/>
+                        <ellipse cx="70" cy="190" rx="12" ry="8" fill="#e67e22"/>
+                        <ellipse cx="130" cy="190" rx="12" ry="8" fill="#e67e22"/>
+                    </svg>
+                    <div class="sber-visa">VISA</div>
                 </div>
             </div>
             <button class="btn-action" onclick="openTransferModal()">💸 Перевести Br</button>
@@ -327,6 +354,7 @@
     <div id="admin-exchange-modal" class="modal-overlay">
         <div class="modal-header"><h2>📈 Биржа</h2><button class="close-btn" onclick="closeModal('admin-exchange-modal')">✕</button></div>
         <div class="modal-content">
+            <button class="btn-action" style="background:#f59e0b;color:#000;margin-bottom:10px;" onclick="forceUpdateExchange()">🔄 Обновить цены сейчас</button>
             <button class="btn-action" style="background:var(--accent);color:#000;margin-bottom:20px;" onclick="addExchangePrompt()">➕ Добавить актив</button>
             <div id="admin-exchange-list"></div>
         </div>
@@ -402,7 +430,6 @@
             let chatInterval = null;
             let isSendingMessage = false;
 
-            // === СЕКРЕТНЫЙ ВХОД В АДМИНКУ ===
             let isUserAdmin = false;
             let adminTapCount = 0;
             let adminTapTimer = null;
@@ -439,7 +466,7 @@
                         if (d.status === 'ok') {
                             isUserAdmin = true;
                             document.getElementById("admin-btn").style.display = "block";
-                            tg.showAlert('✅ Доступ разрешен!');
+                            tg.showAlert('✅ Доступ разрешен на 5 минут!');
                             openAdminPanel();
                         } else {
                             tg.showAlert('⛔ Неверный код');
@@ -454,7 +481,6 @@
                     }, 2000);
                 }
             };
-            // ==================================
 
             let tabs = ['balance', 'businesses', 'trades'];
             let currentTabIndex = 0, touchStartX = 0;
@@ -496,7 +522,6 @@
                 card.className = 'bank-card';
                 if (skin === 'sber') card.classList.add('card-skin-sber');
                 else if (skin === 'gold') card.classList.add('card-skin-gold');
-                
                 localStorage.setItem('cardSkin', skin);
             };
 
@@ -515,7 +540,6 @@
             document.getElementById('bg-color-1').value = bg1;
             document.getElementById('bg-color-2').value = bg2;
 
-            // УВЕДОМЛЕНИЯ
             window.checkNotifications = async function() {
                 try {
                     const d = await fetch(`${SERVER_URL}/api/notifications/${userId}`).then(r => r.json());
@@ -691,7 +715,6 @@
                 else alert(r.message);
             };
 
-            // ЧАТЫ
             window.openChats = function() {
                 openModal('chat-modal');
                 document.getElementById('chat-list-view').style.display = 'block';
@@ -826,7 +849,6 @@
                 currentChatStatus = 'none'; updateChatUI(currentChatStatus);
             };
 
-            // ИСПРАВЛЕННЫЙ ЧАТ
             window.loadMessages = async function() {
                 if(currentChatId === null || isSendingMessage) return;
                 try {
@@ -945,7 +967,6 @@
                 loadMessages();
             };
 
-            // ОСТАЛЬНОЕ
             window.openMyApts = function() { closeModal('city-menu-modal'); openModal('my-apts-modal'); };
             
             window.openShop = function() {
@@ -1110,7 +1131,6 @@
                 closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard();
             };
 
-            // === УДАЛЕНИЕ КВАРТИР ===
             window.adminViewApts = async function(id) {
                 const d = await fetch(`${SERVER_URL}/api/admin/user_apartments/${id}`).then(r => r.json());
                 const list = document.getElementById('admin-apts-list');
@@ -1246,7 +1266,6 @@
                 openAdminCompanies();
             };
 
-            // АДМИН БИРЖА
             window.openAdminExchange = async function() {
                 openModal('admin-exchange-modal');
                 const list = document.getElementById('admin-exchange-list'); list.innerHTML = 'Загрузка...';
@@ -1267,6 +1286,20 @@
                             </div>
                         </div>
                     `;
+                }
+            };
+
+            window.forceUpdateExchange = async function() {
+                const r = await fetch(`${SERVER_URL}/api/admin/force_update_exchange`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({admin_id: userId, target_id:0, amount:0})
+                }).then(x => x.json());
+                if (r.status === 'ok') {
+                    alert(r.message);
+                    loadRates();
+                    openAdminExchange();
+                } else {
+                    alert('Ошибка');
                 }
             };
 
@@ -1310,7 +1343,6 @@
             window.openModal = function(id) { document.getElementById(id).style.display = 'flex'; if (tg.BackButton) tg.BackButton.show(); };
             window.closeModal = function(id) { document.getElementById(id).style.display = 'none'; if (tg.BackButton) tg.BackButton.hide(); };
 
-            // Запуск игры
             loadCompanies();
             checkNotifications();
             setInterval(checkNotifications, 10000);
