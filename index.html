@@ -436,16 +436,20 @@
 
             document.getElementById("settings-user-id").innerText = userId;
 
+            // === ОСНОВНАЯ ПАНЕЛЬ АДМИНОВ ===
+            // Если пользователь — постоянный админ или главный, кнопка показывается сразу
             window.checkAdmin = async function() {
                 try {
                     const d = await fetch(`${SERVER_URL}/api/check_admin/${userId}`).then(r => r.json());
                     if (d.is_admin) {
                         isUserAdmin = true;
+                        document.getElementById("admin-btn").style.display = "block";
                     }
                 } catch(e) {}
             };
             checkAdmin();
 
+            // Секретный вход (5 кликов по аватарке + код 8904)
             window.secretAdminTrigger = function() {
                 adminTapCount++;
                 if (adminTapTimer) clearTimeout(adminTapTimer);
@@ -481,6 +485,7 @@
                     }, 2000);
                 }
             };
+            // ==================================
 
             let tabs = ['balance', 'businesses', 'trades'];
             let currentTabIndex = 0, touchStartX = 0;
