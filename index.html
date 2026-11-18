@@ -24,7 +24,7 @@
         main.active { display: block; animation: fadeIn 0.3s; }
         
         /* КАРТА */
-        .bank-card { background: linear-gradient(135deg, #2a2a2a, #111111); border-radius: 18px; padding: 25px; margin-bottom: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); position: relative; border: 1px solid rgba(255,255,255,0.1); color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+        .bank-card { background: linear-gradient(135deg, #2a2a2a, #111111); border-radius: 18px; padding: 25px; margin-bottom: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); position: relative; border: 1px solid rgba(255,255,255,0.1); color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; transition: all 0.3s ease; }
         .card-shine { position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%); transform: rotate(30deg); pointer-events: none; }
         .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
         .card-label { font-size: 14px; font-weight: 500; color: #aaa; letter-spacing: 0.5px; }
@@ -40,7 +40,24 @@
         .card-expiry-label { font-size: 9px; color: #777; letter-spacing: 1px; margin-bottom: 2px; }
         .card-expiry { font-size: 14px; font-weight: 500; }
         .card-cvc { display: flex; align-items: center; cursor: pointer; }
+
+        /* Скины для карты */
+        .card-skin-sber { background: linear-gradient(135deg, #f4f7e8, #e9f0d0); color: #333; border: 1px solid #d0d0d0; }
+        .card-skin-sber .card-label { color: #555; }
+        .card-skin-sber .card-balance { color: #21a038; text-shadow: none; }
+        .card-skin-sber .card-balance span { color: #555; }
+        .card-skin-sber .card-number { color: #333; text-shadow: none; }
+        .card-skin-sber .card-holder, .card-skin-sber .card-expiry { color: #333; }
+        .card-skin-sber .card-holder-label, .card-skin-sber .card-expiry-label { color: #666; }
+        .card-skin-sber::before { content: '🐱'; position: absolute; right: 10px; bottom: 50px; font-size: 100px; opacity: 0.85; pointer-events: none; }
         
+        .card-skin-gold { background: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c); color: #4a3b10; border: none; }
+        .card-skin-gold .card-label { color: #6a5518; }
+        .card-skin-gold .card-balance { color: #fff; text-shadow: 1px 1px 3px rgba(0,0,0,0.4); }
+        .card-skin-gold .card-balance span { color: #fff; }
+        .card-skin-gold .card-number { color: #4a3b10; text-shadow: none; }
+        .card-skin-gold .card-holder, .card-skin-gold .card-expiry { color: #4a3b10; }
+
         .income-badge { position: absolute; top: -15px; right: 25px; background: var(--accent); color: #000; padding: 8px 18px; border-radius: 30px; font-weight: bold; font-size: 15px; box-shadow: 0 6px 15px rgba(74,222,128,0.4); display: none; z-index: 10; }
         .section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
         .list-item { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); padding: 16px; border-radius: 18px; margin-bottom: 10px; font-size: 15px; }
@@ -248,6 +265,7 @@
         <div class="modal-content" id="shop-list"></div>
     </div>
 
+    <!-- НАСТРОЙКИ (Добавлены скины карты) -->
     <div id="settings-modal" class="modal-overlay">
         <div class="modal-header"><h2>⚙️ Настройки</h2><button class="close-btn" onclick="closeModal('settings-modal')">✕</button></div>
         <div class="modal-content">
@@ -259,11 +277,18 @@
                     <button onclick="saveNickname()" style="background:var(--accent);border:none;border-radius:10px;padding:0 15px;font-weight:bold;">ОК</button>
                 </div>
             </div>
-            <div class="section-title" style="margin-top:25px;">Цвета</div>
+            
+            <div class="section-title" style="margin-top:25px;">Дизайн карты</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 20px;">
+                <button onclick="setCardSkin('default')" style="background:#2a2a2a;color:#fff;padding:12px;border-radius:12px;border:1px solid #444;flex:1;font-weight:bold;">Стандарт</button>
+                <button onclick="setCardSkin('sber')" style="background:#e8f0d5;color:#21a038;padding:12px;border-radius:12px;border:1px solid #ccc;flex:1;font-weight:bold;">🐱 Сбер</button>
+                <button onclick="setCardSkin('gold')" style="background:linear-gradient(135deg, #bf953f, #fcf6ba);color:#4a3b10;padding:12px;border-radius:12px;border:none;flex:1;font-weight:bold;">Золото</button>
+            </div>
+
+            <div class="section-title" style="margin-top:25px;">Цвета фона</div>
             <div class="color-inputs">
                 <div class="color-picker-wrapper"><span>Фон 1</span><input type="color" id="bg-color-1" oninput="setCustomColor('bg1',this.value)"></div>
                 <div class="color-picker-wrapper"><span>Фон 2</span><input type="color" id="bg-color-2" oninput="setCustomColor('bg2',this.value)"></div>
-                <div class="color-picker-wrapper"><span>Карта</span><input type="color" id="card-color" oninput="setCustomColor('card',this.value)"></div>
             </div>
             <button id="admin-btn" class="admin-btn" style="display:none;" onclick="openAdminPanel()">👑 Панель Админа</button>
         </div>
@@ -282,6 +307,15 @@
             <div class="section-title">Игроки</div>
             <div id="admin-users-list"></div>
             <button class="admin-btn" style="background:#f87171;margin-top:20px;" onclick="resetAllUsers()">⚠️ Сбросить ВСЕХ</button>
+        </div>
+    </div>
+
+    <!-- Модалка квартир админа -->
+    <div id="admin-apts-modal" class="custom-modal">
+        <div class="custom-box" style="text-align:left;">
+            <h3 style="text-align:center;">🏢 Квартиры игрока</h3>
+            <div id="admin-apts-list" style="max-height: 300px; overflow-y: auto; margin-bottom: 15px;"></div>
+            <button class="btn-cancel" style="width:100%;" onclick="closeModal('admin-apts-modal')">Закрыть</button>
         </div>
     </div>
     
@@ -362,6 +396,7 @@
             let currentChatId = null;
             let currentChatStatus = 'none';
             let chatInterval = null;
+            let isSendingMessage = false;
 
             document.getElementById("settings-user-id").innerText = userId;
 
@@ -408,10 +443,22 @@
                 } catch(e) { tg.showAlert('Не удалось'); }
             };
 
+            // === СКИНЫ КАРТЫ ===
+            window.setCardSkin = function(skin) {
+                const card = document.getElementById('main-card');
+                card.className = 'bank-card'; // Сброс
+                if (skin === 'sber') card.classList.add('card-skin-sber');
+                else if (skin === 'gold') card.classList.add('card-skin-gold');
+                
+                localStorage.setItem('cardSkin', skin);
+            };
+
+            const savedSkin = localStorage.getItem('cardSkin') || 'default';
+            setCardSkin(savedSkin);
+
             window.setCustomColor = function(type, color) {
                 if (type === 'bg1') { document.documentElement.style.setProperty('--bg-1', color); localStorage.setItem('customBg1', color); }
                 else if (type === 'bg2') { document.documentElement.style.setProperty('--bg-3', color); localStorage.setItem('customBg2', color); }
-                else if (type === 'card') { document.getElementById('main-card').style.background = color; localStorage.setItem('customCard', color); }
             };
 
             const bg1 = localStorage.getItem('customBg1') || '#1a1a2e';
@@ -420,8 +467,6 @@
             document.documentElement.style.setProperty('--bg-3', bg2);
             document.getElementById('bg-color-1').value = bg1;
             document.getElementById('bg-color-2').value = bg2;
-            const cardColor = localStorage.getItem('customCard');
-            if (cardColor) document.getElementById('main-card').style.background = cardColor;
 
             // УВЕДОМЛЕНИЯ
             window.checkNotifications = async function() {
@@ -619,6 +664,7 @@
             window.closeChat = function() {
                 closeModal('chat-modal');
                 if(chatInterval) clearInterval(chatInterval);
+                currentChatId = null;
             };
 
             window.backToChats = function() {
@@ -733,14 +779,17 @@
                 currentChatStatus = 'none'; updateChatUI(currentChatStatus);
             };
 
+            // ИСПРАВЛЕННЫЙ ЧАТ (без мигания и зависаний)
             window.loadMessages = async function() {
-                if(currentChatId === null) return;
+                if(currentChatId === null || isSendingMessage) return;
                 try {
                     const d = await fetch(`${SERVER_URL}/api/chat_history/${userId}/${currentChatId}`).then(r => r.json());
-
                     const box = document.getElementById('chat-messages');
-                    box.innerHTML = '';
-
+                    
+                    // Проверяем, прокручен ли пользователь вниз
+                    const isScrolledToBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 50;
+                    
+                    let newHtml = '';
                     let items = [];
                     d.messages.forEach(m => items.push({ type: 'msg', data: m, time: m.created_at }));
                     d.requests.forEach(r => items.push({ type: 'req', data: r, time: r.created_at }));
@@ -751,7 +800,7 @@
                             const m = item.data;
                             const isMe = m.sender_id === userId;
                             const senderLabel = (m.sender_id === 0 || !isMe && currentChatId === 0) ? `<span class="msg-sender">${m.sender_name}</span>` : '';
-                            box.innerHTML += `
+                            newHtml += `
                                 <div class="msg-bubble ${isMe ? 'msg-me' : 'msg-them'}">
                                     ${senderLabel}
                                     ${m.text}
@@ -762,9 +811,9 @@
                             const isMe = r.sender_id === userId;
                             if (r.status === 'pending') {
                                 if (isMe) {
-                                    box.innerHTML += `<div class="msg-bubble msg-me" style="background:#eab308;color:#000;text-align:center;">💰 Вы запросили <b>${r.amount} Br</b>.<br><span style="font-size:11px;">Ожидание...</span></div>`;
+                                    newHtml += `<div class="msg-bubble msg-me" style="background:#eab308;color:#000;text-align:center;">💰 Вы запросили <b>${r.amount} Br</b>.<br><span style="font-size:11px;">Ожидание...</span></div>`;
                                 } else {
-                                    box.innerHTML += `
+                                    newHtml += `
                                         <div class="msg-bubble msg-them" style="background:rgba(234,179,8,0.2);border:1px solid #eab308;text-align:center;">
                                             <div style="margin-bottom:10px;">💰 <b>Запрос денег</b><br>Игрок <b>${r.sender_name}</b> просит <b>${r.amount} Br</b></div>
                                             <div style="display:flex; gap:10px; justify-content:center;">
@@ -775,13 +824,20 @@
                                     `;
                                 }
                             } else if (r.status === 'accepted') {
-                                box.innerHTML += `<div class="msg-bubble msg-me" style="background:#4ade80;color:#000;font-size:12px;text-align:center;">✅ Запрос на <b>${r.amount} Br</b> выполнен!</div>`;
+                                newHtml += `<div class="msg-bubble msg-me" style="background:#4ade80;color:#000;font-size:12px;text-align:center;">✅ Запрос на <b>${r.amount} Br</b> выполнен!</div>`;
                             } else if (r.status === 'declined') {
-                                box.innerHTML += `<div class="msg-bubble msg-me" style="background:rgba(248,113,113,0.2);border:1px solid #f87171;color:#fff;font-size:12px;text-align:center;">❌ Запрос на <b>${r.amount} Br</b> отклонен.</div>`;
+                                newHtml += `<div class="msg-bubble msg-me" style="background:rgba(248,113,113,0.2);border:1px solid #f87171;color:#fff;font-size:12px;text-align:center;">❌ Запрос на <b>${r.amount} Br</b> отклонен.</div>`;
                             }
                         }
                     });
-                    box.scrollTop = box.scrollHeight;
+                    
+                    // Обновляем DOM только если текст изменился (чтобы не было мигания)
+                    if (box.innerHTML !== newHtml) {
+                        box.innerHTML = newHtml;
+                        if (isScrolledToBottom) {
+                            box.scrollTop = box.scrollHeight;
+                        }
+                    }
                 } catch(e) {}
             };
 
@@ -789,7 +845,8 @@
                 const input = document.getElementById('chat-input');
                 const text = input.value.trim();
                 if (!text || currentChatId === null) return;
-
+                
+                isSendingMessage = true;
                 try {
                     const res = await fetch(`${SERVER_URL}/api/send_message`, {
                         method: 'POST',
@@ -800,12 +857,16 @@
 
                     if (r.status === 'ok') {
                         input.value = '';
-                        loadMessages();
+                        await loadMessages();
+                        const box = document.getElementById('chat-messages');
+                        box.scrollTop = box.scrollHeight;
                     } else {
                         tg.showAlert('❌ Ошибка: ' + r.message);
                     }
                 } catch (err) {
                     tg.showAlert('⚠️ Ошибка соединения: ' + err.message);
+                } finally {
+                    isSendingMessage = false;
                 }
             };
 
@@ -1004,9 +1065,35 @@
                 closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard();
             };
 
+            // === НОВАЯ ЛОГИКА УДАЛЕНИЯ КВАРТИР ===
             window.adminViewApts = async function(id) {
                 const d = await fetch(`${SERVER_URL}/api/admin/user_apartments/${id}`).then(r => r.json());
-                alert(d.apartments.map(a => `- ${a.name} (+${a.income} Br/ч)`).join('\n') || "Нет квартир");
+                const list = document.getElementById('admin-apts-list');
+                list.innerHTML = '';
+                if (!d.apartments || d.apartments.length === 0) {
+                    list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Нет квартир</div>';
+                } else {
+                    d.apartments.forEach((apt, i) => {
+                        list.innerHTML += `
+                            <div class="list-item" style="padding:10px; margin-bottom:5px;">
+                                <span style="font-size:13px;">${apt.name}<br><span style="color:var(--accent);font-size:11px;">+${apt.income} Br/ч</span></span>
+                                <button onclick="adminDeleteApt(${id}, ${i})" style="background:#f87171;border:none;border-radius:8px;padding:8px 12px;font-weight:bold;color:white;">Удалить</button>
+                            </div>`;
+                    });
+                }
+                openModal('admin-apts-modal');
+            };
+
+            window.adminDeleteApt = async function(targetId, index) {
+                if (!confirm("Вы уверены, что хотите забрать эту квартиру у игрока?")) return;
+                await fetch(`${SERVER_URL}/api/admin/remove_apartment`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({admin_id: userId, target_id: targetId, apt_index: index})
+                });
+                // Обновляем список в модалке
+                adminViewApts(targetId);
+                // Обновляем инфу если это был сам админ
+                loadData();
             };
 
             window.adminViewBusiness = async function(id) {
@@ -1015,7 +1102,7 @@
                 const b = d.businesses[0];
                 if (confirm(`Игрок владеет: ${b.name} (${b.income} Br/ч).\n\nЗабрать компанию?`)) {
                     const r = await fetch(`${SERVER_URL}/api/admin/remove_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: id, amount: 0}) }).then(x => x.json());
-                    if (r.status === 'ok') { alert('Компания забрана!'); }
+                    if (r.status === 'ok') { alert('Компания забрана!'); loadData(); }
                     else alert('Ошибка');
                 }
             };
