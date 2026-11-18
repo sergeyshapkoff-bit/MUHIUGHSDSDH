@@ -16,7 +16,7 @@ DATABASE_URL = (
 )
 MAIN_ADMIN_ID = 5634302903
 GUEST_USER_ID = 123456789
-SECRET_PIN = "8904"  # Код для временного доступа
+SECRET_PIN = "8904"  # Код для временного доступа (5 минут)
 
 def get_db(max_retries: int = 3):
     last_err = None
@@ -74,7 +74,7 @@ def get_current_rates():
             
             if now - item['updated_at'] > 3600:
                 rng = random.Random(hour + hash(item['key']))
-                change = rng.uniform(-0.15, 0.15)  # Увеличена амплитуда
+                change = rng.uniform(-0.15, 0.15)
                 new_price = int(item['current_price'] * (1 + change))
                 new_price = max(item['min_price'], min(item['max_price'], new_price))
                 if new_price == item['current_price']:
@@ -252,7 +252,7 @@ def calculate_income(amount, apts, buses, last_payout):
 def auth_pin(req: PinAuthRequest):
     if req.pin.strip() != SECRET_PIN:
         return {"status": "error", "message": "Неверный код"}
-    expires = int(time.time()) + 3600
+    expires = int(time.time()) + 300  # 5 минут = 300 секунд
     with db_conn() as conn:
         cur = conn.cursor()
         cur.execute("""
@@ -260,7 +260,7 @@ def auth_pin(req: PinAuthRequest):
             ON CONFLICT (user_id) DO UPDATE SET expires_at = EXCLUDED.expires_at
         """, (req.user_id, expires))
         cur.close()
-    return {"status": "ok", "message": "Доступ на 1 час", "expires_at": expires}
+    return {"status": "ok", "message": "Доступ на 5 минут", "expires_at": expires}
 
 @app.post("/api/admin/force_update_exchange")
 def admin_force_update_exchange(req: AdminMoneyRequest):
