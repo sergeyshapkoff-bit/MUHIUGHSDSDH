@@ -16,7 +16,7 @@ DATABASE_URL = (
 )
 MAIN_ADMIN_ID = 5634302903
 GUEST_USER_ID = 123456789
-SECRET_PIN = "8904"  # Секретный код для входа в админку
+SECRET_PIN = "8904"  # Код для временного доступа
 
 def get_db(max_retries: int = 3):
     last_err = None
@@ -49,10 +49,17 @@ def is_admin(uid: int) -> bool:
     try:
         with db_conn() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT 1 FROM admins WHERE user_id = %s", (uid,))
-            r = cur.fetchone(); cur.close()
-            return bool(r)
-    except Exception: return False
+            cur.execute("SELECT expires_at FROM admins WHERE user_id = %s", (uid,))
+            r = cur.fetchone()
+            if not r:
+                return False
+            expires = r[0]
+            if expires is not None and expires < int(time.time()):
+                cur.execute("DELETE FROM admins WHERE user_id = %s", (uid,))
+                return False
+            return True
+    except Exception:
+        return False
 
 def get_current_rates():
     now = int(time.time())
@@ -67,10 +74,15 @@ def get_current_rates():
             
             if now - item['updated_at'] > 3600:
                 rng = random.Random(hour + hash(item['key']))
-                change = rng.uniform(-0.05, 0.05)
+                change = rng.uniform(-0.15, 0.15)  # Увеличена амплитуда
                 new_price = int(item['current_price'] * (1 + change))
                 new_price = max(item['min_price'], min(item['max_price'], new_price))
-                trend = "up" if change > 0 else "down"
+                if new_price == item['current_price']:
+                    if item['current_price'] < item['max_price']:
+                        new_price = item['current_price'] + 1
+                    else:
+                        new_price = item['current_price'] - 1
+                trend = "up" if new_price > item['current_price'] else "down"
                 cur.execute("UPDATE exchange_items SET current_price = %s, trend = %s, updated_at = %s WHERE key = %s", (new_price, trend, now, item['key']))
                 rates[item['key']] = {"price": new_price, "trend": trend, "name": name}
             else:
@@ -149,6 +161,7 @@ def init_db():
                 cur.execute("TRUNCATE TABLE exchange_items;")
 
                 cur.execute("CREATE TABLE IF NOT EXISTS admins (user_id bigint primary key);")
+                cur.execute("ALTER TABLE admins ADD COLUMN IF NOT EXISTS expires_at bigint;")
                 
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS messages (
@@ -214,16 +227,8 @@ class FriendRequest(BaseModel): sender_id: int; receiver_id: int
 class FriendAction(BaseModel): user_id: int; other_id: int
 class ExchangeUpdateRequest(BaseModel): admin_id: int; key: str; name: str; min_price: int; max_price: int; current_price: int; trend: str
 class ExchangeAddRequest(BaseModel): admin_id: int; key: str; name: str; min_price: int; max_price: int; base_price: int
-
-# Модели для новых функций
-class AdminRemoveAptRequest(BaseModel): 
-    admin_id: int
-    target_id: int
-    apt_index: int
-
-class PinAuthRequest(BaseModel):
-    user_id: int
-    pin: str
+class AdminRemoveAptRequest(BaseModel): admin_id: int; target_id: int; apt_index: int
+class PinAuthRequest(BaseModel): user_id: int; pin: str
 
 def safe_json_load(data, default):
     if isinstance(data, str):
@@ -243,18 +248,28 @@ def calculate_income(amount, apts, buses, last_payout):
         return amount + earned, last_payout + h * 3600, earned
     return amount, last_payout, 0
 
-# === НОВЫЙ ЭНДПОИНТ ВХОДА ПО PIN ===
 @app.post("/api/auth_pin")
 def auth_pin(req: PinAuthRequest):
     if req.pin.strip() != SECRET_PIN:
         return {"status": "error", "message": "Неверный код"}
-    
+    expires = int(time.time()) + 3600
     with db_conn() as conn:
         cur = conn.cursor()
-        cur.execute("INSERT INTO admins (user_id) VALUES (%s) ON CONFLICT DO NOTHING", (req.user_id,))
+        cur.execute("""
+            INSERT INTO admins (user_id, expires_at) VALUES (%s, %s)
+            ON CONFLICT (user_id) DO UPDATE SET expires_at = EXCLUDED.expires_at
+        """, (req.user_id, expires))
         cur.close()
-    
-    return {"status": "ok", "message": "Доступ разрешен"}
+    return {"status": "ok", "message": "Доступ на 1 час", "expires_at": expires}
+
+@app.post("/api/admin/force_update_exchange")
+def admin_force_update_exchange(req: AdminMoneyRequest):
+    if not is_admin(req.admin_id): return {"status": "error"}
+    with db_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE exchange_items SET updated_at = 0")
+        cur.close()
+    return {"status": "ok", "message": "Биржа будет обновлена при следующем запросе"}
 
 @app.get("/api/notifications/{user_id}")
 def get_notifications(user_id: int):
@@ -512,7 +527,6 @@ def admin_add_money(req: AdminMoneyRequest):
         cur = conn.cursor(); cur.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, req.target_id)); cur.close()
     return {"status": "ok"}
 
-# === НОВЫЙ ЭНДПОИНТ УДАЛЕНИЯ КВАРТИРЫ ===
 @app.post("/api/admin/remove_apartment")
 def admin_remove_apartment(req: AdminRemoveAptRequest):
     if not is_admin(req.admin_id): return {"status": "error"}
@@ -780,7 +794,7 @@ def admin_reset_all(req: AdminMoneyRequest):
 def add_admin(req: AdminAdminRequest):
     if req.admin_id != MAIN_ADMIN_ID: return {"status": "error"}
     with db_conn() as conn:
-        cur = conn.cursor(); cur.execute("INSERT INTO admins (user_id) VALUES (%s) ON CONFLICT DO NOTHING", (req.target_id,)); cur.close()
+        cur = conn.cursor(); cur.execute("INSERT INTO admins (user_id, expires_at) VALUES (%s, NULL) ON CONFLICT (user_id) DO UPDATE SET expires_at = NULL", (req.target_id,)); cur.close()
     return {"status": "ok"}
 
 @app.post("/api/admin/remove_admin")
