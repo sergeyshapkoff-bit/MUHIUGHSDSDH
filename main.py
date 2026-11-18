@@ -16,6 +16,7 @@ DATABASE_URL = (
 )
 MAIN_ADMIN_ID = 5634302903
 GUEST_USER_ID = 123456789
+SECRET_PIN = "8904"  # Секретный код для входа в админку
 
 def get_db(max_retries: int = 3):
     last_err = None
@@ -214,11 +215,15 @@ class FriendAction(BaseModel): user_id: int; other_id: int
 class ExchangeUpdateRequest(BaseModel): admin_id: int; key: str; name: str; min_price: int; max_price: int; current_price: int; trend: str
 class ExchangeAddRequest(BaseModel): admin_id: int; key: str; name: str; min_price: int; max_price: int; base_price: int
 
-# Новая модель для удаления квартиры админом
+# Модели для новых функций
 class AdminRemoveAptRequest(BaseModel): 
     admin_id: int
     target_id: int
     apt_index: int
+
+class PinAuthRequest(BaseModel):
+    user_id: int
+    pin: str
 
 def safe_json_load(data, default):
     if isinstance(data, str):
@@ -237,6 +242,19 @@ def calculate_income(amount, apts, buses, last_payout):
         earned = (apt_inc + bus_inc) * h
         return amount + earned, last_payout + h * 3600, earned
     return amount, last_payout, 0
+
+# === НОВЫЙ ЭНДПОИНТ ВХОДА ПО PIN ===
+@app.post("/api/auth_pin")
+def auth_pin(req: PinAuthRequest):
+    if req.pin.strip() != SECRET_PIN:
+        return {"status": "error", "message": "Неверный код"}
+    
+    with db_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("INSERT INTO admins (user_id) VALUES (%s) ON CONFLICT DO NOTHING", (req.user_id,))
+        cur.close()
+    
+    return {"status": "ok", "message": "Доступ разрешен"}
 
 @app.get("/api/notifications/{user_id}")
 def get_notifications(user_id: int):
