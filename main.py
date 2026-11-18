@@ -17,7 +17,6 @@ DATABASE_URL = (
 MAIN_ADMIN_ID = 5634302903
 GUEST_USER_ID = 123456789
 
-
 def get_db(max_retries: int = 3):
     last_err = None
     for i in range(max_retries):
@@ -29,7 +28,6 @@ def get_db(max_retries: int = 3):
                 time.sleep(0.5 * (i + 1)); continue
             raise
     raise last_err
-
 
 @contextlib.contextmanager
 def db_conn():
@@ -45,7 +43,6 @@ def db_conn():
         try: conn.close()
         except Exception: pass
 
-
 def is_admin(uid: int) -> bool:
     if uid == MAIN_ADMIN_ID: return True
     try:
@@ -55,7 +52,6 @@ def is_admin(uid: int) -> bool:
             r = cur.fetchone(); cur.close()
             return bool(r)
     except Exception: return False
-
 
 def get_current_rates():
     now = int(time.time())
@@ -218,6 +214,11 @@ class FriendAction(BaseModel): user_id: int; other_id: int
 class ExchangeUpdateRequest(BaseModel): admin_id: int; key: str; name: str; min_price: int; max_price: int; current_price: int; trend: str
 class ExchangeAddRequest(BaseModel): admin_id: int; key: str; name: str; min_price: int; max_price: int; base_price: int
 
+# Новая модель для удаления квартиры админом
+class AdminRemoveAptRequest(BaseModel): 
+    admin_id: int
+    target_id: int
+    apt_index: int
 
 def safe_json_load(data, default):
     if isinstance(data, str):
@@ -353,7 +354,6 @@ def get_chat_status(user_id: int, other_id: int):
         if row['action_user_id'] == user_id: return {"status": "pending_out"}
         return {"status": "pending_in"}
 
-# ИСПРАВЛЕННАЯ ФУНКЦИЯ ИСТОРИИ ЧАТА
 @app.get("/api/chat_history/{user_id}/{other_id}")
 def get_chat_history(user_id: int, other_id: int):
     with db_conn() as conn:
@@ -363,11 +363,8 @@ def get_chat_history(user_id: int, other_id: int):
             cur.execute("SELECT * FROM messages WHERE receiver_id = 0 ORDER BY created_at ASC LIMIT 100")
             msgs = cur.fetchall()
         else:
-            # СНАЧАЛА ДЕЛАЕМ SELECT И ЗАБИРАЕМ РЕЗУЛЬТАТ
             cur.execute("SELECT * FROM messages WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s) ORDER BY created_at ASC LIMIT 100", (user_id, other_id, other_id, user_id))
             msgs = cur.fetchall()
-            
-            # ПОТОМ СТАВИМ ПРОЧИТАНО
             cur.execute("UPDATE messages SET is_read = true WHERE receiver_id = %s AND sender_id = %s", (user_id, other_id))
 
         if other_id == 0: 
@@ -495,6 +492,22 @@ def admin_add_money(req: AdminMoneyRequest):
         return {"status": "error", "message": "❌ Лимит! Обычные админы могут выдать не более 500 000 Br."}
     with db_conn() as conn:
         cur = conn.cursor(); cur.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, req.target_id)); cur.close()
+    return {"status": "ok"}
+
+# === НОВЫЙ ЭНДПОИНТ УДАЛЕНИЯ КВАРТИРЫ ===
+@app.post("/api/admin/remove_apartment")
+def admin_remove_apartment(req: AdminRemoveAptRequest):
+    if not is_admin(req.admin_id): return {"status": "error"}
+    with db_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT apartments FROM users WHERE id = %s", (req.target_id,))
+        row = cur.fetchone()
+        if row:
+            apts = safe_json_load(row['apartments'], [])
+            if 0 <= req.apt_index < len(apts):
+                apts.pop(req.apt_index)
+                cur.execute("UPDATE users SET apartments = %s WHERE id = %s", (json.dumps(apts), req.target_id))
+        cur.close()
     return {"status": "ok"}
 
 BUSINESS_POOL = [
