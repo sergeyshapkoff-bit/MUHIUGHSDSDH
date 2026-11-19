@@ -16,7 +16,6 @@ DATABASE_URL = (
 )
 MAIN_ADMIN_ID = 5634302903
 GUEST_USER_ID = 123456789
-SECRET_PIN = "8904"  # Код для временного доступа (5 минут)
 
 def get_db(max_retries: int = 3):
     last_err = None
@@ -45,19 +44,16 @@ def db_conn():
         except Exception: pass
 
 def is_admin(uid: int) -> bool:
-    if uid == MAIN_ADMIN_ID: return True
+    """Главный админ — всегда, остальные — если есть в таблице admins."""
+    if uid == MAIN_ADMIN_ID:
+        return True
     try:
         with db_conn() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT expires_at FROM admins WHERE user_id = %s", (uid,))
+            cur.execute("SELECT 1 FROM admins WHERE user_id = %s", (uid,))
             r = cur.fetchone()
-            if not r:
-                return False
-            expires = r[0]
-            if expires is not None and expires < int(time.time()):
-                cur.execute("DELETE FROM admins WHERE user_id = %s", (uid,))
-                return False
-            return True
+            cur.close()
+            return bool(r)
     except Exception:
         return False
 
@@ -161,7 +157,8 @@ def init_db():
                 cur.execute("TRUNCATE TABLE exchange_items;")
 
                 cur.execute("CREATE TABLE IF NOT EXISTS admins (user_id bigint primary key);")
-                cur.execute("ALTER TABLE admins ADD COLUMN IF NOT EXISTS expires_at bigint;")
+                # Удаляем поле expires_at, если оно осталось от прошлой версии
+                cur.execute("ALTER TABLE admins DROP COLUMN IF EXISTS expires_at;")
                 
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS messages (
@@ -228,7 +225,6 @@ class FriendAction(BaseModel): user_id: int; other_id: int
 class ExchangeUpdateRequest(BaseModel): admin_id: int; key: str; name: str; min_price: int; max_price: int; current_price: int; trend: str
 class ExchangeAddRequest(BaseModel): admin_id: int; key: str; name: str; min_price: int; max_price: int; base_price: int
 class AdminRemoveAptRequest(BaseModel): admin_id: int; target_id: int; apt_index: int
-class PinAuthRequest(BaseModel): user_id: int; pin: str
 
 def safe_json_load(data, default):
     if isinstance(data, str):
@@ -247,20 +243,6 @@ def calculate_income(amount, apts, buses, last_payout):
         earned = (apt_inc + bus_inc) * h
         return amount + earned, last_payout + h * 3600, earned
     return amount, last_payout, 0
-
-@app.post("/api/auth_pin")
-def auth_pin(req: PinAuthRequest):
-    if req.pin.strip() != SECRET_PIN:
-        return {"status": "error", "message": "Неверный код"}
-    expires = int(time.time()) + 300  # 5 минут = 300 секунд
-    with db_conn() as conn:
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO admins (user_id, expires_at) VALUES (%s, %s)
-            ON CONFLICT (user_id) DO UPDATE SET expires_at = EXCLUDED.expires_at
-        """, (req.user_id, expires))
-        cur.close()
-    return {"status": "ok", "message": "Доступ на 5 минут", "expires_at": expires}
 
 @app.post("/api/admin/force_update_exchange")
 def admin_force_update_exchange(req: AdminMoneyRequest):
@@ -794,7 +776,7 @@ def admin_reset_all(req: AdminMoneyRequest):
 def add_admin(req: AdminAdminRequest):
     if req.admin_id != MAIN_ADMIN_ID: return {"status": "error"}
     with db_conn() as conn:
-        cur = conn.cursor(); cur.execute("INSERT INTO admins (user_id, expires_at) VALUES (%s, NULL) ON CONFLICT (user_id) DO UPDATE SET expires_at = NULL", (req.target_id,)); cur.close()
+        cur = conn.cursor(); cur.execute("INSERT INTO admins (user_id) VALUES (%s) ON CONFLICT DO NOTHING", (req.target_id,)); cur.close()
     return {"status": "ok"}
 
 @app.post("/api/admin/remove_admin")
