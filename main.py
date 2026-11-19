@@ -82,7 +82,6 @@ def get_current_rates():
                 rates[item['key']] = {"price": item['current_price'], "trend": item['trend'], "name": name}
         return rates
 
-# === ВОЗВРАЩАЕМ КВАРТИРЫ ===
 DEFAULT_COMPANIES = [
     {"name": "Эконом - Класс", "tiers": [
         {"name": "ЖК «Мапид»", "price": 200000, "income": 1650, "sqm": 7},
@@ -204,6 +203,7 @@ init_db()
 
 class BuyRequest(BaseModel): user_id: int; user_name: str; apartment_name: str; price: int; income: int
 class SellRequest(BaseModel): user_id: int; apartment_index: int; price: int
+class DeleteAptRequest(BaseModel): user_id: int; apartment_index: int
 class TransferRequest(BaseModel): sender_id: int; receiver_id: int; amount: int
 class TokenRequest(BaseModel): user_id: int; token_type: str; amount: int; action: str
 class BusinessBuyRequest(BaseModel): user_id: int; business_index: int
@@ -213,6 +213,7 @@ class AdminMoneyRequest(BaseModel): admin_id: int; target_id: int; amount: int
 class AdminCompanyRequest(BaseModel): admin_id: int; company_name: str; tier_data: dict = None
 class AdminAdminRequest(BaseModel): admin_id: int; target_id: int
 class MessageRequest(BaseModel): sender_id: int; receiver_id: int; text: str
+class DeleteMsgRequest(BaseModel): user_id: int; message_id: int
 class BroadcastRequest(BaseModel): admin_id: int; text: str
 class TierDiscountRequest(BaseModel): admin_id: int; company_id: int; tier_index: int; percent: int
 class MoneyRequestModel(BaseModel): sender_id: int; receiver_id: int; amount: int
@@ -274,6 +275,14 @@ def mark_messages_read(req: FriendAction):
     with db_conn() as conn:
         cur = conn.cursor()
         cur.execute("UPDATE messages SET is_read = true WHERE receiver_id = %s AND sender_id = %s", (req.user_id, req.other_id))
+        cur.close()
+    return {"status": "ok"}
+
+@app.post("/api/messages/delete")
+def delete_message(req: DeleteMsgRequest):
+    with db_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM messages WHERE id = %s AND sender_id = %s", (req.message_id, req.user_id))
         cur.close()
     return {"status": "ok"}
 
@@ -521,7 +530,18 @@ def admin_remove_apartment(req: AdminRemoveAptRequest):
         cur.close()
     return {"status": "ok"}
 
-# === НОВЫЕ БИЗНЕСЫ ИЗ ТЕТРАДИ ===
+@app.post("/api/delete_apt")
+def delete_apartment(req: DeleteAptRequest):
+    with db_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT apartments FROM users WHERE id = %s", (req.user_id,)); row = cur.fetchone()
+        apts = safe_json_load(row['apartments'], [])
+        if req.apartment_index < 0 or req.apartment_index >= len(apts): return {"status": "error"}
+        apts.pop(req.apartment_index)
+        cur.execute("UPDATE users SET apartments = %s WHERE id = %s", (json.dumps(apts), req.user_id)); cur.close()
+    return {"status": "ok", "message": "Квартира удалена"}
+
+# БИЗНЕСЫ ИЗ ТЕТРАДИ
 BUSINESS_POOL = [
     {"name": "Склад", "rarity": "Обычный", "price": 550000, "income": 4500, "req": 1, "weight": 5},
     {"name": "Кабинет", "rarity": "Обычный", "price": 3000000, "income": 5200, "req": 1, "weight": 7},
@@ -529,7 +549,7 @@ BUSINESS_POOL = [
     {"name": "Маленький", "rarity": "Редкий", "price": 10000000, "income": 61950, "req": 2, "weight": 16},
     {"name": "Супермаркет", "rarity": "Эпик", "price": 15000000, "income": 44500, "req": 3, "weight": 20},
     {"name": "Киоск", "rarity": "Эпик", "price": 18000000, "income": 100000, "req": 3, "weight": 21},
-    {"name": "Нефтянная", "rarity": "Мифик", "price": 65000000, "income": 450500, "req": 5, "weight": 30},
+    {"name": "Нефтяная", "rarity": "Мифик", "price": 65000000, "income": 450500, "req": 5, "weight": 30},
     {"name": "Это офис", "rarity": "Мега", "price": 93850900, "income": 534550, "req": 5, "weight": 35},
     {"name": "Рынок", "rarity": "Мега", "price": 100500000, "income": 1150000, "req": 8, "weight": 37},
     {"name": "Элитный район", "rarity": "Мега", "price": 250000000, "income": 3000000, "req": 8, "weight": 41},
