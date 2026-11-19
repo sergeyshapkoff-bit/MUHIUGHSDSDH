@@ -429,11 +429,10 @@
             let currentChatStatus = 'none';
             let chatInterval = null;
             let isSendingMessage = false;
+            let lastChatHash = ""; // Для предотвращения мигания чата
 
             document.getElementById("settings-user-id").innerText = userId;
 
-            // === ОСНОВНАЯ ПАНЕЛЬ АДМИНОВ ===
-            // При заходе проверяем, является ли пользователь админом
             window.checkAdmin = async function() {
                 try {
                     const d = await fetch(`${SERVER_URL}/api/check_admin/${userId}`).then(r => r.json());
@@ -443,7 +442,6 @@
                 } catch(e) {}
             };
             checkAdmin();
-            // ==================================
 
             let tabs = ['balance', 'businesses', 'trades'];
             let currentTabIndex = 0, touchStartX = 0;
@@ -731,6 +729,7 @@
             window.openChatWith = async function(id, name, initialStatus) {
                 currentChatId = id;
                 currentChatStatus = initialStatus;
+                lastChatHash = ""; // Сброс хэша при открытии чата
 
                 document.getElementById('chat-list-view').style.display = 'none';
                 document.getElementById('chat-window-view').style.display = 'flex';
@@ -751,7 +750,7 @@
                 updateChatUI(currentChatStatus);
                 loadMessages();
                 if(chatInterval) clearInterval(chatInterval);
-                chatInterval = setInterval(loadMessages, 3000);
+                chatInterval = setInterval(loadMessages, 5000); // Увеличили интервал для стабильности
             };
 
             window.updateChatUI = function(status) {
@@ -812,10 +811,17 @@
                 currentChatStatus = 'none'; updateChatUI(currentChatStatus);
             };
 
+            // ИСПРАВЛЕННЫЙ ЧАТ (без мигания и зависаний)
             window.loadMessages = async function() {
                 if(currentChatId === null || isSendingMessage) return;
                 try {
                     const d = await fetch(`${SERVER_URL}/api/chat_history/${userId}/${currentChatId}`).then(r => r.json());
+                    
+                    // Проверяем, изменилось ли что-то с прошлого раза
+                    const currentHash = JSON.stringify(d.messages) + JSON.stringify(d.requests);
+                    if (currentHash === lastChatHash) return; // Если нет — не перерисовываем
+                    lastChatHash = currentHash;
+
                     const box = document.getElementById('chat-messages');
                     
                     const isScrolledToBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 50;
@@ -887,6 +893,7 @@
 
                     if (r.status === 'ok') {
                         input.value = '';
+                        lastChatHash = ""; // Сбрасываем хэш, чтобы сообщение точно появилось
                         await loadMessages();
                         const box = document.getElementById('chat-messages');
                         box.scrollTop = box.scrollHeight;
@@ -910,6 +917,7 @@
                 }).then(x => x.json());
                 
                 if (r.status === 'error') alert(r.message);
+                lastChatHash = "";
                 loadMessages();
             };
 
@@ -918,7 +926,7 @@
                     method: 'POST', headers: {'Content-Type':'application/json'},
                     body: JSON.stringify({request_id: id, user_id: userId})
                 }).then(x => x.json());
-                if (r.status === 'ok') { loadData(); loadMessages(); }
+                if (r.status === 'ok') { loadData(); lastChatHash = ""; loadMessages(); }
                 else alert(r.message);
             };
 
@@ -927,6 +935,7 @@
                     method: 'POST', headers: {'Content-Type':'application/json'},
                     body: JSON.stringify({request_id: id, user_id: userId})
                 });
+                lastChatHash = "";
                 loadMessages();
             };
 
