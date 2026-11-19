@@ -82,27 +82,38 @@ def get_current_rates():
                 rates[item['key']] = {"price": item['current_price'], "trend": item['trend'], "name": name}
         return rates
 
-# === НОВЫЕ КОМПАНИИ ИЗ ТЕТРАДИ ===
+# === ВОЗВРАЩАЕМ КВАРТИРЫ ===
 DEFAULT_COMPANIES = [
-    {"name": "Офисы", "tiers": [
-        {"name": "Офис / Склад", "price": 550000, "income": 4500, "sqm": 10},
-        {"name": "Офис / Кабинет", "price": 3000000, "income": 5200, "sqm": 15},
-        {"name": "Офис / Центр зал", "price": 4500000, "income": 25750, "sqm": 20}
+    {"name": "Эконом - Класс", "tiers": [
+        {"name": "ЖК «Мапид»", "price": 200000, "income": 1650, "sqm": 7},
+        {"name": "Грушевка", "price": 345000, "income": 2860, "sqm": 11},
+        {"name": "ЖК «Малиновый Рай»", "price": 500000, "income": 3750, "sqm": 12}
     ]},
-    {"name": "Склады и Торговля", "tiers": [
-        {"name": "Склад / Маленький", "price": 10000000, "income": 61950, "sqm": 30},
-        {"name": "Элик / Супермаркет", "price": 15000000, "income": 44500, "sqm": 40},
-        {"name": "Элик / Киоск", "price": 18000000, "income": 100000, "sqm": 15}
+    {"name": "Комфорт - Класс", "tiers": [
+        {"name": "ЖК «Новая Боровая»", "price": 1450000, "income": 10000, "sqm": 15},
+        {"name": "Северный Берег", "price": 3000000, "income": 16500, "sqm": 15},
+        {"name": "ЖК «Речной порт»", "price": 3500000, "income": 22000, "sqm": 23},
+        {"name": "Михалово", "price": 5250000, "income": 29500, "sqm": 24},
+        {"name": "ЖК «Саввинская 17»", "price": 11500000, "income": 55000, "sqm": 28},
+        {"name": "ЖК «Изумрудный бор»", "price": 16700000, "income": 75000, "sqm": 31}
     ]},
-    {"name": "Промышленность и Мега", "tiers": [
-        {"name": "Мини / Нефтяная", "price": 65000000, "income": 450500, "sqm": 100},
-        {"name": "Мега / Это офис", "price": 93850900, "income": 534550, "sqm": 150},
-        {"name": "Мега / Рынок", "price": 100500000, "income": 1150000, "sqm": 200}
+    {"name": "Премиум - Комфорт", "tiers": [
+        {"name": "ЖК - Minsk World", "price": 25000000, "income": 140500, "sqm": 35},
+        {"name": "ЖК «Пирс»", "price": 27500000, "income": 185500, "sqm": 43}
     ]},
-    {"name": "Ультра и Хром", "tiers": [
-        {"name": "Мега / Элитный район", "price": 250000000, "income": 3000000, "sqm": 300},
-        {"name": "Ультра / Небоскреб", "price": 550000000, "income": 5600000, "sqm": 500},
-        {"name": "Хром / Завод мини", "price": 1000500000, "income": 11600000, "sqm": 1000}
+    {"name": "Бизнес - Класс", "tiers": [
+        {"name": "ЖК «Солнечный»", "price": 35555500, "income": 250000, "sqm": 50},
+        {"name": "ЖК «Зелёная гавань»", "price": 50000000, "income": 350000, "sqm": 50},
+        {"name": "Квартал Depo", "price": 150000000, "income": 500000, "sqm": 50},
+        {"name": "ЖК «Айвазовский City»", "price": 255000000, "income": 625000, "sqm": 55}
+    ]},
+    {"name": "Люкс", "tiers": [
+        {"name": "Central Park Tower", "price": 500000000, "income": 1350000, "sqm": 64},
+        {"name": "ЖК «Француз»", "price": 1000000000, "income": 5000000, "sqm": 100},
+        {"name": "ЖК «АДМ»", "price": 1500000000, "income": 17000000, "sqm": 105}
+    ]},
+    {"name": "Бизнес - Люкс", "tiers": [
+        {"name": "Хрущевка", "price": 15000000000, "income": 80000000, "sqm": 18}
     ]}
 ]
 
@@ -510,13 +521,20 @@ def admin_remove_apartment(req: AdminRemoveAptRequest):
         cur.close()
     return {"status": "ok"}
 
+# === НОВЫЕ БИЗНЕСЫ ИЗ ТЕТРАДИ ===
 BUSINESS_POOL = [
-    {"name": "Киоск", "rarity": "Common", "price": 50000, "income": 1000, "req": 1, "weight": 50},
-    {"name": "Кофейня", "rarity": "Rare", "price": 250000, "income": 6000, "req": 2, "weight": 25},
-    {"name": "Автосервис", "rarity": "Epic", "price": 1500000, "income": 40000, "req": 3, "weight": 15},
-    {"name": "Завод", "rarity": "Mythic", "price": 15000000, "income": 450000, "req": 5, "weight": 7},
-    {"name": "Нефтевышка", "rarity": "Legendary", "price": 150000000, "income": 5000000, "req": 8, "weight": 2.5},
-    {"name": "Космопорт", "rarity": "Chromatic", "price": 2000000000, "income": 80000000, "req": 12, "weight": 0.5}
+    {"name": "Склад", "rarity": "Обычный", "price": 550000, "income": 4500, "req": 1, "weight": 5},
+    {"name": "Кабинет", "rarity": "Обычный", "price": 3000000, "income": 5200, "req": 1, "weight": 7},
+    {"name": "Центр зал", "rarity": "Редкий", "price": 4500000, "income": 25750, "req": 2, "weight": 10},
+    {"name": "Маленький", "rarity": "Редкий", "price": 10000000, "income": 61950, "req": 2, "weight": 16},
+    {"name": "Супермаркет", "rarity": "Эпик", "price": 15000000, "income": 44500, "req": 3, "weight": 20},
+    {"name": "Киоск", "rarity": "Эпик", "price": 18000000, "income": 100000, "req": 3, "weight": 21},
+    {"name": "Нефтянная", "rarity": "Мифик", "price": 65000000, "income": 450500, "req": 5, "weight": 30},
+    {"name": "Это офис", "rarity": "Мега", "price": 93850900, "income": 534550, "req": 5, "weight": 35},
+    {"name": "Рынок", "rarity": "Мега", "price": 100500000, "income": 1150000, "req": 8, "weight": 37},
+    {"name": "Элитный район", "rarity": "Мега", "price": 250000000, "income": 3000000, "req": 8, "weight": 41},
+    {"name": "Небоскреб", "rarity": "Ультра", "price": 550000000, "income": 5600000, "req": 12, "weight": 46},
+    {"name": "Завод мини", "rarity": "Хром", "price": 1000500000, "income": 11600000, "req": 15, "weight": 55}
 ]
 
 def get_weighted_business():
