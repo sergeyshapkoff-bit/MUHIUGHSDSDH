@@ -8,243 +8,155 @@
     <style>
         :root { --bg-1: #1a1a2e; --bg-3: #0f3460; --accent: #4ade80; --card-bg: rgba(255,255,255,0.08); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; padding: 0; height: 100vh; background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-3) 100%); color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
+        body { margin: 0; height: 100vh; background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-3) 100%); color: white; font-family: sans-serif; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
         header { display: flex; justify-content: space-between; align-items: center; padding: 20px; flex-shrink: 0; }
         .user-info { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
-        .avatar { width: 38px; height: 38px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 18px; }
-        .icons { display: flex; gap: 15px; font-size: 22px; opacity: 0.8; cursor: pointer; }
-        
+        .avatar { width: 38px; height: 38px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; }
+        .icons { display: flex; gap: 15px; font-size: 22px; cursor: pointer; }
         #notification-bar { position: absolute; top: 70px; left: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
-        .notif-badge { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 12px 16px; border-radius: 12px; font-size: 14px; box-shadow: 0 5px 15px rgba(0,0,0,0.4); display: flex; justify-content: space-between; align-items: center; animation: slideDown 0.4s ease-out; pointer-events: auto; cursor: pointer; }
+        .notif-badge { background: linear-gradient(135deg, #3b82f6, #2563eb); padding: 12px 16px; border-radius: 12px; font-size: 14px; box-shadow: 0 5px 15px rgba(0,0,0,0.4); display: flex; justify-content: space-between; animation: slideDown 0.4s; pointer-events: auto; cursor: pointer; }
         .notif-badge.broadcast { background: linear-gradient(135deg, #f59e0b, #d97706); }
         @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
         #swipe-container { flex: 1; position: relative; overflow: hidden; }
         main { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 0 20px 100px 20px; overflow-y: auto; display: none; }
         main.active { display: block; animation: fadeIn 0.3s; }
         
-        /* КАРТА */
-        .bank-card { background: linear-gradient(135deg, #2a2a2a, #111111); border-radius: 18px; padding: 25px; margin-bottom: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); position: relative; border: 1px solid rgba(255,255,255,0.1); color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; transition: all 0.3s ease; }
+        .bank-card { background: linear-gradient(135deg, #2a2a2a, #111); border-radius: 18px; padding: 25px; margin-bottom: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); position: relative; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; transition: 0.3s; }
         .card-shine { position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%); transform: rotate(30deg); pointer-events: none; }
-        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
-        .card-label { font-size: 14px; font-weight: 500; color: #aaa; letter-spacing: 0.5px; }
-        .card-balance { font-size: 28px; font-weight: 700; color: var(--accent); margin-top: 5px; text-shadow: 0 2px 10px rgba(74,222,128,0.2); }
+        .card-top { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .card-label { font-size: 14px; color: #aaa; }
+        .card-balance { font-size: 28px; font-weight: 700; color: var(--accent); margin-top: 5px; }
         .card-balance span { font-size: 16px; color: #ccc; font-weight: normal; }
-        .card-chip { width: 45px; height: 35px; background: linear-gradient(135deg, #fcd34d, #b45309); border-radius: 6px; position: relative; margin-bottom: 15px; box-shadow: inset 0 0 5px rgba(0,0,0,0.3); }
-        .card-chip::after { content: ''; position: absolute; top: 10px; left: 0; width: 100%; height: 2px; background: rgba(0,0,0,0.2); }
-        .card-chip::before { content: ''; position: absolute; top: 20px; left: 0; width: 100%; height: 2px; background: rgba(0,0,0,0.2); }
-        .card-number { font-size: 22px; letter-spacing: 2px; font-family: 'Courier New', Courier, monospace; margin-bottom: 15px; font-weight: 600; display: flex; justify-content: space-between; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); cursor: pointer; }
+        .card-chip { width: 45px; height: 35px; background: linear-gradient(135deg, #fcd34d, #b45309); border-radius: 6px; margin-bottom: 15px; box-shadow: inset 0 0 5px rgba(0,0,0,0.3); }
+        .card-number { font-size: 22px; letter-spacing: 2px; font-family: monospace; margin-bottom: 15px; font-weight: 600; display: flex; justify-content: space-between; cursor: pointer; }
         .card-bottom { display: flex; justify-content: space-between; align-items: flex-end; }
-        .card-holder-label { font-size: 9px; color: #777; letter-spacing: 1px; margin-bottom: 2px; }
-        .card-holder { font-size: 14px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
-        .card-expiry-label { font-size: 9px; color: #777; letter-spacing: 1px; margin-bottom: 2px; }
-        .card-expiry { font-size: 14px; font-weight: 500; }
+        .card-holder-label, .card-expiry-label { font-size: 9px; color: #777; letter-spacing: 1px; }
+        .card-holder, .card-expiry { font-size: 14px; font-weight: 500; text-transform: uppercase; }
         .card-cvc { display: flex; align-items: center; cursor: pointer; }
-
-        /* Скины */
-        .card-skin-sber { background: linear-gradient(135deg, #f9fdf0, #e8f0d5); color: #333; border: 1px solid #d0d0d0; }
-        .card-skin-sber .card-label { display: none; }
-        .card-skin-sber .card-balance { color: #21a038; text-shadow: none; }
-        .card-skin-sber .card-balance span { color: #555; }
-        .card-skin-sber .card-number { color: #333; text-shadow: none; }
-        .card-skin-sber .card-holder, .card-skin-sber .card-expiry { color: #333; }
-        .card-skin-sber .card-holder-label, .card-skin-sber .card-expiry-label { color: #666; }
-        .card-skin-sber .card-cvc { display: none; }
         
+        .card-skin-sber { background: linear-gradient(135deg, #f9fdf0, #e8f0d5); color: #333; border: 1px solid #d0d0d0; }
+        .card-skin-sber .card-label, .card-skin-sber .card-cvc { display: none; }
+        .card-skin-sber .card-balance, .card-skin-sber .card-number { color: #21a038; text-shadow: none; }
+        .card-skin-sber .card-holder, .card-skin-sber .card-expiry { color: #333; }
         .sber-extra { display: none; }
         .card-skin-sber .sber-extra { display: block; }
-        .sber-logo { position: absolute; top: 15px; left: 20px; color: #21a038; font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 4px; }
+        .sber-logo { position: absolute; top: 15px; left: 20px; color: #21a038; font-weight: bold; font-size: 16px; }
         .sber-cat { position: absolute; right: 10px; bottom: 40px; width: 110px; height: 110px; }
         .sber-visa { position: absolute; right: 15px; bottom: 15px; background: #1a1f71; color: white; font-weight: bold; font-size: 14px; padding: 2px 6px; border-radius: 4px; font-style: italic; }
-
+        
         .card-skin-gold { background: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c); color: #4a3b10; border: none; }
         .card-skin-gold .card-label { color: #6a5518; }
-        .card-skin-gold .card-balance { color: #fff; text-shadow: 1px 1px 3px rgba(0,0,0,0.4); }
-        .card-skin-gold .card-balance span { color: #fff; }
-        .card-skin-gold .card-number { color: #4a3b10; text-shadow: none; }
+        .card-skin-gold .card-balance, .card-skin-gold .card-number { color: #fff; text-shadow: 1px 1px 3px rgba(0,0,0,0.4); }
         .card-skin-gold .card-holder, .card-skin-gold .card-expiry { color: #4a3b10; }
 
-        .income-badge { position: absolute; top: -15px; right: 25px; background: var(--accent); color: #000; padding: 8px 18px; border-radius: 30px; font-weight: bold; font-size: 15px; box-shadow: 0 6px 15px rgba(74,222,128,0.4); display: none; z-index: 10; }
+        .income-badge { position: absolute; top: -15px; right: 25px; background: var(--accent); color: #000; padding: 8px 18px; border-radius: 30px; font-weight: bold; font-size: 15px; display: none; z-index: 10; }
         .section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
         .list-item { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); padding: 16px; border-radius: 18px; margin-bottom: 10px; font-size: 15px; }
         .btn-action { width: 100%; background: var(--accent); color: #000; border: none; padding: 18px; border-radius: 18px; font-weight: bold; font-size: 17px; margin-top: 10px; cursor: pointer; transition: 0.2s; }
         .btn-action:active { transform: scale(0.96); }
-        .my-apt-card { background: var(--card-bg); border-left: 4px solid var(--accent); border-radius: 18px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .my-apt-title { font-weight: 700; font-size: 16px; margin-bottom: 6px; }
-        .my-apt-income { font-size: 14px; color: var(--accent); font-weight: bold; }
+        
+        .my-apt-card { background: var(--card-bg); border-left: 4px solid var(--accent); border-radius: 18px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; }
         .sell-btn { background: rgba(248,113,113,0.2); color: #f87171; border: 1px solid rgba(248,113,113,0.3); padding: 10px 15px; border-radius: 12px; font-weight: bold; font-size: 13px; cursor: pointer; }
         .fab-container { position: absolute; bottom: 90px; left: 0; width: 100%; display: flex; justify-content: center; pointer-events: none; z-index: 10; }
-        .fab { width: 65px; height: 65px; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 34px; box-shadow: 0 8px 25px rgba(106,17,203,0.6); border: 3px solid rgba(255,255,255,0.2); pointer-events: auto; cursor: pointer; }
-        .fab:active { transform: scale(0.85); }
-        nav { display: flex; justify-content: space-between; background: rgba(15,23,42,0.95); padding: 12px 10px calc(12px + env(safe-area-inset-bottom)) 10px; border-top-left-radius: 25px; border-top-right-radius: 25px; position: absolute; bottom: 0; width: 100%; z-index: 5; backdrop-filter: blur(10px); }
+        .fab { width: 65px; height: 65px; background: linear-gradient(135deg, #6a11cb, #2575fc); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 34px; box-shadow: 0 8px 25px rgba(106,17,203,0.6); pointer-events: auto; cursor: pointer; }
+        nav { display: flex; justify-content: space-between; background: rgba(15,23,42,0.95); padding: 12px 10px calc(12px + env(safe-area-inset-bottom)) 10px; border-radius: 25px 25px 0 0; position: absolute; bottom: 0; width: 100%; z-index: 5; backdrop-filter: blur(10px); }
         .nav-btn { background: none; border: none; color: #8892b0; font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; flex: 1; }
         .nav-btn span { font-size: 22px; }
-        .nav-btn.active { color: #ffffff; }
+        .nav-btn.active { color: #fff; }
         .nav-btn.active span { transform: scale(1.15) translateY(-3px); }
         
-        .exchange-card { background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 18px; margin-bottom: 15px; }
+        .exchange-card, .bus-card { background: var(--card-bg); border-radius: 18px; padding: 18px; margin-bottom: 15px; }
+        .bus-Обычный { border-left: 5px solid #9ca3af; } .bus-Редкий { border-left: 5px solid #3b82f6; } .bus-Эпик { border-left: 5px solid #a855f7; } .bus-Мифик { border-left: 5px solid #ef4444; } .bus-Мега { border-left: 5px solid #f59e0b; } .bus-Ультра { border-left: 5px solid #ec4899; } .bus-Хром { border-left: 5px solid transparent; border-image: linear-gradient(to bottom, #f00, #0f0, #00f) 1; }
+        .bus-title { font-size: 17px; font-weight: 700; }
+        .bus-info { font-size: 13px; color: #a3c2ff; }
+        .bus-price { font-size: 15px; color: var(--accent); font-weight: bold; }
+        .buy-btn { background: var(--accent); color: #000; border: none; padding: 12px 18px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; }
+        
         .exchange-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
         .rate-title { font-size: 17px; font-weight: 700; }
         .rate-price { font-size: 13px; color: #a3c2ff; }
         .rate-trend { font-size: 18px; font-weight: bold; }
         .trend-up { color: var(--accent); } .trend-down { color: #f87171; }
         .exchange-bottom { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; }
-        .rate-owned { font-size: 14px; color: #ffd700; font-weight: bold; background: rgba(255,215,0,0.1); padding: 5px 10px; border-radius: 8px; }
+        .rate-owned { font-size: 14px; color: #ffd700; background: rgba(255,215,0,0.1); padding: 5px 10px; border-radius: 8px; }
         .exchange-buttons { display: flex; gap: 8px; }
         .exchange-buttons button { padding: 8px 15px; border-radius: 10px; border: none; font-weight: bold; font-size: 13px; cursor: pointer; }
-        .btn-buy { background: var(--accent); color: #000; }
-        .btn-sell { background: rgba(248,113,113,0.8); color: white; }
-        
-        /* Стили для Бизнесов */
-        .bus-card { background: var(--card-bg); border-radius: 18px; padding: 18px; margin-bottom: 15px; }
-        .bus-Обычный { border-left: 5px solid #9ca3af; } 
-        .bus-Редкий { border-left: 5px solid #3b82f6; }
-        .bus-Эпик { border-left: 5px solid #a855f7; } 
-        .bus-Мифик { border-left: 5px solid #ef4444; }
-        .bus-Мега { border-left: 5px solid #f59e0b; } 
-        .bus-Ультра { border-left: 5px solid #ec4899; } 
-        .bus-Хром { border-left: 5px solid transparent; border-image: linear-gradient(to bottom, #ff0000, #00ff00, #0000ff) 1; }
-        .bus-title { font-size: 17px; font-weight: 700; }
-        .bus-info { font-size: 13px; color: #a3c2ff; }
-        .bus-price { font-size: 15px; color: var(--accent); font-weight: bold; }
-        .buy-btn { background: var(--accent); color: #000; border: none; padding: 12px 18px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; }
         
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 100; display: none; flex-direction: column; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #1e293b; }
         .modal-header h2 { margin: 0; font-size: 20px; }
-        .close-btn { background: rgba(255,255,255,0.1); border: none; color: white; font-size: 20px; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
+        .close-btn { background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 20px; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
         .modal-content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 50px; }
-        .class-group { margin-bottom: 25px; }
-        .class-title { font-size: 16px; font-weight: 700; color: #a3c2ff; margin-bottom: 12px; }
-        .apt-shop-item { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 16px; border-radius: 16px; margin-bottom: 10px; }
-        .admin-btn { width: 100%; background: #ffaa00; color: #000; padding: 16px; border-radius: 16px; border: none; font-weight: bold; font-size: 16px; margin-top: 20px; cursor: pointer; }
-        .user-row { display: flex; flex-direction: column; gap: 8px; background: var(--card-bg); padding: 16px; border-radius: 16px; margin-bottom: 12px; border-left: 4px solid #ffaa00; }
-        .admin-btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-        .admin-btns button { flex: 1; padding: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 13px; }
         
         .custom-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 999; display: none; justify-content: center; align-items: center; }
-        .custom-box { background: #1e293b; padding: 25px 22px; border-radius: 24px; width: 90%; max-width: 350px; max-height: 85vh; overflow-y: auto; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+        .custom-box { background: #1e293b; padding: 25px 22px; border-radius: 24px; width: 90%; max-width: 350px; max-height: 85vh; overflow-y: auto; text-align: center; }
         .custom-box h3 { margin: 0 0 18px 0; font-size: 22px; }
         .custom-box p { font-size: 15px; color: #a3c2ff; margin-bottom: 15px; }
-        .custom-box input, .custom-box select { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white; font-size: 16px; outline: none; }
-        select option { color: black; background-color: white; }
+        .custom-box input, .custom-box select { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #fff; font-size: 16px; outline: none; }
+        select option { color: #000; }
         .modal-actions { display: flex; gap: 10px; }
         .modal-actions button { padding: 14px; border-radius: 14px; border: none; font-weight: bold; font-size: 16px; cursor: pointer; flex: 1; }
-        .btn-cancel { background: rgba(255,255,255,0.1); color: white; }
+        .btn-cancel { background: rgba(255,255,255,0.1); color: #fff; }
         .btn-confirm { background: var(--accent); color: #000; }
-        .btn-danger { background: #f87171; color: white; }
-        .color-inputs { display: flex; gap: 15px; margin-bottom: 25px; }
-        .color-picker-wrapper { display: flex; flex-direction: column; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 18px; flex: 1; }
-        input[type="color"] { -webkit-appearance: none; border: none; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; padding: 0; background: none; }
-        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-        input[type="color"]::-webkit-color-swatch { border: 3px solid rgba(255,255,255,0.2); border-radius: 50%; }
-        .menu-btn { width: 100%; padding: 15px; border-radius: 14px; border: none; font-weight: bold; font-size: 16px; margin-bottom: 10px; cursor: pointer; }
+        .btn-danger { background: #f87171; color: #fff; }
         
         .chat-container { display: flex; flex-direction: column; height: 100%; }
         .chat-list { flex: 1; overflow-y: auto; padding: 10px; }
-        .chat-item { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .chat-item:active { background: rgba(255,255,255,0.05); }
+        .chat-item { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: pointer; display: flex; justify-content: space-between; }
         .chat-window { display: none; flex-direction: column; height: 100%; background: #0f172a; }
         .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .msg-bubble { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
         .msg-me { align-self: flex-end; background: var(--accent); color: #000; border-bottom-right-radius: 4px; }
-        .msg-them { align-self: flex-start; background: rgba(255,255,255,0.1); color: white; border-bottom-left-radius: 4px; }
+        .msg-them { align-self: flex-start; background: rgba(255,255,255,0.1); color: #fff; border-bottom-left-radius: 4px; }
         .msg-sender { font-size: 10px; opacity: 0.7; margin-bottom: 3px; display: block; }
         .chat-input-area { display: flex; padding: 10px; background: #1e293b; gap: 10px; align-items: center; }
-        .chat-input-area input { flex: 1; padding: 12px; border-radius: 20px; border: none; background: rgba(255,255,255,0.1); color: white; outline: none; }
+        .chat-input-area input { flex: 1; padding: 12px; border-radius: 20px; border: none; background: rgba(255,255,255,0.1); color: #fff; outline: none; }
         
-        .discount-badge { background: #ef4444; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 5px; font-weight: bold; }
+        .admin-btn { width: 100%; background: #ffaa00; color: #000; padding: 16px; border-radius: 16px; border: none; font-weight: bold; font-size: 16px; margin-top: 20px; cursor: pointer; }
+        .user-row { display: flex; flex-direction: column; gap: 8px; background: var(--card-bg); padding: 16px; border-radius: 16px; margin-bottom: 12px; border-left: 4px solid #ffaa00; }
+        .admin-btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+        .admin-btns button { flex: 1; padding: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 13px; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
     <div id="notification-bar"></div>
-
     <header>
-        <div class="user-info">
-            <div class="avatar">👤</div>
-            <span id="user-name">Загрузка...</span>
-        </div>
-        <div class="icons">
-            <span onclick="openChats()">💬</span>
-            <span onclick="openModal('settings-modal')">⚙️</span>
-        </div>
+        <div class="user-info"><div class="avatar">👤</div><span id="user-name">Загрузка...</span></div>
+        <div class="icons"><span onclick="openChats()">💬</span><span onclick="openModal('settings-modal')">⚙️</span></div>
     </header>
 
     <div id="swipe-container">
         <main id="tab-balance" class="active">
             <div class="bank-card" id="main-card">
-                <div class="card-shine"></div>
-                <div id="income-badge" class="income-badge">+ 0 Br</div>
-                <div class="card-top">
-                    <div>
-                        <div class="card-label">Credit Card</div>
-                        <div class="card-balance" id="user-balance">0 <span>Br</span></div>
-                    </div>
-                    <div class="card-label" style="text-align:right;">Bank Name</div>
-                </div>
-                
+                <div class="card-shine"></div><div id="income-badge" class="income-badge">+ 0 Br</div>
+                <div class="card-top"><div><div class="card-label">Credit Card</div><div class="card-balance" id="user-balance">0 <span>Br</span></div></div><div class="card-label" style="text-align:right;">Bank Name</div></div>
                 <div class="card-chip"></div>
-                <div class="card-number" onclick="copyText(document.getElementById('card-number').innerText)">
-                    <span id="card-number">**** **** **** ****</span> <span class="copy-icon">📋</span>
-                </div>
-                
+                <div class="card-number" onclick="copyText(document.getElementById('card-number').innerText)"><span id="card-number">**** **** **** ****</span> 📋</div>
                 <div class="card-bottom">
-                    <div>
-                        <div class="card-holder-label">Card Holder</div>
-                        <div class="card-holder" id="card-holder">NAME</div>
-                    </div>
-                    <div>
-                        <div class="card-expiry-label">Valid Thru</div>
-                        <div class="card-expiry">01/80</div>
-                    </div>
-                    <div class="card-cvc" onclick="copyText(document.getElementById('card-cvc').innerText.replace('CVC: ', ''))">
-                        <span id="card-cvc" style="font-family:monospace;">CVC: ***</span> <span class="copy-icon">📋</span>
-                    </div>
+                    <div><div class="card-holder-label">Card Holder</div><div class="card-holder" id="card-holder">NAME</div></div>
+                    <div><div class="card-expiry-label">Valid Thru</div><div class="card-expiry">01/80</div></div>
+                    <div class="card-cvc" onclick="copyText(document.getElementById('card-cvc').innerText.replace('CVC: ', ''))"><span id="card-cvc">CVC: ***</span> 📋</div>
                 </div>
-
-                <div class="sber-extra" id="sber-extra">
-                    <div class="sber-logo">✅ Сбербанк</div>
-                    <svg class="sber-cat" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                        <ellipse cx="100" cy="160" rx="55" ry="45" fill="#e67e22"/>
-                        <circle cx="100" cy="100" r="45" fill="#e67e22"/>
-                        <polygon points="65,70 45,30 85,50" fill="#e67e22"/>
-                        <polygon points="135,70 155,30 115,50" fill="#e67e22"/>
-                        <polygon points="67,68 52,40 80,55" fill="#f5b041"/>
-                        <polygon points="133,68 148,40 120,55" fill="#f5b041"/>
-                        <circle cx="80" cy="90" r="10" fill="white"/>
-                        <circle cx="120" cy="90" r="10" fill="white"/>
-                        <circle cx="82" cy="92" r="5" fill="#333"/>
-                        <circle cx="122" cy="92" r="5" fill="#333"/>
-                        <path d="M110 85 Q120 75 130 85" stroke="#333" stroke-width="3" fill="none"/>
-                        <ellipse cx="100" cy="108" rx="5" ry="3" fill="#c0392b"/>
-                        <path d="M92 112 Q100 120 108 112" stroke="#333" stroke-width="2" fill="none"/>
-                        <ellipse cx="70" cy="190" rx="12" ry="8" fill="#e67e22"/>
-                        <ellipse cx="130" cy="190" rx="12" ry="8" fill="#e67e22"/>
-                    </svg>
-                    <div class="sber-visa">VISA</div>
-                </div>
+                <div class="sber-extra"><div class="sber-logo">✅ Сбербанк</div><svg class="sber-cat" viewBox="0 0 200 200"><ellipse cx="100" cy="160" rx="55" ry="45" fill="#e67e22"/><circle cx="100" cy="100" r="45" fill="#e67e22"/><polygon points="65,70 45,30 85,50" fill="#e67e22"/><polygon points="135,70 155,30 115,50" fill="#e67e22"/><polygon points="67,68 52,40 80,55" fill="#f5b041"/><polygon points="133,68 148,40 120,55" fill="#f5b041"/><circle cx="80" cy="90" r="10" fill="#fff"/><circle cx="120" cy="90" r="10" fill="#fff"/><circle cx="82" cy="92" r="5" fill="#333"/><circle cx="122" cy="92" r="5" fill="#333"/><path d="M110 85 Q120 75 130 85" stroke="#333" stroke-width="3" fill="none"/><ellipse cx="100" cy="108" rx="5" ry="3" fill="#c0392b"/><path d="M92 112 Q100 120 108 112" stroke="#333" stroke-width="2" fill="none"/><ellipse cx="70" cy="190" rx="12" ry="8" fill="#e67e22"/><ellipse cx="130" cy="190" rx="12" ry="8" fill="#e67e22"/></svg><div class="sber-visa">VISA</div></div>
             </div>
             <button class="btn-action" onclick="openTransferModal()">💸 Перевести Br</button>
+            <button class="btn-action" style="background:#3b82f6;color:#fff;margin-top:10px;" onclick="openBankModal()">🏦 Банк</button>
             <div class="section-title" style="margin-top:25px;">Топ по балансу</div>
             <div id="leaderboard-list"></div>
         </main>
 
         <main id="tab-businesses">
-            <div class="section-title">Твои Бизнесы</div>
-            <div id="my-businesses-list"></div>
-            <div class="section-title" style="margin-top:25px; color:#ffaa00;">Доступны сегодня (24ч):</div>
-            <div id="daily-businesses-list"></div>
+            <div class="section-title">Твои Бизнесы</div><div id="my-businesses-list"></div>
+            <div class="section-title" style="margin-top:25px; color:#ffaa00;">Доступны сегодня (24ч):</div><div id="daily-businesses-list"></div>
         </main>
 
         <main id="tab-trades">
-            <div class="section-title">📈 Биржа (Курсы меняются каждые 2 минуты)</div>
-            <div id="exchange-list"></div>
+            <div class="section-title">📈 Биржа (Раз в 5 минут)</div><div id="exchange-list"></div>
         </main>
     </div>
 
     <div class="fab-container"><div class="fab" onclick="openModal('city-menu-modal')">+</div></div>
-
     <nav>
         <button class="nav-btn active" onclick="switchTab(0,this)"><span>💰</span>Баланс</button>
         <button class="nav-btn" onclick="switchTab(1,this)"><span>🏭</span>Бизнесы</button>
@@ -255,7 +167,7 @@
     <div id="chat-modal" class="modal-overlay">
         <div class="modal-header">
             <div style="display:flex; align-items:center; gap:10px;">
-                <button id="chat-back-btn" style="display:none; background:rgba(255,255,255,0.1); border:none; color:white; padding:8px 12px; border-radius:10px; font-weight:bold; cursor:pointer;" onclick="backToChats()">← Назад</button>
+                <button id="chat-back-btn" style="display:none; background:rgba(255,255,255,0.1); border:none; color:white; padding:8px 12px; border-radius:10px; font-weight:bold;" onclick="backToChats()">← Назад</button>
                 <h2 id="chat-header-title">💬 Чаты</h2>
             </div>
             <button class="close-btn" onclick="closeChat()">✕</button>
@@ -264,36 +176,45 @@
             <div id="chat-list-view" class="chat-list"></div>
             <div id="chat-window-view" class="chat-window">
                 <div id="chat-messages" class="chat-messages"></div>
-                
                 <div id="friend-request-panel" style="display:none; padding: 15px; text-align: center; background: #1e293b;">
                     <div id="friend-request-text" style="margin-bottom: 10px; font-size: 14px;"></div>
                     <div id="friend-request-buttons" style="display:flex; gap:10px; justify-content:center;"></div>
                 </div>
-
                 <div id="chat-input-panel" class="chat-input-area" style="display:none;">
-                    <button id="request-money-btn" onclick="requestMoney()" style="width:45px; height:45px; background:#ffd700; color:#000; border:none; border-radius:50%; font-size:22px; cursor:pointer;" title="Запросить деньги">💰</button>
+                    <button id="request-money-btn" onclick="requestMoney()" style="width:45px; height:45px; background:#ffd700; color:#000; border:none; border-radius:50%; font-size:22px;">💰</button>
                     <input type="text" id="chat-input" placeholder="Сообщение...">
-                    <button onclick="sendMessage()" style="background:var(--accent); color:#000; border:none; border-radius:50%; width:45px; height:45px; font-size:20px; cursor:pointer;">➤</button>
+                    <button onclick="sendMessage()" style="background:var(--accent); color:#000; border:none; border-radius:50%; width:45px; height:45px; font-size:20px;">➤</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- БАНК -->
+    <div id="bank-modal" class="custom-modal">
+        <div class="custom-box">
+            <h3>🏦 Банк</h3>
+            <div id="bank-loan-info" style="margin-bottom:15px; font-size:14px;"></div>
+            <input type="number" id="loan-amount" placeholder="Сумма кредита (Br)">
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal('bank-modal')">Закрыть</button>
+                <button class="btn-confirm" id="loan-action-btn" onclick="handleLoanAction()">Взять кредит</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- НЕДВИЖИМОСТЬ -->
     <div id="city-menu-modal" class="custom-modal">
         <div class="custom-box">
             <h3>🏙 Недвижимость</h3>
-            <button class="menu-btn" style="background:#3b82f6;color:#fff;" onclick="openMyApts()">🏢 Мои квартиры</button>
-            <button class="menu-btn" style="background:var(--accent);color:#000;" onclick="openShop()">🛒 Купить квартиру</button>
-            <button class="btn-cancel" style="width:100%;padding:13px;border-radius:14px;border:none;font-weight:bold;font-size:15px;" onclick="closeModal('city-menu-modal')">Закрыть</button>
+            <button class="btn-action" style="background:#3b82f6;color:#fff;" onclick="openMyApts()">🏢 Мои квартиры</button>
+            <button class="btn-action" style="background:var(--accent);color:#000;margin-top:10px;" onclick="openShop()">🛒 Купить квартиру</button>
+            <button class="btn-cancel" style="width:100%;padding:13px;border-radius:14px;margin-top:10px;" onclick="closeModal('city-menu-modal')">Закрыть</button>
         </div>
     </div>
 
     <div id="my-apts-modal" class="modal-overlay">
         <div class="modal-header"><h2>🏢 Мои квартиры</h2><button class="close-btn" onclick="closeModal('my-apts-modal')">✕</button></div>
-        <div class="modal-content">
-            <div class="section-title">Доход: <span style="color:var(--accent)" id="modal-total-income">0 Br/ч</span></div>
-            <div id="my-apartments-list-modal"></div>
-        </div>
+        <div class="modal-content"><div class="section-title">Доход: <span style="color:var(--accent)" id="modal-total-income">0 Br/ч</span></div><div id="my-apartments-list-modal"></div></div>
     </div>
     
     <div id="shop-modal" class="modal-overlay">
@@ -313,18 +234,11 @@
                     <button onclick="saveNickname()" style="background:var(--accent);border:none;border-radius:10px;padding:0 15px;font-weight:bold;">ОК</button>
                 </div>
             </div>
-            
             <div class="section-title" style="margin-top:25px;">Дизайн карты</div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 20px;">
-                <button onclick="setCardSkin('default')" style="background:#2a2a2a;color:#fff;padding:12px;border-radius:12px;border:1px solid #444;flex:1;font-weight:bold;">Стандарт</button>
-                <button onclick="setCardSkin('sber')" style="background:#e8f0d5;color:#21a038;padding:12px;border-radius:12px;border:1px solid #ccc;flex:1;font-weight:bold;">🐱 Сбер</button>
-                <button onclick="setCardSkin('gold')" style="background:linear-gradient(135deg, #bf953f, #fcf6ba);color:#4a3b10;padding:12px;border-radius:12px;border:none;flex:1;font-weight:bold;">Золото</button>
-            </div>
-
-            <div class="section-title" style="margin-top:25px;">Цвета фона</div>
-            <div class="color-inputs">
-                <div class="color-picker-wrapper"><span>Фон 1</span><input type="color" id="bg-color-1" oninput="setCustomColor('bg1',this.value)"></div>
-                <div class="color-picker-wrapper"><span>Фон 2</span><input type="color" id="bg-color-2" oninput="setCustomColor('bg2',this.value)"></div>
+            <div style="display:flex; gap:10px; margin-bottom: 20px;">
+                <button onclick="setCardSkin('default')" style="background:#2a2a2a;color:#fff;padding:12px;border-radius:12px;flex:1;font-weight:bold;">Стандарт</button>
+                <button onclick="setCardSkin('sber')" style="background:#e8f0d5;color:#21a038;padding:12px;border-radius:12px;flex:1;font-weight:bold;">🐱 Сбер</button>
+                <button onclick="setCardSkin('gold')" style="background:linear-gradient(135deg, #bf953f, #fcf6ba);color:#4a3b10;padding:12px;border-radius:12px;flex:1;font-weight:bold;">Золото</button>
             </div>
             <button id="admin-btn" class="admin-btn" style="display:none;" onclick="openAdminPanel()">👑 Панель Админа</button>
         </div>
@@ -334,16 +248,34 @@
     <div id="admin-modal" class="modal-overlay">
         <div class="modal-header"><h2>👑 Админ</h2><button class="close-btn" onclick="closeModal('admin-modal')">✕</button></div>
         <div class="modal-content">
+            <button class="btn-action" style="background:#eab308;color:#000;margin-bottom:10px;" onclick="openAdminLoans()">🏦 Заявки на кредит</button>
             <button class="btn-action" style="background:#3b82f6;color:#fff;margin-bottom:10px;" onclick="openAdminCompanies()">🏢 Компании и Скидки</button>
-            <button class="btn-action" style="background:#10b981;color:#fff;margin-bottom:10px;" onclick="openAdminExchange()">📈 Настроить Биржу</button>
-            <button class="btn-action" style="background:#a855f7;color:#fff;margin-bottom:10px;" onclick="openAdminAdmins()">👥 Админы</button>
-            
+            <button class="btn-action" style="background:#10b981;color:#fff;margin-bottom:10px;" onclick="openAdminExchange()">📈 Биржа</button>
             <button class="btn-action" style="background:#f59e0b;color:#000;margin-bottom:20px;" onclick="adminBroadcast()">📢 Рассылка всем</button>
-            
-            <div class="section-title">Игроки</div>
-            <div id="admin-users-list"></div>
+            <div class="section-title">Игроки</div><div id="admin-users-list"></div>
             <button class="admin-btn" style="background:#f87171;margin-top:20px;" onclick="resetAllUsers()">⚠️ Сбросить ВСЕХ</button>
         </div>
+    </div>
+
+    <!-- Модалка заявок на кредит (админ) -->
+    <div id="admin-loans-modal" class="modal-overlay">
+        <div class="modal-header"><h2>🏦 Заявки на кредит</h2><button class="close-btn" onclick="closeModal('admin-loans-modal')">✕</button></div>
+        <div class="modal-content" id="admin-loans-list"></div>
+    </div>
+
+    <!-- Модалка биржи админа -->
+    <div id="admin-exchange-modal" class="modal-overlay">
+        <div class="modal-header"><h2>📈 Биржа</h2><button class="close-btn" onclick="closeModal('admin-exchange-modal')">✕</button></div>
+        <div class="modal-content">
+            <button class="btn-action" style="background:#f59e0b;color:#000;margin-bottom:10px;" onclick="forceUpdateExchange()">🔄 Обновить цены сейчас</button>
+            <div id="admin-exchange-list"></div>
+        </div>
+    </div>
+
+    <!-- Модалка компаний (админ) -->
+    <div id="admin-companies-modal" class="modal-overlay">
+        <div class="modal-header"><h2>🏢 Компании</h2><button class="close-btn" onclick="closeModal('admin-companies-modal')">✕</button></div>
+        <div class="modal-content"><div id="admin-companies-list"></div></div>
     </div>
 
     <!-- Модалка квартир админа -->
@@ -354,37 +286,8 @@
             <button class="btn-cancel" style="width:100%;" onclick="closeModal('admin-apts-modal')">Закрыть</button>
         </div>
     </div>
-    
-    <!-- Модалка биржи админа -->
-    <div id="admin-exchange-modal" class="modal-overlay">
-        <div class="modal-header"><h2>📈 Биржа</h2><button class="close-btn" onclick="closeModal('admin-exchange-modal')">✕</button></div>
-        <div class="modal-content">
-            <button class="btn-action" style="background:#f59e0b;color:#000;margin-bottom:10px;" onclick="forceUpdateExchange()">🔄 Обновить цены сейчас</button>
-            <button class="btn-action" style="background:var(--accent);color:#000;margin-bottom:20px;" onclick="addExchangePrompt()">➕ Добавить актив</button>
-            <div id="admin-exchange-list"></div>
-        </div>
-    </div>
 
-    <div id="admin-admins-modal" class="modal-overlay">
-        <div class="modal-header"><h2>👥 Админы</h2><button class="close-btn" onclick="closeModal('admin-admins-modal')">✕</button></div>
-        <div class="modal-content">
-            <div class="list-item" style="gap:10px;">
-                <input type="number" id="new-admin-id" placeholder="ID" style="flex:1;padding:10px;border-radius:10px;border:none;background:rgba(255,255,255,0.1);color:white;">
-                <button onclick="addAdmin()" style="background:var(--accent);border:none;border-radius:10px;padding:0 15px;font-weight:bold;">Доб.</button>
-            </div>
-            <div class="section-title" style="margin-top:25px;">Админы</div>
-            <div id="admins-list"></div>
-        </div>
-    </div>
-
-    <div id="admin-companies-modal" class="modal-overlay">
-        <div class="modal-header"><h2>🏢 Компании</h2><button class="close-btn" onclick="closeModal('admin-companies-modal')">✕</button></div>
-        <div class="modal-content">
-            <button class="btn-action" style="background:var(--accent);color:#000;margin-bottom:20px;" onclick="addCompanyPrompt()">➕ Добавить компанию</button>
-            <div id="admin-companies-list"></div>
-        </div>
-    </div>
-
+    <!-- Переводы и покупки -->
     <div id="transfer-modal" class="custom-modal">
         <div class="custom-box">
             <h3>💸 Перевод</h3>
@@ -404,10 +307,8 @@
     
     <div id="admin-money-modal" class="custom-modal">
         <div class="custom-box">
-            <h3>Деньги</h3>
-            <p id="admin-money-target"></p>
+            <h3>Деньги</h3><p id="admin-money-target"></p>
             <input type="number" id="admin-money-amount" placeholder="Сумма Br">
-            <p id="admin-money-limit" style="font-size:12px;color:#ffaa00;margin-top:-10px;margin-bottom:15px;display:none;">Лимит: 500 000 Br за раз</p>
             <div class="modal-actions">
                 <button class="btn-cancel" onclick="closeModal('admin-money-modal')">Отмена</button>
                 <button class="btn-confirm" onclick="adminAddMoney()">Выдать</button>
@@ -420,49 +321,39 @@
         document.addEventListener('DOMContentLoaded', () => {
             const tg = window.Telegram.WebApp || {};
             if (tg.expand) tg.expand();
-
             const user = tg.initDataUnsafe?.user;
             let userId = user ? user.id : 123456789;
             let playerName = user ? (user.first_name + (user.last_name ? " " + user.last_name : "")) : "Гость";
             const MAIN_ADMIN_ID = 5634302903;
             const SERVER_URL = "https://mmiji.de1.netrun.io";
 
-            let currentRates = {}, companiesData = [], userPortfolio = {};
-            let lastNotifMsgId = 0;
-            let lastNotifBcastId = 0;
-            let currentChatId = null;
-            let currentChatStatus = 'none';
-            let chatInterval = null;
-            let isSendingMessage = false;
-            let lastChatHash = "";
+            let currentRates = {}, companiesData = [], userPortfolio = {}, currentLoanDebt = 0;
+            let lastNotifMsgId = 0, lastNotifBcastId = 0;
+            let currentChatId = null, currentChatStatus = 'none', chatInterval = null, isSendingMessage = false, lastChatHash = "";
 
             document.getElementById("settings-user-id").innerText = userId;
 
-            window.checkAdmin = async function() {
+            window.checkAdmin = async () => {
                 try {
                     const d = await fetch(`${SERVER_URL}/api/check_admin/${userId}`).then(r => r.json());
-                    if (d.is_admin) {
-                        document.getElementById("admin-btn").style.display = "block";
-                    }
+                    if (d.is_admin) document.getElementById("admin-btn").style.display = "block";
                 } catch(e) {}
             };
             checkAdmin();
 
-            let tabs = ['balance', 'businesses', 'trades'];
-            let currentTabIndex = 0, touchStartX = 0;
-
-            window.updateTabs = function() {
+            let tabs = ['balance', 'businesses', 'trades'], currentTabIndex = 0, touchStartX = 0;
+            
+            window.updateTabs = () => {
                 document.querySelectorAll('main').forEach(m => m.classList.remove('active'));
                 document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
                 document.getElementById('tab-' + tabs[currentTabIndex]).classList.add('active');
                 document.querySelectorAll('.nav-btn')[currentTabIndex].classList.add('active');
             };
 
-            window.switchTab = function(i) { 
-                currentTabIndex = i; 
-                updateTabs(); 
-                if (i === 1) loadDailyBusinesses();
-                if (i === 2) loadRates();
+            window.switchTab = (i) => { 
+                currentTabIndex = i; updateTabs(); 
+                if (i === 1) loadDailyBusinesses(); 
+                if (i === 2) loadRates(); 
             };
 
             document.getElementById('swipe-container').addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX);
@@ -474,499 +365,248 @@
                 }
             });
 
-            window.copyText = function(t) {
-                try {
-                    if (navigator.clipboard && window.isSecureContext) {
-                        navigator.clipboard.writeText(t).then(() => tg.showAlert('📋 Скопировано'));
-                    } else {
-                        const ta = document.createElement('textarea'); ta.value = t;
-                        ta.style.position = 'fixed'; ta.style.opacity = '0';
-                        document.body.appendChild(ta); ta.select();
-                        document.execCommand('copy'); document.body.removeChild(ta);
-                        tg.showAlert('📋 Скопировано');
-                    }
-                } catch(e) { tg.showAlert('Не удалось'); }
+            window.copyText = (t) => {
+                if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => tg.showAlert('📋 Скопировано'));
             };
 
-            window.setCardSkin = function(skin) {
+            window.setCardSkin = (skin) => {
                 const card = document.getElementById('main-card');
                 card.className = 'bank-card';
                 if (skin === 'sber') card.classList.add('card-skin-sber');
                 else if (skin === 'gold') card.classList.add('card-skin-gold');
                 localStorage.setItem('cardSkin', skin);
             };
+            setCardSkin(localStorage.getItem('cardSkin') || 'default');
 
-            const savedSkin = localStorage.getItem('cardSkin') || 'default';
-            setCardSkin(savedSkin);
-
-            window.setCustomColor = function(type, color) {
-                if (type === 'bg1') { document.documentElement.style.setProperty('--bg-1', color); localStorage.setItem('customBg1', color); }
-                else if (type === 'bg2') { document.documentElement.style.setProperty('--bg-3', color); localStorage.setItem('customBg2', color); }
-            };
-
-            const bg1 = localStorage.getItem('customBg1') || '#1a1a2e';
-            const bg2 = localStorage.getItem('customBg2') || '#0f3460';
-            document.documentElement.style.setProperty('--bg-1', bg1);
-            document.documentElement.style.setProperty('--bg-3', bg2);
-            document.getElementById('bg-color-1').value = bg1;
-            document.getElementById('bg-color-2').value = bg2;
-
-            window.checkNotifications = async function() {
+            window.checkNotifications = async () => {
                 try {
                     const d = await fetch(`${SERVER_URL}/api/notifications/${userId}`).then(r => r.json());
                     const bar = document.getElementById('notification-bar');
-                    
                     if (d.message && d.message.id !== lastNotifMsgId) {
                         lastNotifMsgId = d.message.id;
-                        bar.innerHTML = `
-                            <div class="notif-badge" onclick="openChatsWith(${d.message.sender_id}, '${d.message.sender_name}')">
-                                <div><b>${d.message.sender_name}</b>: ${d.message.text.substring(0, 20)}...</div>
-                                <span>💬</span>
-                            </div>
-                        `;
-                        setTimeout(() => { 
-                            if (bar.innerHTML.includes(d.message.text.substring(0, 10))) bar.innerHTML = ''; 
-                        }, 5000);
+                        bar.innerHTML = `<div class="notif-badge" onclick="openChatsWith(${d.message.sender_id}, '${d.message.sender_name}')"><div><b>${d.message.sender_name}</b>: ${d.message.text.substring(0, 20)}...</div><span>💬</span></div>`;
+                        setTimeout(() => { if (bar.innerHTML.includes(d.message.text.substring(0, 10))) bar.innerHTML = ''; }, 5000);
                     } else if (d.broadcast && d.broadcast.id !== lastNotifBcastId) {
                         lastNotifBcastId = d.broadcast.id;
-                        bar.innerHTML = `
-                            <div class="notif-badge broadcast" onclick="openChatsWith(0, '📢 Администрация')">
-                                <div><b>Администрация</b>: ${d.broadcast.text.substring(0, 20)}...</div>
-                                <span>📢</span>
-                            </div>
-                        `;
-                        setTimeout(() => { 
-                            if (bar.innerHTML.includes(d.broadcast.text.substring(0, 10))) bar.innerHTML = ''; 
-                        }, 7000);
+                        bar.innerHTML = `<div class="notif-badge broadcast" onclick="openChatsWith(0, '📢 Администрация')"><div><b>Администрация</b>: ${d.broadcast.text.substring(0, 20)}...</div><span>📢</span></div>`;
+                        setTimeout(() => { if (bar.innerHTML.includes(d.broadcast.text.substring(0, 10))) bar.innerHTML = ''; }, 7000);
                     }
                 } catch(e) {}
             };
 
-            window.loadData = async function() {
+            window.loadData = async () => {
                 try {
                     const data = await fetch(`${SERVER_URL}/api/balance/${userId}?name=${encodeURIComponent(playerName)}`).then(r => r.json());
-                    if (data.error) return tg.showAlert("Ошибка: " + data.error);
+                    if (data.error) return;
                     document.getElementById("user-name").innerText = data.name || playerName;
                     document.getElementById("nickname-input").value = data.name || playerName;
                     document.getElementById("user-balance").innerHTML = `${data.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} <span>Br</span>`;
-                    
-                    if (data.card_number) document.getElementById("card-number").innerText = data.card_number;
-                    if (data.card_cvc) document.getElementById("card-cvc").innerText = "CVC: " + data.card_cvc;
+                    document.getElementById("card-number").innerText = data.card_number || "**** **** **** ****";
+                    document.getElementById("card-cvc").innerText = "CVC: " + (data.card_cvc || "***");
                     document.getElementById("card-holder").innerText = data.name || playerName;
-                    
                     userPortfolio = data.portfolio || {};
-                    
                     loadRates();
-                    
                     if (data.earned > 0) {
-                        const b = document.getElementById("income-badge");
-                        b.innerText = `+ ${data.earned} Br`; b.style.display = 'block';
+                        const b = document.getElementById("income-badge"); b.innerText = `+ ${data.earned} Br`; b.style.display = 'block';
                         setTimeout(() => b.style.display = 'none', 5000);
                     }
-                    renderApartments(data.apartments || []);
-                    renderBusinesses(data.businesses || []);
-                    loadDailyBusinesses();
-                } catch(e) { tg.showAlert("Ошибка загрузки данных"); }
-            };
-
-            window.loadLeaderboard = async function() {
-                try {
-                    const d = await fetch(`${SERVER_URL}/api/leaderboard`).then(r => r.json());
-                    const list = document.getElementById('leaderboard-list'); list.innerHTML = '';
-                    if (!d.leaders) return;
-                    const medals = ["🥇", "🥈", "🥉", "🏅", "🏅"];
-                    d.leaders.forEach((p, i) => {
-                        const fb = p.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                        list.innerHTML += `<div class="list-item"><span>${medals[i]} ${p.name}</span><span style="color:var(--accent);font-weight:bold;">${fb} Br</span></div>`;
-                    });
+                    renderApartments(data.apartments || []); renderBusinesses(data.businesses || []); loadDailyBusinesses();
                 } catch(e) {}
             };
 
-            window.loadRates = async function() {
+            window.loadLeaderboard = async () => {
+                try {
+                    const d = await fetch(`${SERVER_URL}/api/leaderboard`).then(r => r.json());
+                    const list = document.getElementById('leaderboard-list'); list.innerHTML = '';
+                    const medals = ["🥇", "🥈", "🥉", "🏅", "🏅"];
+                    d.leaders.forEach((p, i) => { list.innerHTML += `<div class="list-item"><span>${medals[i]} ${p.name}</span><span style="color:var(--accent);font-weight:bold;">${p.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} Br</span></div>`; });
+                } catch(e) {}
+            };
+
+            window.loadRates = async () => {
                 try {
                     currentRates = await fetch(`${SERVER_URL}/api/token_rates`).then(r => r.json());
                     const list = document.getElementById('exchange-list'); list.innerHTML = '';
                     for (const key in currentRates) {
-                        const r = currentRates[key];
-                        const cls = r.trend === 'up' ? 'trend-up' : 'trend-down';
-                        const sym = r.trend === 'up' ? '▲' : '▼';
-                        const owned = userPortfolio[key] || 0;
-                        const displayName = r.name || key.toUpperCase();
-                        list.innerHTML += `
-                            <div class="exchange-card">
-                                <div class="exchange-header">
-                                    <div><div class="rate-title">${displayName}</div><div class="rate-price">Цена: ${r.price} Br</div></div>
-                                    <div class="rate-trend ${cls}">${sym}</div>
-                                </div>
-                                <div class="exchange-bottom">
-                                    <div class="rate-owned">В наличии: ${owned}</div>
-                                    <div class="exchange-buttons">
-                                        <button class="btn-buy" onclick="tradeToken('${key}','buy')">Купить</button>
-                                        <button class="btn-sell" onclick="tradeToken('${key}','sell')">Продать</button>
-                                    </div>
-                                </div>
-                            </div>`;
+                        const r = currentRates[key], cls = r.trend === 'up' ? 'trend-up' : 'trend-down', sym = r.trend === 'up' ? '▲' : '▼';
+                        list.innerHTML += `<div class="exchange-card"><div class="exchange-header"><div><div class="rate-title">${r.name}</div><div class="rate-price">Цена: ${r.price} Br</div></div><div class="rate-trend ${cls}">${sym}</div></div><div class="exchange-bottom"><div class="rate-owned">В наличии: ${userPortfolio[key] || 0}</div><div class="exchange-buttons"><button class="btn-buy" onclick="tradeToken('${key}','buy')">Купить</button><button class="btn-sell" onclick="tradeToken('${key}','sell')">Продать</button></div></div></div>`;
                     }
                 } catch(e) {}
             };
 
-            window.loadCompanies = async function() {
-                try { 
-                    const d = await fetch(`${SERVER_URL}/api/companies`).then(r => r.json());
-                    companiesData = d.companies || []; 
-                } catch(e) {}
+            window.loadCompanies = async () => {
+                try { companiesData = (await fetch(`${SERVER_URL}/api/companies`).then(r => r.json())).companies || []; } catch(e) {}
             };
 
-            window.renderApartments = function(apts) {
-                const list = document.getElementById('my-apartments-list-modal'); list.innerHTML = '';
-                let total = 0;
-                if (apts.length === 0) list.innerHTML = '<div style="text-align:center;color:#8892b0;padding:20px;">Нет квартир</div>';
+            window.renderApartments = (apts) => {
+                const list = document.getElementById('my-apartments-list-modal'); list.innerHTML = ''; let total = 0;
+                if (!apts.length) list.innerHTML = '<div style="text-align:center;color:#8892b0;padding:20px;">Нет квартир</div>';
                 apts.forEach((apt, i) => {
                     total += apt.income;
-                    const fi = apt.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                    list.innerHTML += `
-                        <div class="my-apt-card">
-                            <div><div class="my-apt-title">🏠 ${apt.name}</div><div class="my-apt-income">+ ${fi} Br/ч</div></div>
-                            <button class="sell-btn" onclick="sellApt(${i},${apt.buy_price||0})">Продать</button>
-                        </div>`;
+                    list.innerHTML += `<div class="my-apt-card"><div><div class="bus-title">🏠 ${apt.name}</div><div class="bus-price">+ ${apt.income} Br/ч</div></div><button class="sell-btn" onclick="sellApt(${i},${apt.buy_price||0})">Продать</button></div>`;
                 });
                 document.getElementById("modal-total-income").innerText = `${total.toLocaleString()} Br/ч`;
             };
 
-            window.renderBusinesses = function(buses) {
+            window.renderBusinesses = (buses) => {
                 const list = document.getElementById('my-businesses-list'); list.innerHTML = '';
-                if (buses.length === 0) {
-                    list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Нет бизнесов</div>';
-                    return;
-                }
+                if (!buses.length) return list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Нет бизнесов</div>';
                 buses.forEach(b => {
-                    const fi = b.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                    list.innerHTML += `
-                        <div class="bus-card bus-${b.rarity}" style="display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <div class="bus-title">${b.name} <span style="font-size:13px;color:#a3c2ff;">(${b.rarity})</span></div>
-                                <div class="bus-price">+ ${fi} Br/ч</div>
-                            </div>
-                            <button class="sell-btn" onclick="sellBusiness()">Продать</button>
-                        </div>`;
+                    list.innerHTML += `<div class="bus-card bus-${b.rarity}" style="display:flex; justify-content:space-between; align-items:center;"><div><div class="bus-title">${b.name} <span style="font-size:13px;color:#a3c2ff;">(${b.rarity})</span></div><div class="bus-price">+ ${b.income} Br/ч</div></div><button class="sell-btn" onclick="sellBusiness()">Продать</button></div>`;
                 });
             };
 
-            window.loadDailyBusinesses = async function() {
+            window.loadDailyBusinesses = async () => {
                 try {
                     const d = await fetch(`${SERVER_URL}/api/businesses/${userId}`).then(r => r.json());
                     const list = document.getElementById('daily-businesses-list'); list.innerHTML = '';
-                    if (d.businesses.length === 0) list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Жди 24ч</div>';
+                    if (!d.businesses.length) list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Жди 24ч</div>';
                     d.businesses.forEach((b, i) => {
-                        const fp = b.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                        const fi = b.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                        list.innerHTML += `
-                            <div class="bus-card bus-${b.rarity}">
-                                <div class="bus-title">${b.name} <span style="font-size:13px;color:#a3c2ff;">(${b.rarity})</span></div>
-                                <div class="bus-info">+${fi} Br/ч | Нужно кв: ${b.req}</div>
-                                <button class="buy-btn" style="margin-top:10px;width:100%;" onclick="buyBusiness(${i})">Купить за ${fp} Br</button>
-                            </div>`;
+                        list.innerHTML += `<div class="bus-card bus-${b.rarity}"><div class="bus-title">${b.name} <span style="font-size:13px;color:#a3c2ff;">(${b.rarity})</span></div><div class="bus-info">+${b.income} Br/ч | Нужно кв: ${b.req}</div><button class="buy-btn" style="margin-top:10px;width:100%;" onclick="buyBusiness(${i})">Купить за ${b.price} Br</button></div>`;
                     });
                 } catch(e) {}
             };
 
-            window.buyBusiness = async function(i) {
+            window.buyBusiness = async (i) => {
                 const r = await fetch(`${SERVER_URL}/api/buy_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, business_index: i}) }).then(x => x.json());
-                if (r.status === 'ok') { alert(r.message); loadData(); }
-                else alert(r.message);
+                alert(r.message); if (r.status === 'ok') loadData();
             };
 
-            window.sellBusiness = async function() {
-                if (!confirm("Продать компанию за 70% стоимости?")) return;
-                const r = await fetch(`${SERVER_URL}/api/sell_business`, {
-                    method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({user_id: userId})
-                }).then(x => x.json());
-                if (r.status === 'ok') { alert(r.message); loadData(); }
-                else alert(r.message);
+            window.sellBusiness = async () => {
+                if (!confirm("Продать за 70%?")) return;
+                const r = await fetch(`${SERVER_URL}/api/sell_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId}) }).then(x => x.json());
+                alert(r.message); loadData();
             };
 
-            window.openChats = function() {
-                openModal('chat-modal');
-                document.getElementById('chat-list-view').style.display = 'block';
-                document.getElementById('chat-window-view').style.display = 'none';
-                document.getElementById('chat-header-title').innerText = '💬 Чаты';
-                document.getElementById('chat-back-btn').style.display = 'none';
-                loadChats();
+            // БАНК
+            window.openBankModal = async () => {
+                openModal('bank-modal');
+                fetch(`${SERVER_URL}/api/balance/${userId}`).then(r => r.json()).then(data => {
+                    currentLoanDebt = data.loan_debt || 0;
+                    const info = document.getElementById('bank-loan-info'), btn = document.getElementById('loan-action-btn'), amt = document.getElementById('loan-amount');
+                    if (currentLoanDebt > 0) {
+                        info.innerHTML = `Ваш долг: <b style="color:#f87171">${currentLoanDebt} Br</b> (Процент: ${data.loan_interest}%)`;
+                        amt.style.display = 'none'; btn.innerText = 'Погасить долг'; btn.style.background = '#4ade80';
+                    } else {
+                        info.innerHTML = `У вас нет активных кредитов.`;
+                        amt.style.display = 'block'; btn.innerText = 'Запросить кредит'; btn.style.background = 'var(--accent)';
+                    }
+                });
             };
 
-            window.openChatsWith = function(id, name) {
-                openChats();
-                setTimeout(() => {
-                    openChatWith(id, name, 'none');
-                }, 300);
+            window.handleLoanAction = async () => {
+                if (currentLoanDebt > 0) {
+                    const r = await fetch(`${SERVER_URL}/api/loan/repay`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, amount: 0}) }).then(r=>r.json());
+                    alert(r.message); if(r.status === 'ok') { closeModal('bank-modal'); loadData(); }
+                } else {
+                    const amt = parseInt(document.getElementById('loan-amount').value);
+                    if (!amt || amt <= 0) return alert('Введите сумму');
+                    const r = await fetch(`${SERVER_URL}/api/loan/request`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, amount: amt}) }).then(r=>r.json());
+                    alert(r.message); if(r.status === 'ok') closeModal('bank-modal');
+                }
             };
 
-            window.closeChat = function() {
-                closeModal('chat-modal');
-                if(chatInterval) clearInterval(chatInterval);
-                currentChatId = null;
-            };
+            // ЧАТЫ
+            window.openChats = () => { openModal('chat-modal'); document.getElementById('chat-list-view').style.display = 'block'; document.getElementById('chat-window-view').style.display = 'none'; document.getElementById('chat-header-title').innerText = '💬 Чаты'; document.getElementById('chat-back-btn').style.display = 'none'; loadChats(); };
+            window.openChatsWith = (id, name) => { openChats(); setTimeout(() => openChatWith(id, name, 'none'), 300); };
+            window.closeChat = () => { closeModal('chat-modal'); if(chatInterval) clearInterval(chatInterval); currentChatId = null; };
+            window.backToChats = () => { document.getElementById('chat-list-view').style.display = 'block'; document.getElementById('chat-window-view').style.display = 'none'; document.getElementById('chat-header-title').innerText = '💬 Чаты'; document.getElementById('chat-back-btn').style.display = 'none'; currentChatId = null; if(chatInterval) clearInterval(chatInterval); loadChats(); };
 
-            window.backToChats = function() {
-                document.getElementById('chat-list-view').style.display = 'block';
-                document.getElementById('chat-window-view').style.display = 'none';
-                document.getElementById('chat-header-title').innerText = '💬 Чаты';
-                document.getElementById('chat-back-btn').style.display = 'none';
-                currentChatId = null;
-                if(chatInterval) clearInterval(chatInterval);
-                loadChats();
-            };
-
-            window.loadChats = async function() {
-                const list = document.getElementById('chat-list-view');
-                list.innerHTML = 'Загрузка...';
+            window.loadChats = async () => {
+                const list = document.getElementById('chat-list-view'); list.innerHTML = 'Загрузка...';
                 try {
                     const d = await fetch(`${SERVER_URL}/api/chats/${userId}`).then(r => r.json());
                     list.innerHTML = '';
                     d.chats.forEach(c => {
-                        let icon = '👤';
-                        if (c.id === 0) icon = '📢';
-                        else if (c.status === 'accepted') icon = '🤝';
-                        else if (c.status === 'pending_in') icon = '🔔';
-                        else if (c.status === 'pending_out') icon = '⏳';
-                        
+                        let icon = '👤'; if (c.id === 0) icon = '📢'; else if (c.status === 'accepted') icon = '🤝'; else if (c.status === 'pending_in') icon = '🔔'; else if (c.status === 'pending_out') icon = '⏳';
                         list.innerHTML += `<div class="chat-item" onclick="openChatWith(${c.id}, '${c.name}', '${c.status}')"><span>${icon} ${c.name}</span><span>></span></div>`;
                     });
                 } catch(e) { list.innerHTML = 'Ошибка'; }
             };
 
-            window.openChatWith = async function(id, name, initialStatus) {
-                currentChatId = id;
-                currentChatStatus = initialStatus;
-                lastChatHash = "";
-
-                document.getElementById('chat-list-view').style.display = 'none';
-                document.getElementById('chat-window-view').style.display = 'flex';
-                document.getElementById('chat-header-title').innerText = name;
-                document.getElementById('chat-back-btn').style.display = 'block';
-
-                try {
-                    const st = await fetch(`${SERVER_URL}/api/chat_status/${userId}/${id}`).then(r => r.json());
-                    currentChatStatus = st.status;
-                    if (currentChatStatus === 'accepted' && id !== 0) {
-                        fetch(`${SERVER_URL}/api/messages/read`, {
-                            method: 'POST', headers: {'Content-Type':'application/json'},
-                            body: JSON.stringify({user_id: userId, other_id: id})
-                        });
-                    }
-                } catch(e) { console.error("Статус не загружен"); }
-
-                updateChatUI(currentChatStatus);
-                loadMessages();
+            window.openChatWith = async (id, name, status) => {
+                currentChatId = id; currentChatStatus = status; lastChatHash = "";
+                document.getElementById('chat-list-view').style.display = 'none'; document.getElementById('chat-window-view').style.display = 'flex';
+                document.getElementById('chat-header-title').innerText = name; document.getElementById('chat-back-btn').style.display = 'block';
+                const st = await fetch(`${SERVER_URL}/api/chat_status/${userId}/${id}`).then(r => r.json());
+                currentChatStatus = st.status;
+                if (currentChatStatus === 'accepted' && id !== 0) fetch(`${SERVER_URL}/api/messages/read`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, other_id: id}) });
+                updateChatUI(); loadMessages();
                 if(chatInterval) clearInterval(chatInterval);
-                chatInterval = setInterval(loadMessages, 3000);
+                chatInterval = setInterval(loadMessages, 5000);
             };
 
-            window.updateChatUI = function(status) {
-                const inputPanel = document.getElementById('chat-input-panel');
-                const friendPanel = document.getElementById('friend-request-panel');
-                const friendText = document.getElementById('friend-request-text');
-                const friendBtns = document.getElementById('friend-request-buttons');
-
-                if (currentChatId === 0) {
-                    inputPanel.style.display = 'none';
-                    friendPanel.style.display = 'block';
-                    friendText.innerHTML = 'Это канал администрации. Тут только объявления.';
-                    friendBtns.innerHTML = '';
-                    return;
-                }
-
-                if (status === 'accepted') {
-                    inputPanel.style.display = 'flex';
-                    friendPanel.style.display = 'none';
-                    document.getElementById('request-money-btn').style.display = 'block';
-                } else {
-                    inputPanel.style.display = 'none';
-                    friendPanel.style.display = 'block';
-                    document.getElementById('request-money-btn').style.display = 'none';
-
-                    if (status === 'none') {
-                        friendText.innerHTML = 'Чтобы писать сообщения, добавьте игрока в друзья.';
-                        friendBtns.innerHTML = `<button onclick="sendFriendRequest()" style="background:var(--accent);color:#000;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">➕ Добавить в друзья</button>`;
-                    } else if (status === 'pending_out') {
-                        friendText.innerHTML = 'Вы отправили запрос в друзья. Ожидание...';
-                        friendBtns.innerHTML = `<button onclick="declineFriend()" style="background:#f87171;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">Отменить</button>`;
-                    } else if (status === 'pending_in') {
-                        friendText.innerHTML = 'Этот игрок хочет добавить вас в друзья!';
-                        friendBtns.innerHTML = `
-                            <button onclick="acceptFriend()" style="background:#4ade80;color:#000;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">Принять</button>
-                            <button onclick="declineFriend()" style="background:#f87171;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;cursor:pointer;">Отклонить</button>
-                        `;
-                    }
+            window.updateChatUI = () => {
+                const inp = document.getElementById('chat-input-panel'), fnd = document.getElementById('friend-request-panel'), txt = document.getElementById('friend-request-text'), btns = document.getElementById('friend-request-buttons');
+                if (currentChatId === 0) { inp.style.display = 'none'; fnd.style.display = 'block'; txt.innerHTML = 'Это канал администрации.'; btns.innerHTML = ''; return; }
+                if (currentChatStatus === 'accepted') { inp.style.display = 'flex'; fnd.style.display = 'none'; document.getElementById('request-money-btn').style.display = 'block'; }
+                else {
+                    inp.style.display = 'none'; fnd.style.display = 'block'; document.getElementById('request-money-btn').style.display = 'none';
+                    if (currentChatStatus === 'none') { txt.innerHTML = 'Добавьте в друзья для общения.'; btns.innerHTML = `<button onclick="sendFriendRequest()" style="background:var(--accent);color:#000;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;">➕ Добавить</button>`; }
+                    else if (currentChatStatus === 'pending_out') { txt.innerHTML = 'Запрос отправлен. Ожидание...'; btns.innerHTML = `<button onclick="declineFriend()" style="background:#f87171;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;">Отменить</button>`; }
+                    else if (currentChatStatus === 'pending_in') { txt.innerHTML = 'Вас хотят добавить в друзья!'; btns.innerHTML = `<button onclick="acceptFriend()" style="background:#4ade80;color:#000;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;">Принять</button><button onclick="declineFriend()" style="background:#f87171;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:bold;">Отклонить</button>`; }
                 }
             };
 
-            window.sendFriendRequest = async function() {
-                const r = await fetch(`${SERVER_URL}/api/friends/request`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: currentChatId}) }).then(x => x.json());
-                if (r.status === 'ok' || r.message === "Запрос уже существует") { 
-                    currentChatStatus = 'pending_out'; 
-                    updateChatUI(currentChatStatus); 
-                }
-                else alert(r.message);
-            };
+            window.sendFriendRequest = async () => { await fetch(`${SERVER_URL}/api/friends/request`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: currentChatId}) }); currentChatStatus = 'pending_out'; updateChatUI(); };
+            window.acceptFriend = async () => { await fetch(`${SERVER_URL}/api/friends/accept`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, other_id: currentChatId}) }); currentChatStatus = 'accepted'; updateChatUI(); };
+            window.declineFriend = async () => { await fetch(`${SERVER_URL}/api/friends/decline`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, other_id: currentChatId}) }); currentChatStatus = 'none'; updateChatUI(); };
 
-            window.acceptFriend = async function() {
-                await fetch(`${SERVER_URL}/api/friends/accept`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, other_id: currentChatId}) });
-                currentChatStatus = 'accepted'; updateChatUI(currentChatStatus);
-            };
-
-            window.declineFriend = async function() {
-                await fetch(`${SERVER_URL}/api/friends/decline`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, other_id: currentChatId}) });
-                currentChatStatus = 'none'; updateChatUI(currentChatStatus);
-            };
-
-            window.loadMessages = async function() {
+            window.loadMessages = async () => {
                 if(currentChatId === null || isSendingMessage) return;
                 try {
                     const d = await fetch(`${SERVER_URL}/api/chat_history/${userId}/${currentChatId}`).then(r => r.json());
-                    const box = document.getElementById('chat-messages');
-                    
-                    const currentHash = JSON.stringify(d.messages) + JSON.stringify(d.requests);
-                    if (currentHash === lastChatHash) return;
-                    lastChatHash = currentHash;
-
-                    const isScrolledToBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 50;
-                    
-                    let newHtml = '';
-                    let items = [];
+                    const box = document.getElementById('chat-messages'), currentHash = JSON.stringify(d.messages) + JSON.stringify(d.requests);
+                    if (currentHash === lastChatHash) return; lastChatHash = currentHash;
+                    const isScrolled = box.scrollHeight - box.scrollTop <= box.clientHeight + 50;
+                    let html = '', items = [];
                     d.messages.forEach(m => items.push({ type: 'msg', data: m, time: m.created_at }));
                     d.requests.forEach(r => items.push({ type: 'req', data: r, time: r.created_at }));
                     items.sort((a, b) => a.time - b.time);
-
                     items.forEach(item => {
                         if (item.type === 'msg') {
-                            const m = item.data;
-                            const isMe = m.sender_id === userId;
-                            const senderLabel = (m.sender_id === 0 || !isMe && currentChatId === 0) ? `<span class="msg-sender">${m.sender_name}</span>` : '';
-                            newHtml += `
-                                <div class="msg-bubble ${isMe ? 'msg-me' : 'msg-them'}">
-                                    ${senderLabel}
-                                    ${m.text}
-                                </div>
-                            `;
+                            const m = item.data, isMe = m.sender_id === userId;
+                            html += `<div class="msg-bubble ${isMe ? 'msg-me' : 'msg-them'}">${(m.sender_id === 0 || !isMe && currentChatId === 0) ? `<span class="msg-sender">${m.sender_name}</span>` : ''}${m.text}</div>`;
                         } else {
-                            const r = item.data;
-                            const isMe = r.sender_id === userId;
+                            const r = item.data, isMe = r.sender_id === userId;
                             if (r.status === 'pending') {
-                                if (isMe) {
-                                    newHtml += `<div class="msg-bubble msg-me" style="background:#eab308;color:#000;text-align:center;">💰 Вы запросили <b>${r.amount} Br</b>.<br><span style="font-size:11px;">Ожидание...</span></div>`;
-                                } else {
-                                    newHtml += `
-                                        <div class="msg-bubble msg-them" style="background:rgba(234,179,8,0.2);border:1px solid #eab308;text-align:center;">
-                                            <div style="margin-bottom:10px;">💰 <b>Запрос денег</b><br>Игрок <b>${r.sender_name}</b> просит <b>${r.amount} Br</b></div>
-                                            <div style="display:flex; gap:10px; justify-content:center;">
-                                                <button onclick="acceptReq(${r.id})" style="background:#4ade80;color:#000;border:none;padding:8px 15px;border-radius:8px;font-weight:bold;cursor:pointer;">Принять</button>
-                                                <button onclick="declineReq(${r.id})" style="background:#f87171;color:#fff;border:none;padding:8px 15px;border-radius:8px;font-weight:bold;cursor:pointer;">Отклонить</button>
-                                            </div>
-                                        </div>
-                                    `;
-                                }
-                            } else if (r.status === 'accepted') {
-                                newHtml += `<div class="msg-bubble msg-me" style="background:#4ade80;color:#000;font-size:12px;text-align:center;">✅ Запрос на <b>${r.amount} Br</b> выполнен!</div>`;
-                            } else if (r.status === 'declined') {
-                                newHtml += `<div class="msg-bubble msg-me" style="background:rgba(248,113,113,0.2);border:1px solid #f87171;color:#fff;font-size:12px;text-align:center;">❌ Запрос на <b>${r.amount} Br</b> отклонен.</div>`;
-                            }
+                                html += isMe ? `<div class="msg-bubble msg-me" style="background:#eab308;color:#000;text-align:center;">💰 Вы запросили <b>${r.amount} Br</b>.</div>` : `<div class="msg-bubble msg-them" style="background:rgba(234,179,8,0.2);border:1px solid #eab308;text-align:center;"><div>💰 <b>Запрос</b>: ${r.amount} Br</div><div style="display:flex; gap:10px; justify-content:center; margin-top:5px;"><button onclick="acceptReq(${r.id})" style="background:#4ade80;color:#000;border:none;padding:5px 10px;border-radius:5px;">Принять</button><button onclick="declineReq(${r.id})" style="background:#f87171;color:#fff;border:none;padding:5px 10px;border-radius:5px;">Отклонить</button></div></div>`;
+                            } else if (r.status === 'accepted') html += `<div class="msg-bubble msg-me" style="background:#4ade80;color:#000;font-size:12px;text-align:center;">✅ Запрос на ${r.amount} Br выполнен!</div>`;
+                            else if (r.status === 'declined') html += `<div class="msg-bubble msg-me" style="background:rgba(248,113,113,0.2);color:#fff;font-size:12px;text-align:center;">❌ Запрос отклонен.</div>`;
                         }
                     });
-                    
-                    box.innerHTML = newHtml;
-                    if (isScrolledToBottom) {
-                        box.scrollTop = box.scrollHeight;
-                    }
+                    box.innerHTML = html; if (isScrolled) box.scrollTop = box.scrollHeight;
                 } catch(e) {}
             };
 
-            window.sendMessage = async function() {
-                const input = document.getElementById('chat-input');
-                const text = input.value.trim();
-                if (!text || currentChatId === null) return;
-                
-                isSendingMessage = true;
+            window.sendMessage = async () => {
+                const inp = document.getElementById('chat-input'), text = inp.value.trim();
+                if (!text || currentChatId === null) return; isSendingMessage = true;
                 try {
-                    const res = await fetch(`${SERVER_URL}/api/send_message`, {
-                        method: 'POST',
-                        headers: {'Content-Type':'application/json'},
-                        body: JSON.stringify({sender_id: userId, receiver_id: currentChatId, text: text})
-                    });
-                    const r = await res.json();
-
-                    if (r.status === 'ok') {
-                        input.value = '';
-                        lastChatHash = "";
-                        await loadMessages();
-                        const box = document.getElementById('chat-messages');
-                        box.scrollTop = box.scrollHeight;
-                    } else {
-                        tg.showAlert('❌ Ошибка: ' + r.message);
-                    }
-                } catch (err) {
-                    tg.showAlert('⚠️ Ошибка соединения: ' + err.message);
-                } finally {
-                    isSendingMessage = false;
-                }
+                    const r = await fetch(`${SERVER_URL}/api/send_message`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: currentChatId, text: text}) }).then(r => r.json());
+                    if (r.status === 'ok') { inp.value = ''; lastChatHash = ""; await loadMessages(); document.getElementById('chat-messages').scrollTop = 9999; }
+                    else tg.showAlert('❌ ' + r.message);
+                } catch (err) { tg.showAlert('⚠️ Ошибка'); } finally { isSendingMessage = false; }
             };
 
-            window.requestMoney = async function() {
-                if (!currentChatId) return;
-                const amt = parseInt(prompt("Сколько Br запросить у этого игрока?"));
+            window.requestMoney = async () => {
+                const amt = parseInt(prompt("Сколько Br запросить?"));
                 if (isNaN(amt) || amt <= 0) return;
-                const r = await fetch(`${SERVER_URL}/api/request_money`, {
-                    method: 'POST', headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({sender_id: userId, receiver_id: currentChatId, amount: amt})
-                }).then(x => x.json());
-                
-                if (r.status === 'error') alert(r.message);
-                lastChatHash = "";
-                loadMessages();
+                await fetch(`${SERVER_URL}/api/request_money`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: currentChatId, amount: amt}) });
+                lastChatHash = ""; loadMessages();
             };
 
-            window.acceptReq = async function(id) {
-                const r = await fetch(`${SERVER_URL}/api/request_money/accept`, {
-                    method: 'POST', headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({request_id: id, user_id: userId})
-                }).then(x => x.json());
-                if (r.status === 'ok') { loadData(); lastChatHash = ""; loadMessages(); }
-                else alert(r.message);
-            };
+            window.acceptReq = async (id) => { await fetch(`${SERVER_URL}/api/request_money/accept`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({request_id: id, user_id: userId}) }); loadData(); lastChatHash = ""; loadMessages(); };
+            window.declineReq = async (id) => { await fetch(`${SERVER_URL}/api/request_money/decline`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({request_id: id, user_id: userId}) }); lastChatHash = ""; loadMessages(); };
 
-            window.declineReq = async function(id) {
-                await fetch(`${SERVER_URL}/api/request_money/decline`, {
-                    method: 'POST', headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({request_id: id, user_id: userId})
-                });
-                lastChatHash = "";
-                loadMessages();
-            };
-
-            window.openMyApts = function() { closeModal('city-menu-modal'); openModal('my-apts-modal'); };
-            
-            window.openShop = function() {
-                closeModal('city-menu-modal');
-                const list = document.getElementById('shop-list'); list.innerHTML = '';
-                if (companiesData.length === 0) list.innerHTML = '<div style="text-align:center;padding:20px;">Компании не загружены</div>';
+            // КВАРТИРЫ
+            window.openMyApts = () => { closeModal('city-menu-modal'); openModal('my-apts-modal'); };
+            window.openShop = () => {
+                closeModal('city-menu-modal'); const list = document.getElementById('shop-list'); list.innerHTML = '';
                 companiesData.forEach(g => {
-                    let html = `<div class="class-group"><div class="class-title">${g.name}</div>`;
+                    let html = `<div style="margin-bottom:20px;"><div class="section-title" style="color:#a3c2ff;">${g.name}</div>`;
                     g.tiers.forEach(item => {
-                        const fp = item.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                        const fi = item.income.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                        let discountHtml = '';
-                        if (item.old_price && item.old_price > item.price) {
-                            const op = item.old_price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                            discountHtml = `<span class="discount-badge">СКИДКА</span> <s style="color:#8892b0; font-size:12px; margin-right:5px;">${op} Br</s>`;
-                        }
-                        let sqmHtml = item.sqm ? `<div style="font-size:11px; color:#8892b0;">📐 ${item.sqm} кв.м</div>` : '';
-                        html += `
-                            <div class="apt-shop-item">
-                                <div><div style="font-weight:bold;font-size:15px;margin-bottom:5px;">${item.name}</div>
-                                <div style="font-size:13px;color:var(--accent);font-weight:bold;">+ ${fi} Br/ч</div>${sqmHtml}</div>
-                                <button class="buy-btn" onclick="prepareBuy('${item.name}',${item.price},${item.income})">${discountHtml}${fp} Br</button>
-                            </div>`;
+                        html += `<div class="list-item" style="padding:10px;"><div><div style="font-weight:bold;">${item.name}</div><div style="color:var(--accent);font-size:13px;">+${item.income} Br/ч</div></div><button class="buy-btn" onclick="prepareBuy('${item.name}',${item.price},${item.income})">${item.price} Br</button></div>`;
                     });
                     list.innerHTML += html + '</div>';
                 });
@@ -974,364 +614,73 @@
             };
 
             let buyItemData = null;
-            window.prepareBuy = function(name, price, income) {
-                buyItemData = { name, price, income };
-                document.getElementById('buy-modal-title').innerText = "Покупка";
-                document.getElementById('buy-modal-text').innerHTML = `Купить <b>"${name}"</b> за <b>${price.toLocaleString()} Br</b>?`;
-                openModal('buy-modal');
+            window.prepareBuy = (name, price, income) => { buyItemData = { name, price, income }; document.getElementById('buy-modal-text').innerHTML = `Купить <b>"${name}"</b> за <b>${price} Br</b>?`; openModal('buy-modal'); };
+            window.executeBuy = async () => {
+                closeModal('buy-modal'); if (!buyItemData) return;
+                const r = await fetch(`${SERVER_URL}/api/buy`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, user_name: playerName, apartment_name: buyItemData.name, price: buyItemData.price, income: buyItemData.income}) }).then(x => x.json());
+                if (r.status === 'ok') { alert('✅ Куплено'); closeModal('shop-modal'); loadData(); } else alert('❌ ' + r.message);
+            };
+            window.sellApt = async (i, p) => {
+                if (!confirm("Продать?")) return;
+                await fetch(`${SERVER_URL}/api/sell`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, apartment_index: i, price: p}) }); loadData();
             };
 
-            window.executeBuy = async function() {
-                closeModal('buy-modal');
-                if (!buyItemData) return;
-                const r = await fetch(`${SERVER_URL}/api/buy`, {
-                    method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({user_id: userId, user_name: playerName, apartment_name: buyItemData.name, price: buyItemData.price, income: buyItemData.income})
-                }).then(x => x.json());
-                if (r.status === 'ok') { alert('✅ Куплено'); closeModal('shop-modal'); loadData(); }
-                else alert('❌ ' + r.message);
+            window.saveNickname = async () => { const n = document.getElementById('nickname-input').value.trim(); if (!n) return; await fetch(`${SERVER_URL}/api/set_name`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, name: n}) }); document.getElementById('user-name').innerText = n; tg.showAlert('Ок'); };
+            window.openTransferModal = async (tid = null) => {
+                openModal('transfer-modal'); const sel = document.getElementById('transfer-user-select'); sel.innerHTML = '<option>Загрузка...</option>';
+                const d = await fetch(`${SERVER_URL}/api/all_users`).then(r => r.json()); sel.innerHTML = '<option value="">Выбери...</option>';
+                d.users.forEach(u => { if (u.id !== userId) sel.innerHTML += `<option value="${u.id}" ${u.id===tid?'selected':''}>${u.name}</option>`; });
             };
-
-            window.sellApt = async function(i, p) {
-                if (!confirm("Продать за 70%?")) return;
-                const r = await fetch(`${SERVER_URL}/api/sell`, {
-                    method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({user_id: userId, apartment_index: i, price: p})
-                }).then(x => x.json());
-                if (r.status === 'ok') { alert(r.message); loadData(); }
-                else alert(r.message);
+            window.confirmTransfer = async () => {
+                const rid = document.getElementById('transfer-user-select').value, amt = parseInt(document.getElementById('transfer-amount').value);
+                if (!rid || isNaN(amt) || amt <= 0) return alert('Заполни'); closeModal('transfer-modal');
+                const r = await fetch(`${SERVER_URL}/api/transfer`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender_id: userId, receiver_id: parseInt(rid), amount: amt}) }).then(x => x.json());
+                alert(r.message); if(r.status === 'ok') { loadData(); loadLeaderboard(); }
             };
-
-            window.saveNickname = async function() {
-                const n = document.getElementById('nickname-input').value.trim();
-                if (!n) return;
-                await fetch(`${SERVER_URL}/api/set_name`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, name: n}) });
-                document.getElementById('user-name').innerText = n;
-                tg.showAlert('Ок');
-            };
-
-            window.openTransferModal = async function(tid = null) {
-                openModal('transfer-modal');
-                const sel = document.getElementById('transfer-user-select');
-                sel.innerHTML = '<option>Загрузка...</option>';
-                try {
-                    const d = await fetch(`${SERVER_URL}/api/all_users`).then(r => r.json());
-                    sel.innerHTML = '<option value="">Выбери...</option>';
-                    d.users.forEach(u => {
-                        if (u.id !== userId) sel.innerHTML += `<option value="${u.id}" ${u.id===tid?'selected':''}>${u.name}</option>`;
-                    });
-                } catch(e) { sel.innerHTML = '<option>Ошибка</option>'; }
-            };
-
-            window.confirmTransfer = async function() {
-                const rid = document.getElementById('transfer-user-select').value;
-                const amt = parseInt(document.getElementById('transfer-amount').value);
-                if (!rid || isNaN(amt) || amt <= 0) return alert('Заполни');
-                closeModal('transfer-modal');
-                const r = await fetch(`${SERVER_URL}/api/transfer`, {
-                    method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({sender_id: userId, receiver_id: parseInt(rid), amount: amt})
-                }).then(x => x.json());
-                if (r.status === 'ok') { alert(r.message); loadData(); loadLeaderboard(); }
-                else alert(r.message);
-            };
-
-            window.tradeToken = function(tok, act) {
+            window.tradeToken = async (tok, act) => {
                 const a = prompt(`Сколько ${tok} ${act === 'buy' ? 'купить' : 'продать'}?`);
-                if (!a) return;
-                const amt = parseInt(a);
-                if (isNaN(amt) || amt <= 0) return;
-                fetch(`${SERVER_URL}/api/trade_token`, {
-                    method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({user_id: userId, token_type: tok, amount: amt, action: act})
-                }).then(r => r.json()).then(r => {
-                    if (r.status === 'error') alert('❌ ' + r.message);
-                    else { alert('✅ ' + r.message); loadData(); }
-                });
+                if (!a) return; const amt = parseInt(a); if (isNaN(amt) || amt <= 0) return;
+                const r = await fetch(`${SERVER_URL}/api/trade_token`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, token_type: tok, amount: amt, action: act}) }).then(r => r.json());
+                alert(r.message); if (r.status !== 'error') loadData();
             };
 
-            window.adminBroadcast = async function() {
-                const text = prompt("Введите сообщение для всех игроков:");
-                if (!text) return;
-                const r = await fetch(`${SERVER_URL}/api/admin/broadcast`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, text: text}) }).then(x => x.json());
-                alert(r.message);
+            // АДМИНКА
+            window.openAdminPanel = async () => {
+                openModal('admin-modal'); const list = document.getElementById('admin-users-list'); list.innerHTML = 'Загрузка...';
+                const d = await fetch(`${SERVER_URL}/api/admin/users?admin_id=${userId}`).then(r => r.json()); list.innerHTML = '';
+                d.users.forEach(u => { list.innerHTML += `<div class="user-row"><div style="display:flex;justify-content:space-between;font-weight:bold;"><span>${u.name}</span><span style="color:var(--accent)">${u.balance} Br</span></div><div style="font-size:13px;color:#8892b0;">ID: ${u.id} | Кв: ${u.apts_count}</div><div class="admin-btns"><button style="background:var(--accent);color:#000;" onclick="adminMoneyModal(${u.id},'${u.name}')">💰</button><button style="background:#3b82f6;color:#fff;" onclick="adminViewApts(${u.id})">🏢</button></div></div>`; });
             };
-
-            window.openAdminPanel = async function() {
-                openModal('admin-modal');
-                const list = document.getElementById('admin-users-list'); list.innerHTML = 'Загрузка...';
-                try {
-                    const d = await fetch(`${SERVER_URL}/api/admin/users?admin_id=${userId}`).then(r => r.json());
-                    list.innerHTML = '';
-                    d.users.forEach(u => {
-                        const fb = u.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                        list.innerHTML += `
-                            <div class="user-row">
-                                <div style="display:flex;justify-content:space-between;font-weight:bold;"><span>${u.name}</span><span style="color:var(--accent)">${fb} Br</span></div>
-                                <div style="font-size:13px;color:#8892b0;">ID: ${u.id} | Кв: ${u.apts_count}</div>
-                                <div class="admin-btns">
-                                    <button style="background:var(--accent);color:#000;" onclick="adminMoneyModal(${u.id},'${u.name}')">💰</button>
-                                    <button style="background:#3b82f6;color:#fff;" onclick="adminViewApts(${u.id})">🏢</button>
-                                    <button style="background:#f59e0b;color:#000;" onclick="adminViewBusiness(${u.id})">🏭</button>
-                                    <button style="background:#a855f7;color:#fff;" onclick="openTransferModal(${u.id})">💸</button>
-                                </div>
-                            </div>`;
-                    });
-                } catch(e) { list.innerHTML = 'Ошибка'; }
+            window.openAdminLoans = async () => {
+                openModal('admin-loans-modal'); const list = document.getElementById('admin-loans-list'); list.innerHTML = 'Загрузка...';
+                const d = await fetch(`${SERVER_URL}/api/admin/loan/list?admin_id=${userId}`).then(r => r.json()); list.innerHTML = d.requests.length === 0 ? '<div style="text-align:center;padding:20px;">Нет заявок</div>' : '';
+                d.requests.forEach(req => { list.innerHTML += `<div class="user-row"><div style="font-weight:bold;">Игрок: ${req.user_name}</div><div>Просит: <b style="color:var(--accent)">${req.amount} Br</b></div><div class="admin-btns"><button style="background:#4ade80;color:#000;" onclick="approveLoan(${req.id})">Одобрить</button><button style="background:#f87171;color:#fff;" onclick="rejectLoan(${req.id})">Отклонить</button></div></div>`; });
             };
-
-            let adminTargetId = null;
-            window.adminMoneyModal = function(id, name) {
-                adminTargetId = id;
-                document.getElementById('admin-money-target').innerText = `Игрок: ${name}`;
-                document.getElementById('admin-money-amount').value = '';
-                
-                if (userId === MAIN_ADMIN_ID) {
-                    document.getElementById('admin-money-limit').style.display = 'none';
-                } else {
-                    document.getElementById('admin-money-limit').style.display = 'block';
-                }
-                
-                openModal('admin-money-modal');
-            };
-
-            window.adminAddMoney = async function() {
-                const a = parseInt(document.getElementById('admin-money-amount').value); if (!a) return;
-                const r = await fetch(`${SERVER_URL}/api/admin/add_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: a}) }).then(x => x.json());
-                if (r.status === 'error') alert(r.message);
-                else { closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard(); }
-            };
-
-            window.adminRemoveMoney = async function() {
-                const a = parseInt(document.getElementById('admin-money-amount').value); if (!a) return;
-                await fetch(`${SERVER_URL}/api/admin/remove_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: adminTargetId, amount: a}) });
-                closeModal('admin-money-modal'); openAdminPanel(); loadLeaderboard();
-            };
-
-            window.adminViewApts = async function(id) {
-                const d = await fetch(`${SERVER_URL}/api/admin/user_apartments/${id}`).then(r => r.json());
-                const list = document.getElementById('admin-apts-list');
-                list.innerHTML = '';
-                if (!d.apartments || d.apartments.length === 0) {
-                    list.innerHTML = '<div style="color:#8892b0;text-align:center;padding:20px;">Нет квартир</div>';
-                } else {
-                    d.apartments.forEach((apt, i) => {
-                        list.innerHTML += `
-                            <div class="list-item" style="padding:10px; margin-bottom:5px;">
-                                <span style="font-size:13px;">${apt.name}<br><span style="color:var(--accent);font-size:11px;">+${apt.income} Br/ч</span></span>
-                                <button onclick="adminDeleteApt(${id}, ${i})" style="background:#f87171;border:none;border-radius:8px;padding:8px 12px;font-weight:bold;color:white;">Удалить</button>
-                            </div>`;
-                    });
-                }
+            window.approveLoan = async (id) => { const pct = prompt("Введите процент по кредиту:"); if (pct === null) return; await fetch(`${SERVER_URL}/api/admin/loan/action`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, request_id: id, approve: true, percent: parseInt(pct)}) }); openAdminLoans(); };
+            window.rejectLoan = async (id) => { await fetch(`${SERVER_URL}/api/admin/loan/action`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, request_id: id, approve: false}) }); openAdminLoans(); };
+            
+            window.adminBroadcast = async () => { const text = prompt("Сообщение:"); if (!text) return; const r = await fetch(`${SERVER_URL}/api/admin/broadcast`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, text: text}) }).then(x => x.json()); alert(r.message); };
+            window.adminMoneyModal = (id, name) => { document.getElementById('admin-money-target').innerText = `Игрок: ${name}`; document.getElementById('admin-money-amount').value = ''; openModal('admin-money-modal'); document.getElementById('admin-money-modal').dataset.tid = id; };
+            window.adminAddMoney = async () => { const a = parseInt(document.getElementById('admin-money-amount').value); if (!a) return; await fetch(`${SERVER_URL}/api/admin/add_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: document.getElementById('admin-money-modal').dataset.tid, amount: a}) }); closeModal('admin-money-modal'); openAdminPanel(); };
+            window.adminRemoveMoney = async () => { const a = parseInt(document.getElementById('admin-money-amount').value); if (!a) return; await fetch(`${SERVER_URL}/api/admin/remove_money`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: document.getElementById('admin-money-modal').dataset.tid, amount: a}) }); closeModal('admin-money-modal'); openAdminPanel(); };
+            
+            window.adminViewApts = async (id) => {
+                const d = await fetch(`${SERVER_URL}/api/admin/user_apartments/${id}`).then(r => r.json()); const list = document.getElementById('admin-apts-list'); list.innerHTML = '';
+                d.apartments.forEach((apt, i) => { list.innerHTML += `<div class="list-item" style="padding:10px;"><span>${apt.name} (+${apt.income} Br/ч)</span><button onclick="adminDeleteApt(${id}, ${i})" style="background:#f87171;border:none;border-radius:5px;padding:5px 10px;color:white;">Удалить</button></div>`; });
                 openModal('admin-apts-modal');
             };
+            window.adminDeleteApt = async (tid, i) => { await fetch(`${SERVER_URL}/api/admin/remove_apartment`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: tid, apt_index: i}) }); adminViewApts(tid); };
+            window.forceUpdateExchange = async () => { const r = await fetch(`${SERVER_URL}/api/admin/force_update_exchange`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id:0, amount:0}) }).then(x => x.json()); alert(r.message); loadRates(); closeModal('admin-exchange-modal'); };
+            
+            window.openAdminCompanies = async () => { openModal('admin-companies-modal'); await loadCompanies(); document.getElementById('admin-companies-list').innerHTML = companiesData.map(c => `<div class="user-row"><div style="font-weight:bold;">${c.name}</div><div style="font-size:13px;color:#8892b0;">Тарифов: ${c.tiers.length}</div></div>`).join(''); };
+            window.openAdminExchange = async () => { openModal('admin-exchange-modal'); const d = await fetch(`${SERVER_URL}/api/token_rates`).then(r => r.json()); document.getElementById('admin-exchange-list').innerHTML = Object.keys(d).map(k => `<div class="user-row"><div style="display:flex;justify-content:space-between;font-weight:bold;"><span>${d[k].name}</span><span>${d[k].price} Br</span></div></div>`).join(''); };
+            window.resetAllUsers = async () => { if (!confirm("Удалить ВСЕХ?")) return; const r = await fetch(`${SERVER_URL}/api/admin/reset_all`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id:0, amount:0}) }).then(x => x.json()); alert(r.message); loadData(); };
 
-            window.adminDeleteApt = async function(targetId, index) {
-                if (!confirm("Вы уверены, что хотите забрать эту квартиру у игрока?")) return;
-                await fetch(`${SERVER_URL}/api/admin/remove_apartment`, {
-                    method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({admin_id: userId, target_id: targetId, apt_index: index})
-                });
-                adminViewApts(targetId);
-                loadData();
-            };
+            window.openModal = (id) => { document.getElementById(id).style.display = 'flex'; if (tg.BackButton) tg.BackButton.show(); };
+            window.closeModal = (id) => { document.getElementById(id).style.display = 'none'; if (tg.BackButton) tg.BackButton.hide(); };
 
-            window.adminViewBusiness = async function(id) {
-                const d = await fetch(`${SERVER_URL}/api/admin/user_business/${id}`).then(r => r.json());
-                if (!d.businesses || d.businesses.length === 0) return alert("Нет компании");
-                const b = d.businesses[0];
-                if (confirm(`Игрок владеет: ${b.name} (${b.income} Br/ч).\n\nЗабрать компанию?`)) {
-                    const r = await fetch(`${SERVER_URL}/api/admin/remove_business`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: id, amount: 0}) }).then(x => x.json());
-                    if (r.status === 'ok') { alert('Компания забрана!'); loadData(); }
-                    else alert('Ошибка');
-                }
-            };
-
-            window.resetAllUsers = async function() {
-                if (!confirm("⚠️ ВНИМАНИЕ! Это удалит ВСЕХ игроков, их деньги, имущество и ИСТОРИЮ ВСЕХ ЧАТОВ. Продолжить?")) return;
-                const r = await fetch(`${SERVER_URL}/api/admin/reset_all`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id:0, amount:0}) }).then(x => x.json());
-                alert(r.message); loadData(); loadLeaderboard();
-            };
-
-            window.openAdminAdmins = function() { openModal('admin-admins-modal'); loadAdminsList(); };
-
-            window.loadAdminsList = async function() {
-                const list = document.getElementById('admins-list'); list.innerHTML = 'Загрузка...';
-                const d = await fetch(`${SERVER_URL}/api/admin/list_admins?admin_id=${userId}`).then(r => r.json());
-                list.innerHTML = '';
-                d.admins.forEach(id => {
-                    const m = id === MAIN_ADMIN_ID;
-                    list.innerHTML += `<div class="list-item" style="background:${m?'rgba(74,222,128,0.15)':'rgba(255,255,255,0.05)'};"><span>${m?'👑':'🛡'} ${id}</span>${m?'':`<button onclick="removeAdmin(${id})" style="background:#f87171;border:none;border-radius:8px;padding:6px 12px;font-weight:bold;color:white;">✕</button>`}</div>`;
-                });
-            };
-
-            window.addAdmin = async function() {
-                const n = parseInt(document.getElementById('new-admin-id').value);
-                if (isNaN(n)) return alert('Неверный ID');
-                const r = await fetch(`${SERVER_URL}/api/admin/add_admin`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: n}) }).then(x => x.json());
-                if (r.status === 'ok') { alert('✅'); document.getElementById('new-admin-id').value = ''; loadAdminsList(); }
-                else alert('❌ ' + r.message);
-            };
-
-            window.removeAdmin = async function(tid) {
-                if (!confirm("Удалить?")) return;
-                const r = await fetch(`${SERVER_URL}/api/admin/remove_admin`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, target_id: tid}) }).then(x => x.json());
-                if (r.status === 'ok') { alert('✅'); loadAdminsList(); }
-                else alert('❌ ' + r.message);
-            };
-
-            window.openAdminCompanies = async function() {
-                openModal('admin-companies-modal');
-                const list = document.getElementById('admin-companies-list'); list.innerHTML = 'Загрузка...';
-                await loadCompanies();
-                list.innerHTML = '';
-                companiesData.forEach(c => {
-                    let tiersHtml = '';
-                    c.tiers.forEach((t, idx) => {
-                        let discStr = t.discount ? `<span style="color:#ef4444; font-weight:bold; margin-left:5px;">(-${t.discount}%)</span>` : '';
-                        tiersHtml += `
-                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:8px; border-radius:8px; margin-top:5px;">
-                                <span style="font-size:13px;">${t.name} ${discStr}</span>
-                                <button onclick="adminSetTierDiscount(${c.id}, ${idx}, '${t.name}')" style="background:#ffaa00; color:#000; border:none; padding:5px 10px; border-radius:6px; font-weight:bold; font-size:11px;">🏷 Скидка</button>
-                            </div>
-                        `;
-                    });
-                    
-                    list.innerHTML += `
-                        <div class="user-row" style="border-left-color:#3b82f6;">
-                            <div style="font-weight:bold;">${c.name}</div>
-                            <div style="font-size:13px;color:#8892b0;">Тарифов: ${c.tiers.length}</div>
-                            <div class="admin-btns">
-                                <button style="background:var(--accent);color:#000;" onclick="addTierPrompt(${c.id},'${c.name}')">➕ Добавить</button>
-                                <button style="background:#f87171;color:white;" onclick="deleteCompany(${c.id})">🗑 Удалить</button>
-                            </div>
-                            <div style="margin-top:10px;">${tiersHtml}</div>
-                        </div>`;
-                });
-            };
-
-            window.adminSetTierDiscount = async function(companyId, tierIndex, tierName) {
-                const pct = parseInt(prompt(`Скидка на "${tierName}" (0-90%):`, "0"));
-                if (isNaN(pct) || pct < 0 || pct > 90) return alert('Неверно');
-                const r = await fetch(`${SERVER_URL}/api/admin/set_tier_discount`, {
-                    method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({admin_id: userId, company_id: companyId, tier_index: tierIndex, percent: pct})
-                }).then(x => x.json());
-                if (r.status === 'ok') { alert('✅ ' + r.message); openAdminCompanies(); }
-                else alert('❌ ' + r.message);
-            };
-
-            window.addCompanyPrompt = async function() {
-                const n = prompt("Название компании:");
-                if (!n) return;
-                await fetch(`${SERVER_URL}/api/admin/add_company`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: n}) });
-                openAdminCompanies();
-            };
-
-            window.addTierPrompt = async function(cid, cname) {
-                const n = prompt(`Квартира в ${cname}:`); if (!n) return;
-                const p = parseInt(prompt("Цена Br:")); const i = parseInt(prompt("Доход Br/ч:"));
-                if (!p || !i) return;
-                const sqm = parseInt(prompt("Кв.м:")) || 0;
-                await fetch(`${SERVER_URL}/api/admin/add_tier/${cid}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name: '', tier_data: {name:n,price:p,income:i,sqm:sqm,discount:0}}) });
-                alert("Добавлено!"); openAdminCompanies();
-            };
-
-            window.deleteCompany = async function(id) {
-                if (!confirm("Удалить компанию?")) return;
-                await fetch(`${SERVER_URL}/api/admin/delete_company/${id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin_id: userId, company_name:''}) });
-                openAdminCompanies();
-            };
-
-            window.openAdminExchange = async function() {
-                openModal('admin-exchange-modal');
-                const list = document.getElementById('admin-exchange-list'); list.innerHTML = 'Загрузка...';
-                const d = await fetch(`${SERVER_URL}/api/token_rates`).then(r => r.json());
-                
-                list.innerHTML = '';
-                for (const key in d) {
-                    const item = d[key];
-                    list.innerHTML += `
-                        <div class="user-row" style="border-left-color:#10b981;">
-                            <div style="display:flex; justify-content:space-between; font-weight:bold;">
-                                <span>${item.name || key}</span>
-                                <span style="color:var(--accent)">${item.price} Br</span>
-                            </div>
-                            <div style="font-size:12px; color:#8892b0;">Тренд: ${item.trend === 'up' ? '📈 Вверх' : '📉 Вниз'}</div>
-                            <div class="admin-btns">
-                                <button style="background:#ffaa00;color:#000;" onclick="editExchangeItem('${key}', '${item.name || key}', ${item.price}, '${item.trend}')">✏️ Изменить</button>
-                            </div>
-                        </div>
-                    `;
-                }
-            };
-
-            window.forceUpdateExchange = async function() {
-                const r = await fetch(`${SERVER_URL}/api/admin/force_update_exchange`, {
-                    method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({admin_id: userId, target_id:0, amount:0})
-                }).then(x => x.json());
-                if (r.status === 'ok') {
-                    alert(r.message);
-                    loadRates();
-                    openAdminExchange();
-                } else {
-                    alert('Ошибка');
-                }
-            };
-
-            window.editExchangeItem = async function(key, name, price, trend) {
-                const n_price = parseInt(prompt(`Текущая цена ${name}:`, price));
-                if (isNaN(n_price)) return;
-                const t_dir = prompt(`Тренд (up / down):`, trend);
-                if (!t_dir) return;
-                const min_p = parseInt(prompt(`Минимальная цена (дна):`, Math.floor(n_price * 0.5)));
-                const max_p = parseInt(prompt(`Максимальная цена (верха):`, Math.floor(n_price * 1.5)));
-                
-                if (isNaN(min_p) || isNaN(max_p)) return alert("Неверные лимиты");
-
-                const r = await fetch(`${SERVER_URL}/api/admin/update_exchange`, {
-                    method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({admin_id: userId, key: key, name: name, min_price: min_p, max_price: max_p, current_price: n_price, trend: t_dir})
-                }).then(x => x.json());
-                if (r.status === 'ok') { alert(r.message); openAdminExchange(); loadRates(); }
-                else alert(r.message);
-            };
-
-            window.addExchangePrompt = async function() {
-                const key = prompt("Ключ (англ, без пробелов, напр. silver):");
-                if (!key) return;
-                const name = prompt("Название (с эмодзи, напр. 🥈 Серебро):");
-                if (!name) return;
-                const base_p = parseInt(prompt("Стартовая цена:"));
-                const min_p = parseInt(prompt("Минимальная цена (дно):"));
-                const max_p = parseInt(prompt("Максимальная цена (верх):"));
-                
-                if (!base_p || !min_p || !max_p) return alert("Неверные цены");
-
-                const r = await fetch(`${SERVER_URL}/api/admin/add_exchange`, {
-                    method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({admin_id: userId, key: key, name: name, min_price: min_p, max_price: max_p, base_price: base_p})
-                }).then(x => x.json());
-                if (r.status === 'ok') { alert(r.message); openAdminExchange(); loadRates(); }
-                else alert(r.message);
-            };
-
-            window.openModal = function(id) { document.getElementById(id).style.display = 'flex'; if (tg.BackButton) tg.BackButton.show(); };
-            window.closeModal = function(id) { document.getElementById(id).style.display = 'none'; if (tg.BackButton) tg.BackButton.hide(); };
-
-            // Запуск игры
-            loadCompanies();
-            checkNotifications();
-            loadData();
-            loadLeaderboard();
-
-            // АВТООБНОВЛЕНИЕ (каждые 10 секунд для уведомлений, 30 секунд для биржи и бизнесов)
+            loadCompanies(); checkNotifications(); loadData(); loadLeaderboard();
             setInterval(checkNotifications, 10000);
-            setInterval(() => {
-                if (currentTabIndex === 2) loadRates(); // Обновляем биржу
-                if (currentTabIndex === 1) loadDailyBusinesses(); // Обновляем доступные бизнесы
-            }, 30000);
+            setInterval(() => { if (currentTabIndex === 2) loadRates(); if (currentTabIndex === 1) loadDailyBusinesses(); }, 30000);
         });
     </script>
 </body>
