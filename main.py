@@ -19,13 +19,11 @@ GUEST_USER_ID = 123456789
 
 # ========== БИЗНЕСЫ ==========
 BUSINESS_POOL = [
-    # --- Обычные ---
-    {"name": "Ларёк",              "rarity": "Обычный", "price": 150000,     "income": 1500,      "req": 0,  "weight": 3},
-    {"name": "Склад",              "rarity": "Обычный", "price": 550000,     "income": 4500,      "req": 1,  "weight": 5},
-    {"name": "Кабинет",            "rarity": "Обычный", "price": 3000000,    "income": 5200,      "req": 1,  "weight": 7},
+    # --- Обычные 
+    {"name": "Киоск",              "rarity": "Обычный", "price": 550000,     "income": 4500,      "req": 5,  "weight": 5},
+    {"name": "Кофейня",            "rarity": "Обычный", "price": 1000000,    "income": 8200,      "req": 7,  "weight": 7},
     # --- Редкие ---
-    {"name": "Кафе",               "rarity": "Редкий",  "price": 3800000,    "income": 18000,     "req": 2,  "weight": 9},
-    {"name": "Центр зал",          "rarity": "Редкий",  "price": 4500000,    "income": 25750,     "req": 2,  "weight": 10},
+    {"name": "Ресторан",          "rarity": "Редкий",  "price": 4500000,    "income": 25750,     "req": 10,  "weight": 10},
     {"name": "Автомойка",          "rarity": "Редкий",  "price": 7500000,    "income": 42000,     "req": 2,  "weight": 12},
     {"name": "Маленький",          "rarity": "Редкий",  "price": 10000000,   "income": 61950,     "req": 2,  "weight": 16},
     # --- Эпики ---
