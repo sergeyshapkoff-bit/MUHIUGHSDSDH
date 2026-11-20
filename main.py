@@ -35,7 +35,7 @@ BUSINESS_POOL = [
     {"name": "Нефтяная",           "rarity": "Мифик",   "price": 65000000,   "income": 450500,    "req": 5,  "weight": 30},
     {"name": "Банк",               "rarity": "Мифик",   "price": 80000000,   "income": 500000,    "req": 6,  "weight": 32},
     # --- Мега ---
-    {"name": "Это офис",           "rarity": "Мега",    "price": 93850900,   "income": 534550,    "req": 5,  "weight": 35},
+    {"name": "офис",           "rarity": "Мега",    "price": 93850900,   "income": 534550,    "req": 5,  "weight": 35},
     {"name": "Рынок",              "rarity": "Мега",    "price": 100500000,  "income": 1150000,   "req": 8,  "weight": 37},
     {"name": "Автосалон",          "rarity": "Мега",    "price": 180000000,  "income": 2000000,   "req": 8,  "weight": 39},
     {"name": "Элитный район",      "rarity": "Мега",    "price": 250000000,  "income": 3000000,   "req": 8,  "weight": 41},
@@ -118,7 +118,6 @@ def get_current_rates():
         for item in items:
             name = item['name'] if item['name'] else item['key'].upper()
             if now - item['updated_at'] > interval or item['updated_at'] == 0:
-                # Уникальный сид для каждой итерации
                 seed = now * 31 + (hash(item['key']) & 0xffffffff) + item['current_price']
                 rng = random.Random(seed)
                 change = rng.uniform(-0.08, 0.08)
