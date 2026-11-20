@@ -233,7 +233,7 @@
         </main>
 
         <main id="tab-trades">
-            <div class="section-title">📈 Биржа (Курсы меняются каждый час)</div>
+            <div class="section-title">📈 Биржа (Курсы меняются каждые 2 минуты)</div>
             <div id="exchange-list"></div>
         </main>
     </div>
@@ -429,7 +429,7 @@
             let currentChatStatus = 'none';
             let chatInterval = null;
             let isSendingMessage = false;
-            let lastChatHash = ""; // Для предотвращения мигания чата
+            let lastChatHash = "";
 
             document.getElementById("settings-user-id").innerText = userId;
 
@@ -453,14 +453,19 @@
                 document.querySelectorAll('.nav-btn')[currentTabIndex].classList.add('active');
             };
 
-            window.switchTab = function(i) { currentTabIndex = i; updateTabs(); };
+            window.switchTab = function(i) { 
+                currentTabIndex = i; 
+                updateTabs(); 
+                if (i === 1) loadDailyBusinesses(); // Обновляем бизнесы при заходе
+                if (i === 2) loadRates(); // Обновляем биржу при заходе
+            };
 
             document.getElementById('swipe-container').addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX);
             document.getElementById('swipe-container').addEventListener('touchmove', e => {
                 const diff = touchStartX - e.changedTouches[0].screenX;
                 if (Math.abs(diff) > 70) {
-                    if (diff > 0 && currentTabIndex < tabs.length - 1) { currentTabIndex++; updateTabs(); touchStartX = e.changedTouches[0].screenX; }
-                    else if (diff < 0 && currentTabIndex > 0) { currentTabIndex--; updateTabs(); touchStartX = e.changedTouches[0].screenX; }
+                    if (diff > 0 && currentTabIndex < tabs.length - 1) { currentTabIndex++; updateTabs(); touchStartX = e.changedTouches[0].screenX; if (currentTabIndex === 1) loadDailyBusinesses(); if (currentTabIndex === 2) loadRates(); }
+                    else if (diff < 0 && currentTabIndex > 0) { currentTabIndex--; updateTabs(); touchStartX = e.changedTouches[0].screenX; if (currentTabIndex === 1) loadDailyBusinesses(); if (currentTabIndex === 2) loadRates(); }
                 }
             });
 
@@ -729,7 +734,7 @@
             window.openChatWith = async function(id, name, initialStatus) {
                 currentChatId = id;
                 currentChatStatus = initialStatus;
-                lastChatHash = ""; // Сброс хэша при открытии чата
+                lastChatHash = "";
 
                 document.getElementById('chat-list-view').style.display = 'none';
                 document.getElementById('chat-window-view').style.display = 'flex';
@@ -750,7 +755,7 @@
                 updateChatUI(currentChatStatus);
                 loadMessages();
                 if(chatInterval) clearInterval(chatInterval);
-                chatInterval = setInterval(loadMessages, 5000); // Увеличили интервал для стабильности
+                chatInterval = setInterval(loadMessages, 3000);
             };
 
             window.updateChatUI = function(status) {
@@ -811,19 +816,16 @@
                 currentChatStatus = 'none'; updateChatUI(currentChatStatus);
             };
 
-            // ИСПРАВЛЕННЫЙ ЧАТ (без мигания и зависаний)
             window.loadMessages = async function() {
                 if(currentChatId === null || isSendingMessage) return;
                 try {
                     const d = await fetch(`${SERVER_URL}/api/chat_history/${userId}/${currentChatId}`).then(r => r.json());
-                    
-                    // Проверяем, изменилось ли что-то с прошлого раза
-                    const currentHash = JSON.stringify(d.messages) + JSON.stringify(d.requests);
-                    if (currentHash === lastChatHash) return; // Если нет — не перерисовываем
-                    lastChatHash = currentHash;
-
                     const box = document.getElementById('chat-messages');
                     
+                    const currentHash = JSON.stringify(d.messages) + JSON.stringify(d.requests);
+                    if (currentHash === lastChatHash) return;
+                    lastChatHash = currentHash;
+
                     const isScrolledToBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 50;
                     
                     let newHtml = '';
@@ -868,11 +870,9 @@
                         }
                     });
                     
-                    if (box.innerHTML !== newHtml) {
-                        box.innerHTML = newHtml;
-                        if (isScrolledToBottom) {
-                            box.scrollTop = box.scrollHeight;
-                        }
+                    box.innerHTML = newHtml;
+                    if (isScrolledToBottom) {
+                        box.scrollTop = box.scrollHeight;
                     }
                 } catch(e) {}
             };
@@ -893,7 +893,7 @@
 
                     if (r.status === 'ok') {
                         input.value = '';
-                        lastChatHash = ""; // Сбрасываем хэш, чтобы сообщение точно появилось
+                        lastChatHash = "";
                         await loadMessages();
                         const box = document.getElementById('chat-messages');
                         box.scrollTop = box.scrollHeight;
@@ -1315,11 +1315,18 @@
             window.openModal = function(id) { document.getElementById(id).style.display = 'flex'; if (tg.BackButton) tg.BackButton.show(); };
             window.closeModal = function(id) { document.getElementById(id).style.display = 'none'; if (tg.BackButton) tg.BackButton.hide(); };
 
+            // Запуск игры
             loadCompanies();
             checkNotifications();
-            setInterval(checkNotifications, 10000);
             loadData();
             loadLeaderboard();
+
+            // АВТООБНОВЛЕНИЕ (каждые 10 секунд для уведомлений, 30 секунд для биржи и бизнесов)
+            setInterval(checkNotifications, 10000);
+            setInterval(() => {
+                if (currentTabIndex === 2) loadRates(); // Обновляем биржу
+                if (currentTabIndex === 1) loadDailyBusinesses(); // Обновляем доступные бизнесы
+            }, 30000);
         });
     </script>
 </body>
