@@ -214,7 +214,17 @@
 
     <div id="my-apts-modal" class="modal-overlay">
         <div class="modal-header"><h2>🏢 Мои квартиры</h2><button class="close-btn" onclick="closeModal('my-apts-modal')">✕</button></div>
-        <div class="modal-content"><div class="section-title">Доход: <span style="color:var(--accent)" id="modal-total-income">0 Br/ч</span></div><div id="my-apartments-list-modal"></div></div>
+        <div class="modal-content">
+            <div class="section-title">Доход: <span style="color:var(--accent)" id="modal-total-income">0 Br/ч</span></div>
+            <div class="section-title" style="color:#f87171; font-size:14px;">Налог в день (за кв.м.): <span id="modal-total-tax">0 Br</span></div>
+            
+            <div id="tax-payment-block" style="display:none; background:rgba(248,113,113,0.1); padding:15px; border-radius:15px; border:1px solid #f87171; margin: 15px 0; text-align:center;">
+                <div style="color:#f87171; font-weight:bold; margin-bottom:10px;">Задолженность по налогу: <span id="tax-debt-amount">0</span> Br</div>
+                <button class="btn-confirm" style="width:100%; padding:12px; border-radius:12px; background:#f87171; color:white; font-weight:bold; border:none;" onclick="payTax()">Оплатить налог</button>
+            </div>
+
+            <div id="my-apartments-list-modal" style="margin-top:15px;"></div>
+        </div>
     </div>
     
     <div id="shop-modal" class="modal-overlay">
@@ -326,8 +336,11 @@
             let playerName = user ? (user.first_name + (user.last_name ? " " + user.last_name : "")) : "Гость";
             const MAIN_ADMIN_ID = 5634302903;
             const SERVER_URL = "https://mmiji.de1.netrun.io";
+            
+            // SQM_TAX нужен только для отображения, расчет на сервере
+            const SQM_TAX_VIEW = 150; 
 
-            let currentRates = {}, companiesData = [], userPortfolio = {}, currentLoanDebt = 0;
+            let currentRates = {}, companiesData = [], userPortfolio = {}, currentLoanDebt = 0, currentTaxDebt = 0;
             let lastNotifMsgId = 0, lastNotifBcastId = 0;
             let currentChatId = null, currentChatStatus = 'none', chatInterval = null, isSendingMessage = false, lastChatHash = "";
 
@@ -365,17 +378,8 @@
                 }
             });
 
-            window.copyText = (t) => {
-                if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => tg.showAlert('📋 Скопировано'));
-            };
-
-            window.setCardSkin = (skin) => {
-                const card = document.getElementById('main-card');
-                card.className = 'bank-card';
-                if (skin === 'sber') card.classList.add('card-skin-sber');
-                else if (skin === 'gold') card.classList.add('card-skin-gold');
-                localStorage.setItem('cardSkin', skin);
-            };
+            window.copyText = (t) => { if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => tg.showAlert('📋 Скопировано')); };
+            window.setCardSkin = (skin) => { const card = document.getElementById('main-card'); card.className = 'bank-card'; if (skin === 'sber') card.classList.add('card-skin-sber'); else if (skin === 'gold') card.classList.add('card-skin-gold'); localStorage.setItem('cardSkin', skin); };
             setCardSkin(localStorage.getItem('cardSkin') || 'default');
 
             window.checkNotifications = async () => {
@@ -405,6 +409,7 @@
                     document.getElementById("card-cvc").innerText = "CVC: " + (data.card_cvc || "***");
                     document.getElementById("card-holder").innerText = data.name || playerName;
                     userPortfolio = data.portfolio || {};
+                    currentTaxDebt = data.tax_debt || 0;
                     loadRates();
                     if (data.earned > 0) {
                         const b = document.getElementById("income-badge"); b.innerText = `+ ${data.earned} Br`; b.style.display = 'block';
@@ -439,13 +444,22 @@
             };
 
             window.renderApartments = (apts) => {
-                const list = document.getElementById('my-apartments-list-modal'); list.innerHTML = ''; let total = 0;
+                const list = document.getElementById('my-apartments-list-modal'); list.innerHTML = ''; let total = 0, total_sqm = 0;
                 if (!apts.length) list.innerHTML = '<div style="text-align:center;color:#8892b0;padding:20px;">Нет квартир</div>';
                 apts.forEach((apt, i) => {
-                    total += apt.income;
-                    list.innerHTML += `<div class="my-apt-card"><div><div class="bus-title">🏠 ${apt.name}</div><div class="bus-price">+ ${apt.income} Br/ч</div></div><button class="sell-btn" onclick="sellApt(${i},${apt.buy_price||0})">Продать</button></div>`;
+                    total += apt.income; total_sqm += (apt.sqm || 0);
+                    list.innerHTML += `<div class="my-apt-card"><div><div class="bus-title">🏠 ${apt.name} <span style="font-size:12px; color:#8892b0;">(${apt.sqm} м²)</span></div><div class="bus-price">+ ${apt.income} Br/ч</div></div><button class="sell-btn" onclick="sellApt(${i},${apt.buy_price||0})">Продать</button></div>`;
                 });
                 document.getElementById("modal-total-income").innerText = `${total.toLocaleString()} Br/ч`;
+                document.getElementById("modal-total-tax").innerText = `${(total_sqm * SQM_TAX_VIEW).toLocaleString()} Br (за ${total_sqm} м²)`;
+                
+                // Отображение долга
+                if (currentTaxDebt > 0) {
+                    document.getElementById('tax-payment-block').style.display = 'block';
+                    document.getElementById('tax-debt-amount').innerText = currentTaxDebt.toLocaleString();
+                } else {
+                    document.getElementById('tax-payment-block').style.display = 'none';
+                }
             };
 
             window.renderBusinesses = (buses) => {
@@ -504,6 +518,14 @@
                     const r = await fetch(`${SERVER_URL}/api/loan/request`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, amount: amt}) }).then(r=>r.json());
                     alert(r.message); if(r.status === 'ok') closeModal('bank-modal');
                 }
+            };
+
+            // НАЛОГ
+            window.payTax = async () => {
+                if (!confirm(`Оплатить налог на сумму ${currentTaxDebt} Br?`)) return;
+                const r = await fetch(`${SERVER_URL}/api/pay_tax`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId}) }).then(r=>r.json());
+                alert(r.message); 
+                if (r.status === 'ok') loadData();
             };
 
             // ЧАТЫ
@@ -606,7 +628,7 @@
                 companiesData.forEach(g => {
                     let html = `<div style="margin-bottom:20px;"><div class="section-title" style="color:#a3c2ff;">${g.name}</div>`;
                     g.tiers.forEach(item => {
-                        html += `<div class="list-item" style="padding:10px;"><div><div style="font-weight:bold;">${item.name}</div><div style="color:var(--accent);font-size:13px;">+${item.income} Br/ч</div></div><button class="buy-btn" onclick="prepareBuy('${item.name}',${item.price},${item.income})">${item.price} Br</button></div>`;
+                        html += `<div class="list-item" style="padding:10px;"><div><div style="font-weight:bold;">${item.name}</div><div style="color:var(--accent);font-size:13px;">+${item.income} Br/ч</div><div style="color:#8892b0;font-size:11px;">📐 ${item.sqm} м²</div></div><button class="buy-btn" onclick="prepareBuy('${item.name}',${item.price},${item.income},${item.sqm})">${item.price} Br</button></div>`;
                     });
                     list.innerHTML += html + '</div>';
                 });
@@ -614,10 +636,10 @@
             };
 
             let buyItemData = null;
-            window.prepareBuy = (name, price, income) => { buyItemData = { name, price, income }; document.getElementById('buy-modal-text').innerHTML = `Купить <b>"${name}"</b> за <b>${price} Br</b>?`; openModal('buy-modal'); };
+            window.prepareBuy = (name, price, income, sqm) => { buyItemData = { name, price, income, sqm }; document.getElementById('buy-modal-text').innerHTML = `Купить <b>"${name}"</b> за <b>${price} Br</b>?`; openModal('buy-modal'); };
             window.executeBuy = async () => {
                 closeModal('buy-modal'); if (!buyItemData) return;
-                const r = await fetch(`${SERVER_URL}/api/buy`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, user_name: playerName, apartment_name: buyItemData.name, price: buyItemData.price, income: buyItemData.income}) }).then(x => x.json());
+                const r = await fetch(`${SERVER_URL}/api/buy`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: userId, user_name: playerName, apartment_name: buyItemData.name, price: buyItemData.price, income: buyItemData.income, sqm: buyItemData.sqm}) }).then(x => x.json());
                 if (r.status === 'ok') { alert('✅ Куплено'); closeModal('shop-modal'); loadData(); } else alert('❌ ' + r.message);
             };
             window.sellApt = async (i, p) => {
