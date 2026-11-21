@@ -11,7 +11,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 DATABASE_URL = "postgresql://postgres.zmfepxqnxcvkvdjonzhp:p0LwFeRg9NJ7Cusj@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require"
 MAIN_ADMIN_ID = 5634302903
-SQM_TAX = 300              # Br за 1 м² в день
+SQM_TAX = 1000              # Br за 1 м² в день
 LOAN_LIMIT = 1000000       # Максимальная сумма кредита
 
 BUSINESS_POOL = [
