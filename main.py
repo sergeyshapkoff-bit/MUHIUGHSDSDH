@@ -11,9 +11,9 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 DATABASE_URL = "postgresql://postgres.zmfepxqnxcvkvdjonzhp:p0LwFeRg9NJ7Cusj@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require"
 MAIN_ADMIN_ID = 5634302903
-SQM_TAX = 150 # Налог за 1 кв.м. в день (в Br)
+SQM_TAX = 150              # Br за 1 м² в день
+LOAN_LIMIT = 1000000       # Максимальная сумма кредита
 
-# === ВЕСА ИСПРАВЛЕНЫ ===
 BUSINESS_POOL = [
     {"name": "Киоск", "rarity": "Обычный", "price": 550000, "income": 4500, "req": 5, "weight": 1000},
     {"name": "Кофейня", "rarity": "Обычный", "price": 1000000, "income": 8200, "req": 7, "weight": 800},
@@ -22,11 +22,11 @@ BUSINESS_POOL = [
     {"name": "Маленький", "rarity": "Редкий", "price": 10000000, "income": 61950, "req": 2, "weight": 150},
     {"name": "Пиццерия", "rarity": "Эпик", "price": 12000000, "income": 80000, "req": 3, "weight": 80},
     {"name": "Супермаркет", "rarity": "Эпик", "price": 15000000, "income": 44500, "req": 3, "weight": 70},
-    {"name": "Киоск", "rarity": "Эпик", "price": 18000000, "income": 100000, "req": 3, "weight": 60},
+    {"name": "Киоск-Люкс", "rarity": "Эпик", "price": 18000000, "income": 100000, "req": 3, "weight": 60},
     {"name": "Фитнес-клуб", "rarity": "Эпик", "price": 35000000, "income": 185000, "req": 4, "weight": 50},
     {"name": "Нефтяная", "rarity": "Мифик", "price": 65000000, "income": 450500, "req": 5, "weight": 20},
     {"name": "Банк", "rarity": "Мифик", "price": 80000000, "income": 500000, "req": 6, "weight": 15},
-    {"name": "Это офис", "rarity": "Мега", "price": 93850900, "income": 534550, "req": 5, "weight": 10},
+    {"name": "офис", "rarity": "Мега", "price": 93850900, "income": 534550, "req": 5, "weight": 10},
     {"name": "Рынок", "rarity": "Мега", "price": 100500000, "income": 1150000, "req": 8, "weight": 5},
     {"name": "Автосалон", "rarity": "Мега", "price": 180000000, "income": 2000000, "req": 8, "weight": 4},
     {"name": "Элитный район", "rarity": "Мега", "price": 250000000, "income": 3000000, "req": 8, "weight": 3},
@@ -82,7 +82,8 @@ DEFAULT_COMPANIES = [
 
 def get_db(max_retries=3):
     for i in range(max_retries):
-        try: return psycopg2.connect(DATABASE_URL, connect_timeout=10)
+        try:
+            return psycopg2.connect(DATABASE_URL, connect_timeout=10)
         except OperationalError as e:
             if i == max_retries - 1: raise e
             time.sleep(0.5 * (i + 1))
@@ -90,9 +91,12 @@ def get_db(max_retries=3):
 @contextlib.contextmanager
 def db_conn():
     conn = get_db()
-    try: yield conn; conn.commit()
-    except: conn.rollback(); raise
-    finally: conn.close()
+    try:
+        yield conn; conn.commit()
+    except:
+        conn.rollback(); raise
+    finally:
+        conn.close()
 
 def is_admin(uid: int) -> bool:
     if uid == MAIN_ADMIN_ID: return True
@@ -100,8 +104,14 @@ def is_admin(uid: int) -> bool:
         cur = conn.cursor(); cur.execute("SELECT 1 FROM admins WHERE user_id = %s", (uid,)); r = cur.fetchone(); cur.close()
         return bool(r)
 
+def safe_json_load(data, default):
+    if isinstance(data, str):
+        try: return json.loads(data)
+        except: return default
+    return data if isinstance(data, (list, dict)) else default
+
 def get_current_rates():
-    now = int(time.time()); interval = 300 # 5 минут
+    now = int(time.time()); interval = 300
     with db_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT * FROM exchange_items"); items = cur.fetchall()
         rates = {}
@@ -114,8 +124,10 @@ def get_current_rates():
                 trend = "up" if new_price > item['current_price'] else "down"
                 cur.execute("UPDATE exchange_items SET current_price=%s, trend=%s, updated_at=%s WHERE key=%s", (new_price, trend, now, item['key']))
                 rates[item['key']] = {"price": new_price, "trend": trend, "name": item['name']}
-            else: rates[item['key']] = {"price": item['current_price'], "trend": item['trend'], "name": item['name']}
+            else:
+                rates[item['key']] = {"price": item['current_price'], "trend": item['trend'], "name": item['name']}
         return rates
+
 
 def init_db():
     with db_conn() as conn:
@@ -131,27 +143,42 @@ def init_db():
                 last_tax bigint default 0
             );
         """)
-        for col in ["portfolio", "apartments", "businesses", "daily_businesses", "last_roll", "last_broadcast_id", "business_pool_hash", "loan_debt", "loan_interest", "loan_last_penalty", "last_tax"]:
-            t = "jsonb DEFAULT '{}'::jsonb" if col == "portfolio" else "jsonb DEFAULT '[]'::jsonb" if col in ["apartments", "businesses", "daily_businesses"] else "bigint DEFAULT 0" if col != "loan_interest" else "int DEFAULT 0"
+        for col, t in [
+            ("portfolio", "jsonb DEFAULT '{}'::jsonb"),
+            ("apartments", "jsonb DEFAULT '[]'::jsonb"),
+            ("businesses", "jsonb DEFAULT '[]'::jsonb"),
+            ("daily_businesses", "jsonb DEFAULT '[]'::jsonb"),
+            ("last_roll", "bigint DEFAULT 0"),
+            ("last_broadcast_id", "bigint DEFAULT 0"),
+            ("business_pool_hash", "text DEFAULT ''"),
+            ("loan_debt", "bigint DEFAULT 0"),
+            ("loan_interest", "int DEFAULT 0"),
+            ("loan_last_penalty", "bigint DEFAULT 0"),
+            ("last_tax", "bigint DEFAULT 0"),
+        ]:
             cur.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} {t};")
-        
+
         cur.execute("CREATE TABLE IF NOT EXISTS admins (user_id bigint primary key);")
         cur.execute("CREATE TABLE IF NOT EXISTS messages (id serial primary key, sender_id bigint, sender_name text, receiver_id bigint, text text, created_at bigint, is_read boolean default false);")
         cur.execute("CREATE TABLE IF NOT EXISTS money_requests (id serial primary key, sender_id bigint, sender_name text, receiver_id bigint, amount bigint, status text default 'pending', created_at bigint);")
         cur.execute("CREATE TABLE IF NOT EXISTS friends (id serial primary key, user1_id bigint, user2_id bigint, status text default 'pending', action_user_id bigint, created_at bigint, UNIQUE(user1_id, user2_id));")
         cur.execute("CREATE TABLE IF NOT EXISTS loan_requests (id serial primary key, user_id bigint, user_name text, amount bigint, status text default 'pending', created_at bigint);")
-        
+
         cur.execute("CREATE TABLE IF NOT EXISTS companies (id serial primary key, name text, tiers jsonb default '[]'::jsonb);")
-        cur.execute("TRUNCATE TABLE companies RESTART IDENTITY;")
-        for c in DEFAULT_COMPANIES: cur.execute("INSERT INTO companies (name, tiers) VALUES (%s, %s)", (c['name'], json.dumps(c['tiers'])))
-        
+        cur.execute("TRUNCATE TABLE companies RESTART IDENTITY")
+        for c in DEFAULT_COMPANIES:
+            cur.execute("INSERT INTO companies (name, tiers) VALUES (%s, %s)", (c['name'], json.dumps(c['tiers'])))
+
         cur.execute("CREATE TABLE IF NOT EXISTS exchange_items (key text primary key, name text, min_price bigint, max_price bigint, current_price bigint, trend text, updated_at bigint);")
-        cur.execute("TRUNCATE TABLE exchange_items;")
-        for e in DEFAULT_EXCHANGE: cur.execute("INSERT INTO exchange_items VALUES (%s,%s,%s,%s,%s,'up',%s)", (e['key'], e['name'], e['min'], e['max'], e['base'], int(time.time())))
+        cur.execute("TRUNCATE TABLE exchange_items")
+        for e in DEFAULT_EXCHANGE:
+            cur.execute("INSERT INTO exchange_items VALUES (%s,%s,%s,%s,%s,'up',%s)", (e['key'], e['name'], e['min'], e['max'], e['base'], int(time.time())))
         cur.close()
 
 init_db()
 
+
+# ===== Pydantic =====
 class BuyRequest(BaseModel): user_id: int; user_name: str; apartment_name: str; price: int; income: int; sqm: int
 class SellRequest(BaseModel): user_id: int; apartment_index: int; price: int
 class TransferRequest(BaseModel): sender_id: int; receiver_id: int; amount: int
@@ -173,11 +200,12 @@ class LoanRequestModel(BaseModel): user_id: int; amount: int
 class LoanActionModel(BaseModel): admin_id: int; request_id: int; approve: bool; percent: int = 0
 class PayTaxRequest(BaseModel): user_id: int
 
-def safe_json_load(data, default):
-    if isinstance(data, str):
-        try: return json.loads(data)
-        except: return default
-    return data if isinstance(data, (list, dict)) else default
+class CompanyAddReq(BaseModel): admin_id: int; name: str
+class TierAddReq(BaseModel): admin_id: int; name: str; price: int; income: int; sqm: int
+class DiscountReq(BaseModel): admin_id: int; company_id: int; tier_index: int; percent: int
+class ExchangeAddReq(BaseModel): admin_id: int; key: str; name: str; min_price: int; max_price: int; base_price: int
+class ExchangeUpdateReq(BaseModel): admin_id: int; key: str; name: str; min_price: int; max_price: int; current_price: int; trend: str
+
 
 def calculate_income(amount, apts, buses, last_payout):
     now = int(time.time()); h = (now - (last_payout or now)) // 3600
@@ -186,6 +214,8 @@ def calculate_income(amount, apts, buses, last_payout):
         return amount + earned, last_payout + h * 3600, earned
     return amount, last_payout, 0
 
+
+# ===== NOTIFICATIONS =====
 @app.get("/api/notifications/{user_id}")
 def get_notifications(user_id: int):
     with db_conn() as conn:
@@ -202,12 +232,15 @@ def mark_read(req: FriendAction):
     with db_conn() as conn: cur = conn.cursor(); cur.execute("UPDATE messages SET is_read = true WHERE receiver_id = %s AND sender_id = %s", (req.user_id, req.other_id)); cur.close()
     return {"status": "ok"}
 
+# ===== EXCHANGE =====
 @app.get("/api/token_rates")
 def get_rates(): return get_current_rates()
 
 @app.post("/api/trade_token")
 def trade_token(req: TokenRequest):
-    rates = get_current_rates(); cost = req.amount * rates[req.token_type]['price']
+    rates = get_current_rates()
+    if req.token_type not in rates: return {"status": "error", "message": "Неизвестный актив"}
+    cost = req.amount * rates[req.token_type]['price']
     with db_conn() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("SELECT amount, portfolio FROM users WHERE id = %s", (req.user_id,)); row = cur.fetchone(); port = safe_json_load(row['portfolio'], {})
@@ -222,6 +255,7 @@ def trade_token(req: TokenRequest):
         cur.close()
     return {"status": "ok", "message": "Сделка успешна!"}
 
+# ===== CHATS =====
 @app.get("/api/chats/{user_id}")
 def get_chats(user_id: int):
     with db_conn() as conn:
@@ -318,6 +352,7 @@ def decline_req(req: RequestAction):
     with db_conn() as conn: cur = conn.cursor(); cur.execute("UPDATE money_requests SET status='declined' WHERE id=%s AND receiver_id=%s", (req.request_id, req.user_id)); cur.close()
     return {"status":"ok"}
 
+# ===== BUSINESSES =====
 @app.get("/api/businesses/{user_id}")
 def get_businesses(user_id: int):
     with db_conn() as conn:
@@ -358,6 +393,7 @@ def sell_business(req: SellBusinessRequest):
         cur.execute("UPDATE users SET amount = amount + %s, businesses = '[]'::jsonb WHERE id = %s", (sell_price, req.user_id)); cur.close()
     return {"status": "ok", "message": f"Продано за {sell_price} Br"}
 
+# ===== COMPANIES =====
 @app.get("/api/companies")
 def get_companies():
     with db_conn() as conn:
@@ -365,10 +401,13 @@ def get_companies():
     comps = []
     for r in rows:
         tiers = safe_json_load(r['tiers'], [])
-        for t in tiers: t['price'] = int(t['price'] * (1 - t.get('discount', 0) / 100.0))
+        for t in tiers:
+            t['old_price'] = t['price']
+            t['price'] = int(t['price'] * (1 - t.get('discount', 0) / 100.0))
         comps.append({"id": r['id'], "name": r['name'], "tiers": sorted(tiers, key=lambda x: x['price'])})
     return {"companies": sorted(comps, key=lambda x: x['tiers'][0]['price'] if x['tiers'] else 0)}
 
+# ===== BALANCE =====
 @app.get("/api/balance/{user_id}")
 def get_balance(user_id: int, name: str = "Игрок"):
     try:
@@ -376,35 +415,44 @@ def get_balance(user_id: int, name: str = "Игрок"):
             cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT * FROM users WHERE id = %s", (user_id,)); row = cur.fetchone(); now = int(time.time())
             if not row:
                 card = "1234" + "".join(str(random.randint(0, 9)) for _ in range(12)); fmt = " ".join(card[i:i+4] for i in range(0, 16, 4))
-                cur.execute("INSERT INTO users (id, name, amount, last_payout, card_number, card_cvc, last_tax) VALUES (%s,%s,510000,%s,%s,%s,%s)", (user_id, name, now, fmt, str(random.randint(100,999)), now))
-                cur.close(); return {"balance": 510000, "apartments": [], "businesses": [], "earned": 0, "card_number": fmt, "card_cvc": "", "name": name, "portfolio": {}, "loan_debt": 0, "loan_interest": 0, "tax_debt": 0}
-            
-            # Штраф за кредит
+                cvc = str(random.randint(100,999))
+                cur.execute("INSERT INTO users (id, name, amount, last_payout, card_number, card_cvc, last_tax) VALUES (%s,%s,510000,%s,%s,%s,%s)", (user_id, name, now, fmt, cvc, now))
+                cur.close()
+                return {"balance": 510000, "apartments": [], "businesses": [], "earned": 0, "card_number": fmt, "card_cvc": cvc,
+                        "name": name, "portfolio": {}, "loan_debt": 0, "loan_interest": 0, "tax_debt": 0, "daily_tax": 0, "tax_days": 0}
+
+            # Штраф по кредиту
             loan_debt = int(row.get('loan_debt') or 0); loan_last = int(row.get('loan_last_penalty') or 0)
             if loan_debt > 0 and loan_last > 0:
                 days = (now - loan_last) // 86400
-                if days > 0: 
+                if days > 0:
                     loan_debt = int(loan_debt * (1.01 ** days))
                     cur.execute("UPDATE users SET loan_debt=%s, loan_last_penalty=%s WHERE id=%s", (loan_debt, now, user_id))
-            
+
             apts = safe_json_load(row['apartments'], [])
             total_sqm = sum(int(a.get('sqm', 0)) for a in apts)
             daily_tax = total_sqm * SQM_TAX
-            
-            # Расчет долга по налогу (БЕЗ АВТОСПИСАНИЯ)
+
+            # Налог: считаем дни только с последней оплаты (или регистрации)
             last_tax = int(row.get('last_tax') or now)
-            if last_tax == 0: 
-                cur.execute("UPDATE users SET last_tax = %s WHERE id = %s", (now, user_id)); last_tax = now
-            
-            tax_days = (now - last_tax) // 86400
-            tax_debt = daily_tax * tax_days
-            
+            if total_sqm == 0:
+                cur.execute("UPDATE users SET last_tax = %s WHERE id = %s", (now, user_id))
+                tax_days = 0; tax_debt = 0
+            else:
+                tax_days = (now - last_tax) // 86400
+                tax_debt = daily_tax * tax_days
+
             buses = safe_json_load(row['businesses'], [])
-            if len(buses) > 1: buses = [buses[0]]; cur.execute("UPDATE users SET businesses = %s WHERE id = %s", (json.dumps(buses), user_id))
+            if len(buses) > 1:
+                buses = [buses[0]]; cur.execute("UPDATE users SET businesses = %s WHERE id = %s", (json.dumps(buses), user_id))
             nb, nl, earned = calculate_income(int(row['amount']), apts, buses, int(row['last_payout']) if row['last_payout'] else now)
-            
+
             cur.execute("UPDATE users SET amount = %s, last_payout = %s WHERE id = %s", (nb, nl, user_id)); cur.close()
-        return {"balance": nb, "apartments": apts, "businesses": buses, "earned": earned, "card_number": row['card_number'], "card_cvc": row['card_cvc'], "name": row['name'], "portfolio": safe_json_load(row.get('portfolio'), {}), "loan_debt": loan_debt, "loan_interest": row.get('loan_interest', 0), "tax_debt": tax_debt, "daily_tax": daily_tax}
+        return {"balance": nb, "apartments": apts, "businesses": buses, "earned": earned,
+                "card_number": row['card_number'], "card_cvc": row['card_cvc'], "name": row['name'],
+                "portfolio": safe_json_load(row.get('portfolio'), {}), "loan_debt": loan_debt,
+                "loan_interest": row.get('loan_interest', 0), "tax_debt": tax_debt,
+                "daily_tax": daily_tax, "tax_days": tax_days}
     except Exception as e: return {"balance": 0, "error": str(e)}
 
 @app.post("/api/pay_tax")
@@ -413,19 +461,21 @@ def pay_tax(req: PayTaxRequest):
         cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT * FROM users WHERE id = %s", (req.user_id,)); row = cur.fetchone()
         now = int(time.time()); apts = safe_json_load(row['apartments'], []); total_sqm = sum(int(a.get('sqm', 0)) for a in apts); daily_tax = total_sqm * SQM_TAX
         last_tax = int(row['last_tax'] or now); tax_days = (now - last_tax) // 86400; tax_debt = daily_tax * tax_days
-        
         if tax_debt <= 0: return {"status": "ok", "message": "Нет задолженности"}
-        if int(row['amount']) < tax_debt: return {"status": "error", "message": "Недостаточно средств на балансе для оплаты налога!"}
-        
+        if int(row['amount']) < tax_debt: return {"status": "error", "message": f"Не хватает {tax_debt - int(row['amount'])} Br!"}
         cur.execute("UPDATE users SET amount = amount - %s, last_tax = %s WHERE id = %s", (tax_debt, now, req.user_id)); cur.close()
-    return {"status": "ok", "message": f"Налог успешно оплачен! Списано {tax_debt} Br."}
+    return {"status": "ok", "message": f"Налог оплачен! Списано {tax_debt} Br."}
 
 @app.post("/api/buy")
 def buy_apartment(req: BuyRequest):
     with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT amount, apartments FROM users WHERE id = %s", (req.user_id,)); row = cur.fetchone()
+        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT amount, apartments, last_tax FROM users WHERE id = %s", (req.user_id,)); row = cur.fetchone()
         if int(row['amount']) < req.price: return {"status": "error", "message": "Мало Br"}
-        apts = safe_json_load(row['apartments'], []); apts.append({"name": req.apartment_name, "income": req.income, "buy_price": req.price, "sqm": req.sqm})
+        apts = safe_json_load(row['apartments'], [])
+        # если это первая квартира — стартуем отсчёт налога с текущего момента
+        if len(apts) == 0:
+            cur.execute("UPDATE users SET last_tax = %s WHERE id = %s", (int(time.time()), req.user_id))
+        apts.append({"name": req.apartment_name, "income": req.income, "buy_price": req.price, "sqm": req.sqm})
         cur.execute("UPDATE users SET amount = amount - %s, apartments = %s WHERE id = %s", (req.price, json.dumps(apts), req.user_id)); cur.close()
     return {"status": "ok"}
 
@@ -464,15 +514,63 @@ def all_users():
         cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT id, name FROM users ORDER BY amount DESC LIMIT 50"); rows = cur.fetchall(); cur.close()
     return {"users": [{"id": r['id'], "name": r['name']} for r in rows]}
 
+# ===== LOANS =====
+@app.post("/api/loan/request")
+def req_loan(req: LoanRequestModel):
+    if req.amount <= 0: return {"status": "error", "message": "Сумма должна быть больше 0"}
+    if req.amount > LOAN_LIMIT: return {"status": "error", "message": f"❌ Максимум {LOAN_LIMIT:,} Br"}
+    with db_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT loan_debt, name FROM users WHERE id=%s", (req.user_id,)); u = cur.fetchone()
+        if u['loan_debt'] > 0: return {"status": "error", "message": "У вас уже есть кредит!"}
+        cur.execute("SELECT 1 FROM loan_requests WHERE user_id=%s AND status='pending'", (req.user_id,))
+        if cur.fetchone(): return {"status": "error", "message": "У вас уже есть активная заявка"}
+        cur.execute("INSERT INTO loan_requests (user_id, user_name, amount, created_at) VALUES (%s,%s,%s,%s)", (req.user_id, u['name'], req.amount, int(time.time()))); cur.close()
+    return {"status": "ok", "message": "Заявка отправлена!"}
+
+@app.get("/api/admin/loan/list")
+def admin_loans_list(admin_id: int):
+    if not is_admin(admin_id): return {"requests": []}
+    with db_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT * FROM loan_requests WHERE status='pending' ORDER BY created_at ASC"); res = cur.fetchall(); cur.close()
+    return {"requests": res}
+
+@app.post("/api/admin/loan/action")
+def admin_loan_action(req: LoanActionModel):
+    if not is_admin(req.admin_id): return {"status": "error"}
+    with db_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT * FROM loan_requests WHERE id=%s AND status='pending'", (req.request_id,)); r = cur.fetchone()
+        if r:
+            if req.approve:
+                cur.execute("UPDATE users SET amount=amount+%s, loan_debt=%s, loan_interest=%s, loan_last_penalty=%s WHERE id=%s",
+                            (r['amount'], r['amount'], req.percent, int(time.time()), r['user_id']))
+            cur.execute("UPDATE loan_requests SET status=%s WHERE id=%s", ('approved' if req.approve else 'rejected', req.request_id))
+        cur.close()
+    return {"status": "ok"}
+
+@app.post("/api/loan/repay")
+def repay_loan(req: LoanRequestModel):
+    with db_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT amount, loan_debt FROM users WHERE id=%s", (req.user_id,)); row = cur.fetchone()
+        if int(row['amount']) < row['loan_debt']: return {"status": "error", "message": "Недостаточно Br!"}
+        cur.execute("UPDATE users SET amount=amount-loan_debt, loan_debt=0, loan_interest=0, loan_last_penalty=0 WHERE id=%s", (req.user_id,)); cur.close()
+    return {"status": "ok", "message": "Кредит погашен!"}
+
+# ===== ADMIN =====
+@app.get("/api/check_admin/{user_id}")
+def check_admin(user_id: int): return {"is_admin": is_admin(user_id)}
+
 @app.post("/api/admin/broadcast")
 def broadcast(req: BroadcastRequest):
     if not is_admin(req.admin_id): return {"status": "error"}
-    with db_conn() as conn: cur = conn.cursor(); cur.execute("INSERT INTO messages (sender_id, sender_name, receiver_id, text, created_at) VALUES (%s,'📢 Администрация',0,%s,%s)", (MAIN_ADMIN_ID, req.text, int(time.time()))); cur.close()
-    return {"status": "ok"}
+    with db_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("INSERT INTO messages (sender_id, sender_name, receiver_id, text, created_at) VALUES (%s,'📢 Администрация',0,%s,%s)", (MAIN_ADMIN_ID, req.text, int(time.time()))); cur.close()
+    return {"status": "ok", "message": "Рассылка отправлена!"}
 
 @app.post("/api/admin/add_money")
 def add_money(req: AdminMoneyRequest):
-    if not is_admin(req.admin_id) or (req.admin_id != MAIN_ADMIN_ID and req.amount > 500000): return {"status": "error"}
+    if not is_admin(req.admin_id): return {"status": "error"}
+    if req.admin_id != MAIN_ADMIN_ID and req.amount > 500000: return {"status": "error", "message": "Лимит 500 000 Br"}
     with db_conn() as conn: cur = conn.cursor(); cur.execute("UPDATE users SET amount = amount + %s WHERE id = %s", (req.amount, req.target_id)); cur.close()
     return {"status": "ok"}
 
@@ -498,39 +596,58 @@ def admin_users(admin_id: int):
         cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT id, name, amount, apartments FROM users"); rows = cur.fetchall(); cur.close()
     return {"users": [{"id": r['id'], "name": r['name'], "balance": int(r['amount']), "apts_count": len(safe_json_load(r['apartments'], []))} for r in rows]}
 
-@app.post("/api/loan/request")
-def req_loan(req: LoanRequestModel):
+@app.get("/api/admin/user_apartments/{user_id}")
+def admin_user_apts(user_id: int):
     with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT loan_debt, name FROM users WHERE id=%s", (req.user_id,)); u = cur.fetchone()
-        if u['loan_debt'] > 0: return {"status": "error", "message": "У вас уже есть кредит!"}
-        cur.execute("INSERT INTO loan_requests (user_id, user_name, amount, created_at) VALUES (%s,%s,%s,%s)", (req.user_id, u['name'], req.amount, int(time.time()))); cur.close()
-    return {"status": "ok", "message": "Заявка отправлена!"}
+        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT apartments FROM users WHERE id=%s", (user_id,)); row = cur.fetchone(); cur.close()
+    return {"apartments": safe_json_load(row['apartments'], []) if row else []}
 
-@app.get("/api/admin/loan/list")
-def admin_loans_list(admin_id: int):
-    if not is_admin(admin_id): return {"requests": []}
+@app.post("/api/admin/reset_all")
+def reset_all(req: AdminMoneyRequest):
+    if req.admin_id != MAIN_ADMIN_ID: return {"status": "error", "message": "Только главный админ"}
     with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT * FROM loan_requests WHERE status='pending' ORDER BY created_at ASC"); res = cur.fetchall(); cur.close()
-    return {"requests": res}
+        cur = conn.cursor()
+        for t in ["users", "messages", "money_requests", "friends", "loan_requests"]:
+            cur.execute(f"DELETE FROM {t}")
+        cur.close()
+    return {"status": "ok", "message": "Всё сброшено!"}
 
-@app.post("/api/admin/loan/action")
-def admin_loan_action(req: LoanActionModel):
+@app.post("/api/admin/add_company")
+def add_company(req: CompanyAddReq):
     if not is_admin(req.admin_id): return {"status": "error"}
     with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT * FROM loan_requests WHERE id=%s AND status='pending'", (req.request_id,)); r = cur.fetchone()
-        if r:
-            if req.approve: cur.execute("UPDATE users SET amount=amount+%s, loan_debt=%s, loan_interest=%s, loan_last_penalty=%s WHERE id=%s", (r['amount'], r['amount'], req.percent, int(time.time()), r['user_id']))
-            cur.execute("UPDATE loan_requests SET status=%s WHERE id=%s", ('approved' if req.approve else 'rejected', req.request_id))
-        cur.close()
+        cur = conn.cursor(); cur.execute("INSERT INTO companies (name, tiers) VALUES (%s, '[]')", (req.name,)); cur.close()
     return {"status": "ok"}
 
-@app.post("/api/loan/repay")
-def repay_loan(req: LoanRequestModel):
+@app.post("/api/admin/delete_company/{cid}")
+def del_company(cid: int, req: AdminMoneyRequest):
+    if not is_admin(req.admin_id): return {"status": "error"}
+    with db_conn() as conn: cur = conn.cursor(); cur.execute("DELETE FROM companies WHERE id = %s", (cid,)); cur.close()
+    return {"status": "ok"}
+
+@app.post("/api/admin/add_tier/{cid}")
+def add_tier(cid: int, req: TierAddReq):
+    if not is_admin(req.admin_id): return {"status": "error"}
     with db_conn() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT amount, loan_debt FROM users WHERE id=%s", (req.user_id,)); row = cur.fetchone()
-        if int(row['amount']) < row['loan_debt']: return {"status": "error", "message": "Недостаточно Br!"}
-        cur.execute("UPDATE users SET amount=amount-loan_debt, loan_debt=0, loan_interest=0, loan_last_penalty=0 WHERE id=%s", (req.user_id,)); cur.close()
-    return {"status": "ok", "message": "Кредит погашен!"}
+        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT tiers FROM companies WHERE id = %s", (cid,)); row = cur.fetchone()
+        if not row: return {"status": "error"}
+        tiers = safe_json_load(row['tiers'], [])
+        tiers.append({"name": req.name, "price": req.price, "income": req.income, "sqm": req.sqm})
+        cur.execute("UPDATE companies SET tiers = %s WHERE id = %s", (json.dumps(tiers), cid)); cur.close()
+    return {"status": "ok"}
+
+@app.post("/api/admin/set_discount")
+def set_discount(req: DiscountReq):
+    if not is_admin(req.admin_id): return {"status": "error"}
+    with db_conn() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor); cur.execute("SELECT tiers FROM companies WHERE id = %s", (req.company_id,)); row = cur.fetchone()
+        if not row: return {"status": "error"}
+        tiers = safe_json_load(row['tiers'], [])
+        if 0 <= req.tier_index < len(tiers):
+            tiers[req.tier_index]['discount'] = req.percent
+            cur.execute("UPDATE companies SET tiers = %s WHERE id = %s", (json.dumps(tiers), req.company_id))
+        cur.close()
+    return {"status": "ok"}
 
 @app.post("/api/admin/force_update_exchange")
 def force_exchange(req: AdminMoneyRequest):
@@ -538,5 +655,23 @@ def force_exchange(req: AdminMoneyRequest):
     with db_conn() as conn: cur = conn.cursor(); cur.execute("UPDATE exchange_items SET updated_at = 0"); cur.close()
     return {"status": "ok", "message": "Биржа обновлена!"}
 
-@app.get("/api/check_admin/{user_id}")
-def check_admin(user_id: int): return {"is_admin": is_admin(user_id)}
+@app.post("/api/admin/add_exchange")
+def add_exchange(req: ExchangeAddReq):
+    if not is_admin(req.admin_id): return {"status": "error"}
+    with db_conn() as conn:
+        cur = conn.cursor()
+        try:
+            cur.execute("INSERT INTO exchange_items VALUES (%s,%s,%s,%s,%s,'up',%s)", (req.key, req.name, req.min_price, req.max_price, req.base_price, int(time.time())))
+        except Exception:
+            return {"status": "error", "message": "Такой ключ уже существует"}
+        cur.close()
+    return {"status": "ok"}
+
+@app.post("/api/admin/update_exchange")
+def update_exchange(req: ExchangeUpdateReq):
+    if not is_admin(req.admin_id): return {"status": "error"}
+    with db_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE exchange_items SET name=%s, min_price=%s, max_price=%s, current_price=%s, trend=%s, updated_at=%s WHERE key=%s",
+            (req.name, req.min_price, req.max_price, req.current_price, req.trend, int(time.time()), req.key)); cur.close()
+    return {"status": "ok"}
