@@ -1,275 +1,1416 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NEON CITY</title>
-<style>
-:root{--bg:#05070f;--panel:#0b1120;--panel2:#101a2e;--line:#1c2a47;--text:#eaf1ff;--muted:#8fa3c4;--cyan:#22d3ee;--violet:#a855f7;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b;--card1:#22d3ee;--card2:#a855f7}
-*{box-sizing:border-box;margin:0;padding:0}
-body{min-height:100vh;color:var(--text);font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg)}
-body::before{content:"";position:fixed;inset:0;background:radial-gradient(900px 500px at 85% -10%,color-mix(in srgb,var(--violet) 22%,transparent),transparent),radial-gradient(750px 450px at -5% 5%,color-mix(in srgb,var(--cyan) 18%,transparent),transparent);pointer-events:none;z-index:-1}
-.app{max-width:1180px;margin:0 auto;padding:18px}
-.top{display:flex;justify-content:space-between;gap:14px;margin-bottom:16px}
-.brand{display:flex;gap:12px;align-items:center}
-.logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-weight:900;background:linear-gradient(135deg,var(--cyan),var(--violet));color:#04121f}
-.brand b{font-size:20px}.brand span{display:block;font-size:12px;color:var(--muted)}
-.userbox{display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);padding:8px 12px;border-radius:14px}
-.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--violet));display:grid;place-items:center;font-weight:800;color:#04121f}
-.userbox small{display:block;color:var(--muted)}
-.layout{display:grid;grid-template-columns:250px 1fr;gap:14px}
-@media(max-width:860px){.layout{grid-template-columns:1fr}}
-.menu{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:10px;height:fit-content}
-.mbtn{display:flex;gap:10px;align-items:center;width:100%;padding:12px;border:0;background:transparent;color:var(--muted);border-radius:12px;cursor:pointer;font-size:15px;text-align:left}
-.mbtn:hover{background:#132038;color:#fff}
-.mbtn.active{color:#fff;background:linear-gradient(90deg,rgba(34,211,238,.16),rgba(168,85,247,.16))}
-.mbtn.admin{color:#fca5a5}
-.content{display:grid;gap:14px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px}
-.card h2{font-size:18px;margin-bottom:4px}
-.sub{color:var(--muted);font-size:13px;margin-bottom:14px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
-.stat{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px}
-.stat small{color:var(--muted);display:block;margin-bottom:6px}.stat b{font-size:19px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:620px){.grid2{grid-template-columns:1fr}}
-label{display:block;color:var(--muted);font-size:12px;margin:10px 0 6px}
-input,select,textarea{width:100%;background:#080e1b;border:1px solid var(--line);color:var(--text);padding:11px;border-radius:11px;font:inherit;outline:none}
-input:focus,select:focus,textarea:focus{border-color:var(--cyan)}
-.btn{border:0;border-radius:11px;padding:11px 15px;background:linear-gradient(135deg,var(--cyan),var(--violet));color:#04121f;font-weight:800;cursor:pointer}
-.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
-.btn.red{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff}
-.btn.green{background:linear-gradient(135deg,#22c55e,#84cc16);color:#04121f}
-.btn.small{padding:7px 10px;font-size:12px;border-radius:9px}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{padding:11px;border-bottom:1px solid var(--line);text-align:left}
-th{color:var(--muted);font-size:12px;text-transform:uppercase}
-.up{color:var(--green)}.down{color:var(--red)}
-.pill{display:inline-block;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:700}
-.pill.ok{background:rgba(34,197,94,.15);color:#4ade80}.pill.wait{background:rgba(245,158,11,.15);color:#fbbf24}.pill.bad{background:rgba(239,68,68,.15);color:#f87171}
-.chatwrap{display:grid;grid-template-columns:230px 1fr;gap:12px}
-@media(max-width:700px){.chatwrap{grid-template-columns:1fr}}
-.people{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:8px;max-height:330px;overflow:auto}
-.person{display:flex;gap:10px;align-items:center;padding:9px;border-radius:10px;cursor:pointer}
-.person:hover,.person.active{background:#17233d}
-.person .avatar{width:30px;height:30px;font-size:12px}
-.person small{display:block;color:var(--muted)}
-.chat{height:330px;overflow:auto;background:#080e1b;border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
-.msg{max-width:78%;padding:9px 12px;border-radius:14px;background:#16203a}
-.msg.me{align-self:flex-end;background:linear-gradient(135deg,rgba(34,211,238,.22),rgba(168,85,247,.22))}
-.msg time{display:block;font-size:10px;color:var(--muted);margin-top:3px}
-.hidden{display:none}
-.note{color:var(--muted);font-size:12px;margin-top:10px}
-.adminonly{display:none}
-body.is-admin .adminonly{display:block}
-.bank-card{position:relative;overflow:hidden;border-radius:20px;padding:20px;min-height:190px;border:1px solid rgba(255,255,255,.18);background:linear-gradient(135deg,color-mix(in srgb,var(--card1) 35%,transparent),color-mix(in srgb,var(--card2) 35%,transparent)),#0b1120;background-size:cover;background-position:center}
-.bank-card::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(0,0,0,.35),transparent 60%)}
-.bank-card>*{position:relative;z-index:1}
-.bank-card .brandline{font-weight:900;letter-spacing:1px;color:#fff}
-.bank-card .balance{font-size:26px;font-weight:900}
-.bank-card .number{margin-top:30px;font-family:monospace;letter-spacing:2px;font-size:17px}
-.bank-card .meta{display:flex;justify-content:space-between;margin-top:14px;color:#e6ecff;font-size:12px}
-.color-row{display:flex;gap:10px;align-items:center}
-input[type=color]{height:44px;padding:4px}
-</style>
-</head>
-<body>
-<div class="app">
-<div class="top">
-<div class="brand"><div class="logo">N</div><div><b>NEON CITY</b><span>Биржа · Банк · Компании · Чаты</span></div></div>
-<div class="userbox"><div class="avatar" id="avatar">И</div><div><b id="userName">Игрок</b><small id="userRole">Игрок</small></div></div>
-</div>
-<div class="layout">
-<nav class="menu">
-<button class="mbtn active" data-page="home">🏠 Профиль</button>
-<button class="mbtn" data-page="market">📈 Биржа</button>
-<button class="mbtn" data-page="companies">🏢 Компании</button>
-<button class="mbtn" data-page="bank">🏦 Банк</button>
-<button class="mbtn" data-page="chat">💬 Чаты</button>
-<button class="mbtn" data-page="loans">💳 Кредиты</button>
-<button class="mbtn" data-page="friends">👥 Друзья</button>
-<button class="mbtn" data-page="settings">⚙️ Настройки</button>
-<button class="mbtn admin adminonly" data-page="admin">🛡 Админ-панель</button>
-</nav>
-<main class="content">
-<section id="home" class="card">
-<h2>Личный кабинет</h2><p class="sub">Твой профиль, баланс и активность.</p>
-<div class="stats"><div class="stat"><small>Наличные</small><b id="cash">0 BYN</b></div><div class="stat"><small>Банк</small><b id="bankBalance">0 BYN</b></div><div class="stat"><small>Друзья</small><b id="friendsCount">0</b></div><div class="stat"><small>Статус</small><b id="status">Игрок</b></div></div>
-<div class="bank-card" id="bankCard" style="margin-top:16px">
-<div style="display:flex;justify-content:space-between"><div><small style="color:#dbe6ff">Банковская карта NEON CITY</small><div class="balance" id="cardBalance">0 BYN</div></div><div class="brandline">NEON<br>BANK</div></div>
-<div class="number">•••• •••• •••• 0000</div>
-<div class="meta"><span>Владелец: <b id="cardOwner">ИГРОК</b></span><span>Статус: <b style="color:#4ade80">АКТИВНА</b></span></div>
-</div>
-<div class="grid2" style="margin-top:14px"><button class="btn" onclick="openPage('bank')">Пополнить / Перевести</button><button class="btn ghost" onclick="openPage('companies')">Мои компании</button></div>
-</section>
+import os
+import random
+import asyncio
+from datetime import datetime, timedelta
 
-<section id="market" class="card hidden">
-<h2>Биржа</h2><p class="sub">Покупай и продавай активы.</p>
-<table><thead><tr><th>Актив</th><th>Цена</th><th>За 24ч</th><th>В портфеле</th><th></th></tr></thead><tbody id="marketRows"></tbody></table>
-</section>
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    WebAppInfo,
+)
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+)
 
-<section id="companies" class="card hidden">
-<h2>Компании и недвижимость</h2>
-<p class="sub">Покупай объекты, получай доход и плати налог за км² каждый день.</p>
-<div class="stats">
-<div class="stat"><small>Налог за 1 км² в день</small><b>10 000 BYN</b></div>
-<div class="stat"><small>Моя площадь</small><b id="ownedSqm">0 км²</b></div>
-<div class="stat"><small>Доход в день</small><b id="companyIncome">0 BYN</b></div>
-<div class="stat"><small>Налог в день</small><b id="companyTax">0 BYN</b></div>
-</div>
-<div id="companyCategories"></div>
-<div id="companyAdminTools" class="hidden" style="margin-top:18px">
-<div class="card" style="background:var(--panel2)"><h2>Добавить категорию</h2>
-<div class="grid2"><div><label>Название</label><input id="newCategory" placeholder="Например: Эконом-класс"></div><div><label>Позиция</label><select id="categoryPosition"><option value="start">В начало</option><option value="end" selected>В конец</option></select></div></div>
-<button class="btn" onclick="addCategory()">Добавить</button></div>
-<div class="card" style="background:var(--panel2);margin-top:12px"><h2>Добавить объект</h2>
-<div class="grid2">
-<div><label>Категория</label><select id="apartmentCategory"></select></div>
-<div><label>Название</label><input id="apartmentName"></div>
-<div><label>Цена</label><input id="apartmentPrice" type="number"></div>
-<div><label>Доход / день</label><input id="apartmentIncome" type="number"></div>
-<div><label>Площадь, км²</label><input id="apartmentSqm" type="number"></div>
-<div><label>&nbsp;</label><button class="btn" onclick="addApartment()">Добавить</button></div>
-</div></div>
-</div>
-</section>
+DATABASE_URL = os.getenv("DATABASE_URL")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+MAIN_ADMIN_ID = int(os.getenv("MAIN_ADMIN_ID", "5634302903"))
+WEBAPP_URL = os.getenv("WEBAPP_URL", "")
 
-<section id="bank" class="card hidden">
-<h2>Банк</h2><p class="sub">Выбери игрока или введи Telegram ID.</p>
-<div class="grid2"><div><label>Получатель</label><select id="recipientSelect" onchange="document.getElementById('transferTo').value=this.value"><option value="">— Выбери игрока —</option></select></div><div><label>Или Telegram ID</label><input id="transferTo"></div></div>
-<div><label>Сумма</label><input id="transferAmount" type="number"></div>
-<label>Комментарий</label><input id="transferNote">
-<button class="btn" onclick="sendTransfer()">Отправить перевод</button>
-<h2 style="margin-top:18px">История</h2><table><thead><tr><th>От кого</th><th>Кому</th><th>Сумма</th><th>Статус</th></tr></thead><tbody><tr><td>—</td><td>—</td><td>—</td><td><span class="pill wait">Ожидание</span></td></tr></tbody></table>
-</section>
+SQM_TAX = 100
+LOAN_LIMIT = 1_000_000
+LOAN_RATE = 0.10
+DAILY_INCOME_HOUR = 12
 
-<section id="chat" class="card hidden">
-<h2>Сообщения</h2><p class="sub">Выбери игрока и напиши ему.</p>
-<div class="chatwrap"><div class="people" id="peopleList"></div><div><div class="chat" id="chatBox"></div><div class="grid2" style="margin-top:10px"><input id="messageInput"><button class="btn" onclick="sendMessage()">Отправить</button></div></div></div>
-</section>
+if not DATABASE_URL or not BOT_TOKEN:
+    raise RuntimeError("Заполни DATABASE_URL и BOT_TOKEN в переменных окружения.")
 
-<section id="loans" class="card hidden">
-<h2>Кредиты</h2><p class="sub">Оставь заявку администрации.</p>
-<div class="grid2"><div><label>Сумма</label><input id="loanAmount" type="number"></div><div><label>Срок, дней</label><input id="loanDays" type="number"></div></div>
-<label>Причина</label><input id="loanReason">
-<button class="btn" onclick="createLoan()">Отправить заявку</button>
-</section>
+app = FastAPI(title="NEON CITY API")
 
-<section id="friends" class="card hidden">
-<h2>Друзья</h2><p class="sub">Добавляй игроков и общайся.</p>
-<div class="grid2"><div><label>Telegram ID</label><input id="friendId"></div><div><label>&nbsp;</label><button class="btn" onclick="addFriend()">Отправить заявку</button></div></div>
-</section>
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-<section id="settings" class="card hidden">
-<h2>Настройки внешнего вида</h2><p class="sub">Меняй фон и банковскую карту.</p>
-<div class="grid2">
-<div class="card" style="background:var(--panel2)"><h2>Фон сайта</h2>
-<div class="color-row"><input type="color" id="bgColor" value="#05070f"><span>Фон</span></div>
-<div class="color-row" style="margin-top:10px"><input type="color" id="glow1" value="#22d3ee"><span>Свечение 1</span></div>
-<div class="color-row" style="margin-top:10px"><input type="color" id="glow2" value="#a855f7"><span>Свечение 2</span></div></div>
-<div class="card" style="background:var(--panel2)"><h2>Карта</h2>
-<div class="color-row"><input type="color" id="cardColor1" value="#22d3ee"><span>Цвет 1</span></div>
-<div class="color-row" style="margin-top:10px"><input type="color" id="cardColor2" value="#a855f7"><span>Цвет 2</span></div>
-<label>Ссылка на картинку</label><input id="cardImage">
-<label>Или файл</label><input type="file" id="cardFile" accept="image/*">
-<button class="btn ghost" style="margin-top:10px" onclick="clearCardImage()">Убрать картинку</button></div>
-</div>
-<div class="bank-card" id="previewCard" style="margin-top:16px">
-<div style="display:flex;justify-content:space-between"><div><small style="color:#dbe6ff">Предпросмотр</small><div class="balance">0 BYN</div></div><div class="brandline">NEON<br>BANK</div></div>
-<div class="number">•••• •••• •••• 0000</div>
-<div class="meta"><span>Владелец: <b>ИГРОК</b></span><span>Статус: <b style="color:#4ade80">АКТИВНА</b></span></div>
-</div>
-</section>
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS users (
+    telegram_id BIGINT PRIMARY KEY,
+    username TEXT,
+    first_name TEXT,
+    balance NUMERIC(18,2) NOT NULL DEFAULT 0,
+    bank NUMERIC(18,2) NOT NULL DEFAULT 0,
+    credit NUMERIC(18,2) NOT NULL DEFAULT 0,
+    sqm INTEGER NOT NULL DEFAULT 0,
+    card_color TEXT NOT NULL DEFAULT '#7c3aed',
+    card_background TEXT NOT NULL DEFAULT '#111827',
+    card_image TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-<section id="admin" class="card hidden adminonly">
-<h2>Админ-панель</h2><p class="sub" id="adminSub">Панель администрации.</p>
-<div id="mainAdminTools" class="hidden">
-<div class="stats"><div class="stat"><small>Главный админ</small><b>5634302903</b></div><div class="stat"><small>Админов</small><b>—</b></div><div class="stat"><small>Заявок</small><b>—</b></div><div class="stat"><small>Чатов</small><b>—</b></div></div>
-<div class="grid2" style="margin-top:14px">
-<div class="card" style="background:var(--panel2)"><h2>Управление админами</h2>
-<label>Игрок</label><select id="adminSelect"></select>
-<label>Или Telegram ID</label><input id="adminId">
-<div class="grid2" style="margin-top:10px"><button class="btn green" onclick="setAdmin(true)">Назначить</button><button class="btn red" onclick="setAdmin(false)">Снять</button></div></div>
-<div class="card" style="background:var(--panel2)"><h2>Написать игроку</h2>
-<label>Игрок</label><select id="dmSelect"></select>
-<label>Или Telegram ID</label><input id="dmId">
-<label>Сообщение</label><textarea id="dmText" rows="3"></textarea>
-<button class="btn" onclick="sendAdminMessage()">Отправить</button></div>
-</div>
-</div>
-<div id="regularAdminTools" class="hidden">
-<div class="stats"><div class="stat"><small>Роль</small><b>Администратор</b></div><div class="stat"><small>Доступ</small><b>Кредиты и чат</b></div></div>
-</div>
-<h2 style="margin-top:18px">Заявки на кредиты</h2>
-<table><thead><tr><th>Игрок</th><th>Сумма</th><th>Срок</th><th>Статус</th><th>Действия</th></tr></thead><tbody id="loanRequests"></tbody></table>
-<h2 style="margin-top:18px">Чат администрации</h2>
-<div class="chat" id="adminChat"></div>
-<div class="grid2" style="margin-top:10px"><input id="adminChatInput"><button class="btn" onclick="sendAdminChat()">Отправить</button></div>
-</section>
-</main>
-</div>
-</div>
-<script>
-const API='';
-const MAIN_ADMIN_ID='5634302903';
-const assets=[["Bitcoin","BTC"],["Ethereum","ETH"],["Gold","XAU"],["McDonald's","MCD"],["Oil","OIL"],["Ring","RING"],["Silver","XAG"],["Tesla","TSLA"]];
-document.getElementById('marketRows').innerHTML=assets.map(([n,c])=>`<tr><td><b>${n}</b><br><small style="color:var(--muted)">${c}</small></td><td>—</td><td class="up">+0.0%</td><td>0</td><td><button class="btn small">Купить</button></td></tr>`).join('');
-let players=[];
-async function loadPlayers(){
-try{const r=await fetch(API+'/api/players');players=await r.json()}catch(e){players=[{user_id:1,first_name:'Игрок 1'},{user_id:2,first_name:'Игрок 2'}]}
-const opts='<option value="">— Выбери игрока —</option>'+players.map(p=>`<option value="${p.user_id}">${p.first_name||p.username||'Игрок'} · ID ${p.user_id}</option>`).join('');
-['recipientSelect','adminSelect','dmSelect'].forEach(id=>document.getElementById(id).innerHTML=opts);
-document.getElementById('peopleList').innerHTML=players.map((p,i)=>`<div class="person${i===0?' active':''}" onclick="openChat(${p.user_id},'${p.first_name||p.username||'Игрок'}')"><div class="avatar">${(p.first_name||'И')[0]}</div><div><b>${p.first_name||p.username||'Игрок'}</b><small>ID: ${p.user_id}</small></div></div>`).join('');
-}
-loadPlayers();
-function openChat(id,name){document.querySelectorAll('.person').forEach(p=>p.classList.remove('active'));event.currentTarget.classList.add('active');document.getElementById('chatBox').innerHTML=`<div class="msg">Чат с <b>${name}</b>.</div>`}
-function sendMessage(){const b=document.getElementById('chatBox'),t=document.getElementById('messageInput').value.trim();if(!t)return;b.insertAdjacentHTML('beforeend',`<div class="msg me">${t}<time>сейчас</time></div>`);document.getElementById('messageInput').value='';b.scrollTop=b.scrollHeight}
-async function sendTransfer(){const to=document.getElementById('transferTo').value.trim(),amount=+document.getElementById('transferAmount').value;if(!to||!amount)return alert('Выбери получателя и сумму');const r=await fetch(API+'/api/transfer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:1,receiver_id:+to,amount,note:document.getElementById('transferNote').value})});alert(r.ok?'Перевод отправлен':'Ошибка перевода')}
-async function createLoan(){const amount=+document.getElementById('loanAmount').value,days=+document.getElementById('loanDays').value;if(!amount||!days)return alert('Заполни сумму и срок');await fetch(API+'/api/loan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:1,amount,days,reason:document.getElementById('loanReason').value})});alert('Заявка отправлена')}
-function addFriend(){alert('Заявка в друзья будет сохранена в friends.')}
-function sendAdminMessage(){const id=document.getElementById('dmId').value.trim()||document.getElementById('dmSelect').value;if(!id)return alert('Выбери игрока');alert('Сообщение будет отправлено игроку '+id)}
-function openPage(page){document.querySelector(`.mbtn[data-page='${page}']`).click()}
-document.querySelectorAll('.mbtn').forEach(b=>b.onclick=()=>{document.querySelectorAll('.mbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('main section').forEach(s=>s.classList.add('hidden'));document.getElementById(b.dataset.page).classList.remove('hidden')});
+CREATE TABLE IF NOT EXISTS admins (
+    telegram_id BIGINT PRIMARY KEY,
+    is_main BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-const SQM_TAX=10000;
-let companyData=[
-{name:'Эконом - Класс',tiers:[{name:'ЖК «Мапид»',price:200000,income:1650,sqm:7},{name:'Грушевка',price:345000,income:2860,sqm:11},{name:'ЖК «Малиновый Рай»',price:500000,income:3750,sqm:12}]},
-{name:'Комфорт - Класс',tiers:[{name:'ЖК «Новая Боровая»',price:1450000,income:10000,sqm:15},{name:'Северный Берег',price:3000000,income:16500,sqm:15},{name:'ЖК «Речной порт»',price:3500000,income:22000,sqm:23},{name:'Михалово',price:5250000,income:29500,sqm:24},{name:'ЖК «Саввинская 17»',price:11500000,income:55000,sqm:28},{name:'ЖК «Изумрудный бор»',price:16700000,income:75000,sqm:31}]},
-{name:'Премиум - Комфорт',tiers:[{name:'ЖК - Minsk World',price:25000000,income:140500,sqm:35},{name:'ЖК «Пирс»',price:27500000,income:185500,sqm:43}]},
-{name:'Бизнес - Класс',tiers:[{name:'ЖК «Солнечный»',price:35555500,income:250000,sqm:50},{name:'ЖК «Зелёная гавань»',price:50000000,income:350000,sqm:50},{name:'Квартал Depo',price:150000000,income:500000,sqm:50},{name:'ЖК «Айвазовский City»',price:255000000,income:625000,sqm:55}]},
-{name:'Люкс',tiers:[{name:'Central Park Tower',price:500000000,income:1350000,sqm:64},{name:'ЖК «Француз»',price:1000000000,income:5000000,sqm:100},{name:'ЖК «АДМ»',price:1500000000,income:17000000,sqm:105}]},
-{name:'Бизнес - Люкс',tiers:[{name:'Хрущевка',price:15000000000,income:80000000,sqm:18}]}
-];
-let owned=[];
-function fmt(n){return Number(n).toLocaleString('ru-RU')+' BYN'}
-function renderCompanies(){
-document.getElementById('companyCategories').innerHTML=companyData.map((c,ci)=>`<div class="card" style="background:var(--panel2);margin-top:12px"><h2>${c.name}</h2><table><thead><tr><th>Объект</th><th>Цена</th><th>Доход</th><th>Площадь</th><th>Налог</th><th></th></tr></thead><tbody>${c.tiers.map((t,ti)=>`<tr><td><b>${t.name}</b></td><td>${fmt(t.price)}</td><td class="up">+${fmt(t.income)}</td><td>${t.sqm} км²</td><td class="down">-${fmt(t.sqm*SQM_TAX)}</td><td><button class="btn small" onclick="buyCompany(${ci},${ti})">Купить</button></td></tr>`).join('')}</tbody></table></div>`).join('');
-const sqm=owned.reduce((a,c)=>a+c.sqm,0),income=owned.reduce((a,c)=>a+c.income,0);
-document.getElementById('ownedSqm').textContent=sqm+' км²';document.getElementById('companyIncome').textContent=fmt(income);document.getElementById('companyTax').textContent='-'+fmt(sqm*SQM_TAX);
-document.getElementById('apartmentCategory').innerHTML=companyData.map((c,i)=>`<option value="${i}">${c.name}</option>`).join('');
-}
-function buyCompany(ci,ti){const c=companyData[ci].tiers[ti];owned.push(c);alert(`Куплено: ${c.name}\nЦена: ${fmt(c.price)}\nДоход: ${fmt(c.income)}/день\nНалог: ${fmt(c.sqm*SQM_TAX)}/день`);renderCompanies()}
-function addCategory(){const n=document.getElementById('newCategory').value.trim();if(!n)return;const pos=document.getElementById('categoryPosition').value;const item={name:n,tiers:[]};pos==='start'?companyData.unshift(item):companyData.push(item);document.getElementById('newCategory').value='';renderCompanies()}
-function addApartment(){const ci=+document.getElementById('apartmentCategory').value,n=document.getElementById('apartmentName').value.trim(),p=+document.getElementById('apartmentPrice').value,i=+document.getElementById('apartmentIncome').value,s=+document.getElementById('apartmentSqm').value;if(!n||!p||!i||!s)return alert('Заполни все поля');companyData[ci].tiers.push({name:n,price:p,income:i,sqm:s});renderCompanies()}
-renderCompanies();
+CREATE TABLE IF NOT EXISTS friends (
+    id BIGSERIAL PRIMARY KEY,
+    owner_id BIGINT NOT NULL REFERENCES users(telegram_id) ON DELETE CASCADE,
+    friend_id BIGINT NOT NULL REFERENCES users(telegram_id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(owner_id, friend_id)
+);
 
-function applyRole(role){
-document.getElementById('userRole').textContent=role==='main_admin'?'Главный админ':role==='admin'?'Администратор':'Игрок';
-if(role==='main_admin'){document.body.classList.add('is-admin');document.getElementById('mainAdminTools').classList.remove('hidden');document.getElementById('regularAdminTools').classList.add('hidden');document.getElementById('companyAdminTools').classList.remove('hidden');document.getElementById('adminSub').textContent='Ты главный админ.'}
-else if(role==='admin'){document.body.classList.add('is-admin');document.getElementById('mainAdminTools').classList.add('hidden');document.getElementById('regularAdminTools').classList.remove('hidden');document.getElementById('companyAdminTools').classList.add('hidden');document.getElementById('adminSub').textContent='Ты администратор: кредиты и чат администрации.'}
-else document.body.classList.remove('is-admin');
-}
-function setAdmin(v){const id=document.getElementById('adminId').value.trim()||document.getElementById('adminSelect').value;if(!id)return;if(id===MAIN_ADMIN_ID)return alert('Главного админа нельзя изменить.');alert(v?'Назначен админом':'Снят с админа')}
-function reviewLoan(ok){alert(ok?'Одобрено':'Отклонено')}
-function sendAdminChat(){const b=document.getElementById('adminChat'),t=document.getElementById('adminChatInput').value.trim();if(!t)return;b.insertAdjacentHTML('beforeend',`<div class="msg me">${t}<time>сейчас</time></div>`);document.getElementById('adminChatInput').value='';b.scrollTop=b.scrollHeight}
-document.getElementById('adminChat').innerHTML='<div class="msg">Чат администрации.</div>';
+CREATE TABLE IF NOT EXISTS transfers (
+    id BIGSERIAL PRIMARY KEY,
+    sender_id BIGINT NOT NULL REFERENCES users(telegram_id),
+    receiver_id BIGINT NOT NULL REFERENCES users(telegram_id),
+    amount NUMERIC(18,2) NOT NULL CHECK (amount > 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-const settings=['bgColor','glow1','glow2','cardColor1','cardColor2','cardImage'];
-function applySettings(){const bg=document.getElementById('bgColor').value,g1=document.getElementById('glow1').value,g2=document.getElementById('glow2').value,c1=document.getElementById('cardColor1').value,c2=document.getElementById('cardColor2').value,img=document.getElementById('cardImage').value.trim();document.documentElement.style.setProperty('--bg',bg);document.documentElement.style.setProperty('--cyan',g1);document.documentElement.style.setProperty('--violet',g2);document.documentElement.style.setProperty('--card1',c1);document.documentElement.style.setProperty('--card2',c2);[document.getElementById('bankCard'),document.getElementById('previewCard')].forEach(card=>{card.style.background=`linear-gradient(135deg,color-mix(in srgb,${c1} 35%,transparent),color-mix(in srgb,${c2} 35%,transparent)),#0b1120`;if(img)card.style.backgroundImage=`linear-gradient(120deg,rgba(0,0,0,.45),rgba(0,0,0,.15)),url('${img}')`;card.style.backgroundSize='cover';card.style.backgroundPosition='center'});localStorage.setItem('neon_settings',JSON.stringify({bg,g1,g2,c1,c2,img}))}
-settings.forEach(id=>document.getElementById(id).addEventListener('input',applySettings));
-document.getElementById('cardFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{document.getElementById('cardImage').value=r.result;applySettings()};r.readAsDataURL(f)});
-function clearCardImage(){document.getElementById('cardImage').value='';document.getElementById('cardFile').value='';applySettings()}
-(function(){try{const s=JSON.parse(localStorage.getItem('neon_settings')||'{}');if(s.bg)document.getElementById('bgColor').value=s.bg;if(s.g1)document.getElementById('glow1').value=s.g1;if(s.g2)document.getElementById('glow2').value=s.g2;if(s.c1)document.getElementById('cardColor1').value=s.c1;if(s.c2)document.getElementById('cardColor2').value=s.c2;if(s.img)document.getElementById('cardImage').value=s.img}catch(e){}applySettings()})();
-</script>
-</body>
-</html>
+CREATE TABLE IF NOT EXISTS loans (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(telegram_id),
+    amount NUMERIC(18,2) NOT NULL CHECK (amount > 0),
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS companies (
+    id BIGSERIAL PRIMARY KEY,
+    category TEXT NOT NULL,
+    name TEXT NOT NULL,
+    price NUMERIC(18,2) NOT NULL CHECK (price >= 0),
+    daily_income NUMERIC(18,2) NOT NULL CHECK (daily_income >= 0),
+    sqm INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS user_companies (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(telegram_id) ON DELETE CASCADE,
+    company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    purchased_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id, company_id)
+);
+
+CREATE TABLE IF NOT EXISTS exchange_items (
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    base_price NUMERIC(18,2) NOT NULL,
+    min_price NUMERIC(18,2) NOT NULL,
+    max_price NUMERIC(18,2) NOT NULL,
+    current_price NUMERIC(18,2) NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS exchange_holdings (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(telegram_id) ON DELETE CASCADE,
+    item_id BIGINT NOT NULL REFERENCES exchange_items(id) ON DELETE CASCADE,
+    quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+    UNIQUE(user_id, item_id)
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+    id BIGSERIAL PRIMARY KEY,
+    sender_id BIGINT NOT NULL REFERENCES users(telegram_id),
+    receiver_id BIGINT NOT NULL REFERENCES users(telegram_id),
+    text TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS admin_messages (
+    id BIGSERIAL PRIMARY KEY,
+    sender_id BIGINT NOT NULL REFERENCES users(telegram_id),
+    text TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_receiver
+ON messages(receiver_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_messages_sender
+ON messages(sender_id, created_at DESC);
+"""
+
+DEFAULT_COMPANIES = [
+    ("Магазин", "Киоск", 10_000, 300, 1),
+    ("Магазин", "Мини-маркет", 50_000, 1_200, 3),
+    ("Магазин", "Супермаркет", 250_000, 5_000, 10),
+    ("Кафе", "Кофейня", 100_000, 2_000, 5),
+    ("Кафе", "Ресторан", 500_000, 9_000, 15),
+    ("Авто", "Автомойка", 150_000, 3_000, 6),
+    ("Авто", "Автосалон", 1_000_000, 18_000, 25),
+    ("Недвижимость", "Квартира", 300_000, 4_000, 20),
+    ("Недвижимость", "Офис", 800_000, 12_000, 40),
+    ("Недвижимость", "Торговый центр", 5_000_000, 70_000, 150),
+]
+
+DEFAULT_EXCHANGE = [
+    ("Gold", 5_000, 3_000, 8_000),
+    ("Silver", 2_500, 1_500, 4_000),
+    ("Ring", 8_000, 5_000, 12_000),
+    ("Tesla", 100_000, 70_000, 150_000),
+    ("McDonald's", 250_000, 180_000, 350_000),
+    ("Bitcoin", 500_000, 300_000, 900_000),
+    ("Ethereum", 300_000, 180_000, 550_000),
+    ("Oil", 150_000, 100_000, 250_000),
+]
+
+
+def get_db():
+    return psycopg2.connect(DATABASE_URL, connect_timeout=10)
+
+
+def db_execute(query, params=(), fetch=False, many=False):
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if many:
+                cur.executemany(query, params)
+            else:
+                cur.execute(query, params)
+            rows = cur.fetchall() if fetch else None
+        conn.commit()
+    return rows
+
+
+def get_user(telegram_id):
+    rows = db_execute(
+        "SELECT * FROM users WHERE telegram_id = %s",
+        (telegram_id,),
+        fetch=True,
+    )
+    return rows[0] if rows else None
+
+
+def ensure_user(user):
+    telegram_id = user.id
+    username = user.username or ""
+    first_name = user.first_name or "Игрок"
+
+    db_execute(
+        """
+        INSERT INTO users (telegram_id, username, first_name)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (telegram_id) DO UPDATE
+        SET username = EXCLUDED.username,
+            first_name = EXCLUDED.first_name
+        """,
+        (telegram_id, username, first_name),
+    )
+
+    if telegram_id == MAIN_ADMIN_ID:
+        db_execute(
+            """
+            INSERT INTO admins (telegram_id, is_main)
+            VALUES (%s, TRUE)
+            ON CONFLICT (telegram_id) DO UPDATE
+            SET is_main = TRUE
+            """,
+            (telegram_id,),
+        )
+
+    return get_user(telegram_id)
+
+
+def is_admin(telegram_id):
+    rows = db_execute(
+        "SELECT 1 FROM admins WHERE telegram_id = %s",
+        (telegram_id,),
+        fetch=True,
+    )
+    return bool(rows)
+
+
+def is_main_admin(telegram_id):
+    return telegram_id == MAIN_ADMIN_ID
+
+
+def money(value):
+    return f"{float(value):,.2f}".replace(",", " ")
+
+
+def main_menu_keyboard(webapp_url=""):
+    buttons = [
+        [InlineKeyboardButton("👤 Профиль", callback_data="profile")],
+        [InlineKeyboardButton("📈 Биржа", callback_data="exchange")],
+        [InlineKeyboardButton("🏦 Банк", callback_data="bank")],
+        [InlineKeyboardButton("🏢 Бизнес", callback_data="companies")],
+        [InlineKeyboardButton("💸 Перевод", callback_data="transfer")],
+        [InlineKeyboardButton("👥 Игроки", callback_data="players")],
+        [InlineKeyboardButton("💬 Чаты", callback_data="chats")],
+        [InlineKeyboardButton("💳 Кредит", callback_data="loans")],
+        [InlineKeyboardButton("🤝 Друзья", callback_data="friends")],
+        [InlineKeyboardButton("⚙️ Настройки", callback_data="settings")],
+    ]
+
+    if webapp_url:
+        buttons.insert(
+            0,
+            [InlineKeyboardButton(
+                "🌐 Открыть NEON CITY",
+                web_app=WebAppInfo(url=webapp_url),
+            )],
+        )
+
+    if is_main_admin(MAIN_ADMIN_ID):
+        buttons.append(
+            [InlineKeyboardButton("🛡 Админ-панель", callback_data="admin")]
+        )
+
+    return InlineKeyboardMarkup(buttons)
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = ensure_user(update.effective_user)
+    text = (
+        f"🌆 <b>NEON CITY</b>\n\n"
+        f"Привет, <b>{user['first_name']}</b>!\n\n"
+        f"💰 Баланс: <b>{money(user['balance'])} BYN</b>\n"
+        f"🏦 Банк: <b>{money(user['bank'])} BYN</b>\n"
+        f"🌍 Земля: <b>{user['sqm']} км²</b>\n\n"
+        f"Налог: <b>{money(SQM_TAX)} BYN за км² в день</b>"
+    )
+    await update.message.reply_text(
+        text,
+        reply_markup=main_menu_keyboard(WEBAPP_URL),
+        parse_mode="HTML",
+    )
+
+
+async def profile_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user = ensure_user(query.from_user)
+
+    text = (
+        f"👤 <b>Профиль</b>\n\n"
+        f"Имя: <b>{user['first_name']}</b>\n"
+        f"Telegram ID: <code>{user['telegram_id']}</code>\n\n"
+        f"💰 Наличные: <b>{money(user['balance'])} BYN</b>\n"
+        f"🏦 Банк: <b>{money(user['bank'])} BYN</b>\n"
+        f"💳 Кредит: <b>{money(user['credit'])} BYN</b>\n"
+        f"🌍 Земля: <b>{user['sqm']} км²</b>"
+    )
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_menu_keyboard(WEBAPP_URL),
+        parse_mode="HTML",
+    )
+
+
+async def bank_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user = ensure_user(query.from_user)
+
+    text = (
+        f"🏦 <b>NEON BANK</b>\n\n"
+        f"💳 Карта: <b>NEON CARD</b>\n"
+        f"💰 Наличные: <b>{money(user['balance'])} BYN</b>\n"
+        f"🏦 На карте: <b>{money(user['bank'])} BYN</b>\n\n"
+        f"Выбери действие:"
+    )
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("📥 Положить 1 000", callback_data="bank_deposit_1000"),
+            InlineKeyboardButton("📤 Снять 1 000", callback_data="bank_withdraw_1000"),
+        ],
+        [
+            InlineKeyboardButton("📥 Положить всё", callback_data="bank_deposit_all"),
+            InlineKeyboardButton("📤 Снять всё", callback_data="bank_withdraw_all"),
+        ],
+        [InlineKeyboardButton("⬅️ Меню", callback_data="menu")],
+    ])
+
+    await query.edit_message_text(text, reply_markup=keyboard, parse_mode="HTML")
+
+
+async def bank_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    telegram_id = query.from_user.id
+    action = query.data
+
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT balance, bank FROM users WHERE telegram_id = %s FOR UPDATE",
+                (telegram_id,),
+            )
+            user = cur.fetchone()
+
+            if not user:
+                await query.edit_message_text("Пользователь не найден.")
+                return
+
+            if action == "bank_deposit_all":
+                amount = float(user["balance"])
+            elif action == "bank_withdraw_all":
+                amount = float(user["bank"])
+            else:
+                amount = 1_000.0
+
+            if "deposit" in action:
+                if amount <= 0 or float(user["balance"]) < amount:
+                    await query.answer("Недостаточно наличных.", show_alert=True)
+                    return
+                cur.execute(
+                    """
+                    UPDATE users
+                    SET balance = balance - %s,
+                        bank = bank + %s
+                    WHERE telegram_id = %s
+                    """,
+                    (amount, amount, telegram_id),
+                )
+                text = f"✅ Положено в банк: <b>{money(amount)} BYN</b>"
+            else:
+                if amount <= 0 or float(user["bank"]) < amount:
+                    await query.answer("На карте недостаточно денег.", show_alert=True)
+                    return
+                cur.execute(
+                    """
+                    UPDATE users
+                    SET bank = bank - %s,
+                        balance = balance + %s
+                    WHERE telegram_id = %s
+                    """,
+                    (amount, amount, telegram_id),
+                )
+                text = f"✅ Снято с карты: <b>{money(amount)} BYN</b>"
+
+        conn.commit()
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_menu_keyboard(WEBAPP_URL),
+        parse_mode="HTML",
+    )
+
+
+async def companies_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    companies = db_execute(
+        """
+        SELECT c.*, EXISTS (
+            SELECT 1 FROM user_companies uc
+            WHERE uc.user_id = %s AND uc.company_id = c.id
+        ) AS owned
+        FROM companies c
+        ORDER BY c.price ASC
+        """,
+        (query.from_user.id,),
+        fetch=True,
+    )
+
+    if not companies:
+        text = "🏢 Бизнесов пока нет. Попроси администратора добавить объекты."
+    else:
+        lines = ["🏢 <b>Бизнес и недвижимость</b>\n"]
+        for item in companies:
+            status = "✅ Куплено" if item["owned"] else "🛒 Доступно"
+            lines.append(
+                f"{status} <b>{item['name']}</b>\n"
+                f"Категория: {item['category']}\n"
+                f"Цена: {money(item['price'])} BYN\n"
+                f"Доход: {money(item['daily_income'])} BYN/день\n"
+                f"Площадь: {item['sqm']} км²\n"
+            )
+        text = "\n".join(lines)
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🛒 Купить бизнес", callback_data="buy_company")],
+        [InlineKeyboardButton("⬅️ Меню", callback_data="menu")],
+    ])
+
+    await query.edit_message_text(text, reply_markup=keyboard, parse_mode="HTML")
+
+
+async def buy_company_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    companies = db_execute(
+        """
+        SELECT c.*
+        FROM companies c
+        WHERE NOT EXISTS (
+            SELECT 1 FROM user_companies uc
+            WHERE uc.user_id = %s AND uc.company_id = c.id
+        )
+        ORDER BY c.price ASC
+        """,
+        (query.from_user.id,),
+        fetch=True,
+    )
+
+    if not companies:
+        await query.edit_message_text(
+            "У тебя уже есть все доступные объекты.",
+            reply_markup=main_menu_keyboard(WEBAPP_URL),
+        )
+        return
+
+    keyboard = []
+    for item in companies[:20]:
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{item['name']} — {money(item['price'])} BYN",
+                callback_data=f"company_buy_{item['id']}",
+            )
+        ])
+    keyboard.append([InlineKeyboardButton("⬅️ Меню", callback_data="menu")])
+
+    await query.edit_message_text(
+        "🛒 <b>Выбери объект для покупки:</b>",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
+    )
+
+
+async def company_buy_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    telegram_id = query.from_user.id
+    company_id = int(query.data.replace("company_buy_", ""))
+
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM companies WHERE id = %s",
+                (company_id,),
+            )
+            company = cur.fetchone()
+
+            if not company:
+                await query.answer("Объект не найден.", show_alert=True)
+                return
+
+            cur.execute(
+                """
+                SELECT 1 FROM user_companies
+                WHERE user_id = %s AND company_id = %s
+                """,
+                (telegram_id, company_id),
+            )
+            if cur.fetchone():
+                await query.answer("Этот объект уже куплен.", show_alert=True)
+                return
+
+            cur.execute(
+                "SELECT balance, sqm FROM users WHERE telegram_id = %s FOR UPDATE",
+                (telegram_id,),
+            )
+            user = cur.fetchone()
+
+            price = float(company["price"])
+            if not user or float(user["balance"]) < price:
+                await query.answer("Недостаточно денег.", show_alert=True)
+                return
+
+            cur.execute(
+                """
+                UPDATE users
+                SET balance = balance - %s,
+                    sqm = sqm + %s
+                WHERE telegram_id = %s
+                """,
+                (price, company["sqm"], telegram_id),
+            )
+            cur.execute(
+                """
+                INSERT INTO user_companies (user_id, company_id)
+                VALUES (%s, %s)
+                ON CONFLICT DO NOTHING
+                """,
+                (telegram_id, company_id),
+            )
+
+        conn.commit()
+
+    await query.edit_message_text(
+        f"✅ Куплено: <b>{company['name']}</b>\n"
+        f"💰 Списано: <b>{money(company['price'])} BYN</b>\n"
+        f"📈 Доход: <b>{money(company['daily_income'])} BYN в день</b>",
+        reply_markup=main_menu_keyboard(WEBAPP_URL),
+        parse_mode="HTML",
+    )
+
+
+async def exchange_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    items = db_execute(
+        "SELECT * FROM exchange_items ORDER BY base_price ASC",
+        fetch=True,
+    )
+
+    if not items:
+        text = "📈 Биржа пока пуста."
+    else:
+        lines = ["📈 <b>NEON EXCHANGE</b>\n"]
+        for item in items:
+            lines.append(
+                f"<b>{item['name']}</b>\n"
+                f"Цена: {money(item['current_price'])} BYN\n"
+                f"Диапазон: {money(item['min_price'])} — {money(item['max_price'])} BYN\n"
+            )
+        text = "\n".join(lines)
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🛒 Купить", callback_data="exchange_buy")],
+        [InlineKeyboardButton("📤 Продать", callback_data="exchange_sell")],
+        [InlineKeyboardButton("⬅️ Меню", callback_data="menu")],
+    ])
+
+    await query.edit_message_text(text, reply_markup=keyboard, parse_mode="HTML")
+
+
+async def exchange_trade_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    mode = "buy" if query.data == "exchange_buy" else "sell"
+
+    items = db_execute(
+        "SELECT * FROM exchange_items ORDER BY base_price ASC",
+        fetch=True,
+    )
+
+    keyboard = []
+    for item in items[:20]:
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{item['name']} — {money(item['current_price'])} BYN",
+                callback_data=f"exchange_{mode}_{item['id']}",
+            )
+        ])
+    keyboard.append([InlineKeyboardButton("⬅️ Меню", callback_data="menu")])
+
+    await query.edit_message_text(
+        f"{'🛒 Покупка' if mode == 'buy' else '📤 Продажа'} на бирже:",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+async def exchange_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    telegram_id = query.from_user.id
+    parts = query.data.split("_")
+    mode = parts[1]
+    item_id = int(parts[2])
+    quantity = 1
+
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM exchange_items WHERE id = %s",
+                (item_id,),
+            )
+            item = cur.fetchone()
+
+            if not item:
+                await query.answer("Товар не найден.", show_alert=True)
+                return
+
+            price = float(item["current_price"]) * quantity
+
+            cur.execute(
+                "SELECT balance FROM users WHERE telegram_id = %s FOR UPDATE",
+                (telegram_id,),
+            )
+            user = cur.fetchone()
+
+            if not user:
+                await query.answer("Пользователь не найден.", show_alert=True)
+                return
+
+            if mode == "buy":
+                if float(user["balance"]) < price:
+                    await query.answer("Недостаточно денег.", show_alert=True)
+                    return
+
+                cur.execute(
+                    "UPDATE users SET balance = balance - %s WHERE telegram_id = %s",
+                    (price, telegram_id),
+                )
+                cur.execute(
+                    """
+                    INSERT INTO exchange_holdings (user_id, item_id, quantity)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (user_id, item_id)
+                    DO UPDATE SET quantity = exchange_holdings.quantity + EXCLUDED.quantity
+                    """,
+                    (telegram_id, item_id, quantity),
+                )
+                text = f"✅ Куплено: <b>{item['name']}</b> за {money(price)} BYN"
+            else:
+                cur.execute(
+                    """
+                    SELECT quantity FROM exchange_holdings
+                    WHERE user_id = %s AND item_id = %s FOR UPDATE
+                    """,
+                    (telegram_id, item_id),
+                )
+                holding = cur.fetchone()
+
+                if not holding or holding["quantity"] < quantity:
+                    await query.answer("У тебя нет этого актива.", show_alert=True)
+                    return
+
+                cur.execute(
+                    """
+                    UPDATE exchange_holdings
+                    SET quantity = quantity - %s
+                    WHERE user_id = %s AND item_id = %s
+                    """,
+                    (quantity, telegram_id, item_id),
+                )
+                cur.execute(
+                    "UPDATE users SET balance = balance + %s WHERE telegram_id = %s",
+                    (price, telegram_id),
+                )
+                text = f"✅ Продано: <b>{item['name']}</b> за {money(price)} BYN"
+
+        conn.commit()
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_menu_keyboard(WEBAPP_URL),
+        parse_mode="HTML",
+    )
+
+
+async def transfer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    await query.edit_message_text(
+        "💸 <b>Перевод игроку</b>\n\n"
+        "Отправь команду в формате:\n"
+        "<code>/перевод TELEGRAM_ID СУММА</code>\n\n"
+        "Пример:\n"
+        "<code>/перевод 5634302903 1000</code>",
+        reply_markup=main_menu_keyboard(WEBAPP_URL),
+        parse_mode="HTML",
+    )
+
+
+async def transfer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) != 2:
+        await update.message.reply_text(
+            "Формат: <code>/перевод TELEGRAM_ID СУММА</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    try:
+        receiver_id = int(context.args[0])
+        amount = float(context.args[1].replace(",", "."))
+    except ValueError:
+        await update.message.reply_text("ID и сумма должны быть числами.")
+        return
+
+    sender_id = update.effective_user.id
+
+    if sender_id == receiver_id:
+        await update.message.reply_text("Нельзя перевести деньги самому себе.")
+        return
+
+    if amount <= 0:
+        await update.message.reply_text("Сумма должна быть больше нуля.")
+        return
+
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT balance FROM users WHERE telegram_id = %s FOR UPDATE",
+                (sender_id,),
+            )
+            sender = cur.fetchone()
+
+            if not sender or float(sender["balance"]) < amount:
+                await update.message.reply_text("Недостаточно денег.")
+                return
+
+            cur.execute(
+                """
+                INSERT INTO users (telegram_id, first_name)
+                VALUES (%s, 'Игрок')
+                ON CONFLICT (telegram_id) DO NOTHING
+                """,
+                (receiver_id,),
+            )
+
+            cur.execute(
+                "UPDATE users SET balance = balance - %s WHERE telegram_id = %s",
+                (amount, sender_id),
+            )
+            cur.execute(
+                "UPDATE users SET balance = balance + %s WHERE telegram_id = %s",
+                (amount, receiver_id),
+            )
+            cur.execute(
+                """
+                INSERT INTO transfers (sender_id, receiver_id, amount)
+                VALUES (%s, %s, %s)
+                """,
+                (sender_id, receiver_id, amount),
+            )
+
+        conn.commit()
+
+    await update.message.reply_text(
+        f"✅ Переведено <b>{money(amount)} BYN</b> игроку\n"
+        f"ID: <code>{receiver_id}</code>",
+        parse_mode="HTML",
+    )
+
+
+async def players_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    players = db_execute(
+        """
+        SELECT telegram_id, first_name, username, balance
+        FROM users
+        ORDER BY balance DESC
+        LIMIT 30
+        """,
+        fetch=True,
+    )
+
+    lines = ["👥 <b>Игроки NEON CITY</b>\n"]
+    for player in players:
+        username = f"@{player['username']}" if player["username"] else "—"
+        lines.append(
+            f"<b>{player['first_name']}</b> {username}\n"
+            f"ID: <code>{player['telegram_id']}</code>\n"
+            f"💰 {money(player['balance'])} BYN\n"
+        )
+
+    await query.edit_message_text(
+        "\n".join(lines),
+        reply_markup=main_menu_keyboard(WEBAPP_URL),
+        parse_mode="HTML",
+    )
+
+
+async def chats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    messages = db_execute(
+        """
+        SELECT m.*, u.first_name
+        FROM messages m
+        JOIN users u ON u.telegram_id = m.sender_id
+        WHERE m.receiver_id = %s
+        ORDER BY m.created_at DESC
+        LIMIT 10
+        """,
+        (query.from_user.id,),
+        fetch=True,
+    )
+
+    if not messages:
+        text = "💬 Личных сообщений пока нет."
+    else:
+        lines = ["💬 <b>Последние сообщения</b>\n"]
+        for message in messages:
+            lines.append(
+                f"<b>{message['first_name']}</b>:\n{message['text']}\n"
+            )
+        text = "\n".join(lines)
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_menu_keyboard(WEBAPP_URL),
+        parse_mode="HTML",
+    )
+
+
+async def loans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user = ensure_user(query.from_user)
+
+    text = (
+        f"💳 <b>Кредит</b>\n\n"
+        f"Лимит: <b>{money(LOAN_LIMIT)} BYN</b>\n"
+        f"Ставка: <b>{int(LOAN_RATE * 100)}%</b>\n"
+        f"Текущий долг: <b>{money(user['credit'])} BYN</b>\n\n"
+        f"Отправь команду:\n"
+        f"<code>/кредит СУММА</code>"
+    )
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_menu_keyboard(WEBAPP_URL),
+        parse_mode="HTML",
+    )
+
+
+async def loan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("Формат: <code>/кредит СУММА</code>", parse_mode="HTML")
+        return
+
+    try:
+        amount = float(context.args[0].replace(",", "."))
+    except ValueError:
+        await update.message.reply_text("Сумма должна быть числом.")
+        return
+
+    if amount <= 0 or amount > LOAN_LIMIT:
+        await update.message.reply_text(
+            f"Сумма кредита должна быть от 1 до {money(LOAN_LIMIT)} BYN."
+        )
+        return
+
+    telegram_id = update.effective_user.id
+
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT credit FROM users WHERE telegram_id = %s FOR UPDATE",
+                (telegram_id,),
+            )
+            user = cur.fetchone()
+
+            if not user:
+                await update.message.reply_text("Сначала нажми /start.")
+                return
+
+            if float(user["credit"]) + amount > LOAN_LIMIT:
+                await update.message.reply_text("Превышен кредитный лимит.")
+                return
+
+            cur.execute(
+                """
+                UPDATE users
+                SET balance = balance + %s,
+                    credit = credit + %s
+                WHERE telegram_id = %s
+                """,
+                (amount, amount * (1 + LOAN_RATE), telegram_id),
+            )
+            cur.execute(
+                "INSERT INTO loans (user_id, amount, status) VALUES (%s, %s, 'approved')",
+                (telegram_id, amount),
+            )
+
+        conn.commit()
+
+    await update.message.reply_text(
+        f"✅ Кредит одобрен: <b>{money(amount)} BYN</b>\n"
+        f"К возврату: <b>{money(amount * (1 + LOAN_RATE))} BYN</b>",
+        parse_mode="HTML",
+    )
+
+
+async def friends_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    friends = db_execute(
+        """
+        SELECT u.telegram_id, u.first_name, u.username
+        FROM friends f
+        JOIN users u ON u.telegram_id = f.friend_id
+        WHERE f.owner_id = %s
+        ORDER BY u.first_name
+        """,
+        (query.from_user.id,),
+        fetch=True,
+    )
+
+    if not friends:
+        text = "🤝 Друзей пока нет.\n\nДобавить: <code>/друг TELEGRAM_ID</code>"
+    else:
+        lines = ["🤝 <b>Твои друзья</b>\n"]
+        for friend in friends:
+            username = f"@{friend['username']}" if friend["username"] else ""
+            lines.append(
+                f"<b>{friend['first_name']}</b> {username}\n"
+                f"ID: <code>{friend['telegram_id']}</code>"
+            )
+        text = "\n".join(lines)
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_menu_keyboard(WEBAPP_URL),
+        parse_mode="HTML",
+    )
+
+
+async def friend_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("Формат: <code>/друг TELEGRAM_ID</code>", parse_mode="HTML")
+        return
+
+    try:
+        friend_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("ID должен быть числом.")
+        return
+
+    owner_id = update.effective_user.id
+
+    if owner_id == friend_id:
+        await update.message.reply_text("Нельзя добавить себя в друзья.")
+        return
+
+    try:
+        db_execute(
+            """
+            INSERT INTO users (telegram_id, first_name)
+            VALUES (%s, 'Игрок')
+            ON CONFLICT (telegram_id) DO NOTHING
+            """,
+            (friend_id,),
+        )
+        db_execute(
+            """
+            INSERT INTO friends (owner_id, friend_id)
+            VALUES (%s, %s)
+            ON CONFLICT DO NOTHING
+            """,
+            (owner_id, friend_id),
+        )
+    except psycopg2.errors.ForeignKeyViolation:
+        await update.message.reply_text("Игрок с таким ID не найден.")
+        return
+
+    await update.message.reply_text("✅ Игрок добавлен в друзья.")
+
+
+async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user = ensure_user(query.from_user)
+
+    text = (
+        "⚙️ <b>Настройки карты</b>\n\n"
+        f"Текущий цвет: <code>{user['card_color']}</code>\n"
+        f"Фон карты: <code>{user['card_background']}</code>\n\n"
+        "Отправь команду:\n"
+        "<code>/карта #FF0000 #111111</code>\n\n"
+        "Первый цвет — акцент карты, второй — фон.\n\n"
+        "Изображение карты:\n"
+        "<code>/картинка https://ссылка-на-картинку</code>"
+    )
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_menu_keyboard(WEBAPP_URL),
+        parse_mode="HTML",
+    )
+
+
+async def card_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) != 2:
+        await update.message.reply_text(
+            "Формат: <code>/карта #FF0000 #111111</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    color, background = context.args
+
+    db_execute(
+        """
+        UPDATE users
+        SET card_color = %s,
+            card_background = %s
+        WHERE telegram_id = %s
+        """,
+        (color, background, update.effective_user.id),
+    )
+
+    await update.message.reply_text("✅ Внешний вид карты обновлён.")
+
+
+async def card_image_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text(
+            "Формат: <code>/картинка https://ссылка</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    db_execute(
+        "UPDATE users SET card_image = %s WHERE telegram_id = %s",
+        (context.args[0], update.effective_user.id),
+    )
+
+    await update.message.reply_text("✅ Изображение карты обновлено.")
+
+
+async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if not is_main_admin(query.from_user.id):
+        await query.edit_message_text("Доступ только у главного администратора.")
+        return
+
+    text = (
+        "🛡 <b>Админ-панель</b>\n\n"
+        "Команды главного админа:\n\n"
+        "<code>/админ TELEGRAM_ID</code> — назначить админа\n"
+        "<code>/снятьадмин TELEGRAM_ID</code> — снять админа\n"
+        "<code>/выдать TELEGRAM_ID СУММА</code> — выдать деньги\n"
+        "<code>/добавитьбизнес Категория|Название|Цена|Доход|Площадь</code>\n"
+        "<code>/сообщение TELEGRAM_ID Текст</code> — написать игроку"
+    )
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_menu_keyboard(WEBAPP_URL),
+        parse_mode="HTML",
+    )
+
+
+async def add_admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_main_admin(update.effective_user.id):
+        return
+
+    if not context.args:
+        await update.message.reply_text("Формат: <code>/админ TELEGRAM_ID</code>", parse_mode="HTML")
+        return
+
+    try:
+        admin_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("ID должен быть числом.")
+        return
+
+    db_execute(
+        """
+        INSERT INTO users (telegram_id, first_name)
+        VALUES (%s, 'Игрок')
+        ON CONFLICT (telegram_id) DO NOTHING
+        """,
+        (admin_id,),
+    )
+    db_execute(
+        """
+        INSERT INTO admins (telegram_id, is_main)
+        VALUES (%s, FALSE)
+        ON CONFLICT (telegram_id) DO UPDATE SET is_main = FALSE
+        """,
+        (admin_id,),
+    )
+
+    await update.message.reply_text(f"✅ Игрок {admin_id} назначен администратором.")
+
+
+async def remove_admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_main_admin(update.effective_user.id):
+        return
+
+    if not context.args:
+        await update.message.reply_text("Формат: <code>/снятьадмин TELEGRAM_ID</code>", parse_mode="HTML")
+        return
+
+    try:
+        admin_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("ID должен быть числом.")
+        return
+
+    db_execute("DELETE FROM admins WHERE telegram_id = %s", (admin_id,))
+    await update.message.reply_text(f"✅ Администратор {admin_id} снят.")
+
+
+async def give_money_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_main_admin(update.effective_user.id):
+        return
+
+    if len(context.args) != 2:
+        await update.message.reply_text(
+            "Формат: <code>/выдать TELEGRAM_ID СУММА</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    try:
+        user_id = int(context.args[0])
+        amount = float(context.args[1].replace(",", "."))
+    except ValueError:
+        await update.message.reply_text("ID и сумма должны быть числами.")
+        return
+
+    db_execute(
+        """
+        INSERT INTO users (telegram_id, first_name)
+        VALUES (%s, 'Игрок')
+        ON CONFLICT (telegram_id) DO NOTHING
+        """,
+        (user_id,),
+    )
+    db_execute(
+        "UPDATE users SET balance = balance + %s WHERE telegram_id = %s",
+        (amount, user_id),
+    )
+
+    await update.message.reply_text(
+        f"✅ Выдано <b>{money(amount)} BYN</b> игроку {user_id}.",
+        parse_mode="HTML",
+    )
+
+
+async def add_company_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_main_admin(update.effective_user.id):
+        return
+
+    if len(context.args) != 1:
+        await update.message.reply_text(
+            "Формат:\n"
+            "<code>/добавитьбизнес Категория|Название|Цена|Доход|Площадь</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    try:
+        category, name, price, income, sqm = context.args[0].split("|")
+        db_execute(
+            """
+            INSERT INTO companies (category, name, price, daily_income, sqm)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (
+                category.strip(),
+                name.strip(),
+                float(price.replace(",", ".")),
+                float(income.replace(",", ".")),
+                int(sqm),
+            ),
+        )
+    except Exception:
+        await update.message.reply_text("Проверь формат команды.")
+        return
+
+    await update.message.reply_text("✅ Объект добавлен.")
+
+
+async def admin_message_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_main_admin(update.effective_user.id):
+        return
+
+    if len(context.args) < 2:
+        await update.message.reply_text(
+            "Формат: <code>/сообщение TELEGRAM_ID Текст</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    try:
+        receiver_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("ID должен быть числом.")
+        return
+
+    text = " ".join(context.args[1:])
+
+    db_execute(
+        """
+        INSERT INTO users (telegram_id, first_name)
+        VALUES (%s, 'Игрок')
+        ON CONFLICT (telegram_id) DO NOTHING
+        """,
+        (receiver_id,),
+    )
+    db_execute(
+        """
+        INSERT INTO messages (sender_id, receiver_id, text)
+        VALUES (%s, %s, %s)
+        """,
+        (update.effective_user.id, receiver_id, text),
+    )
+
+    try:
+        await context.bot.send_message(receiver_id, f"📩 Сообщение от администрации:\n\n{text}")
+    except Exception:
+        pass
+
+    await update.message.reply_text("✅ Сообщение отправлено.")
+
+
+async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text(
+        "🌆 <b>NEON CITY</b>\n\nВыбери раздел:",
+        reply_markup=main_menu_keyboard(WEBAPP_URL),
+        parse_mode="HTML",
+    )
+
+
+async def unknown_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text(
+        "Неизвестное действие.",
+        reply_markup=main_menu_keyboard(WEBAPP_URL),
+        parse_mode="HTML",
+    )
+
+
+@app.get("/")
+def root():
+    return {"status": "ok", "app": "NEON CITY"}
+
+
+@app.get("/health")
+def health():
+    try:
+        db_execute("SELECT 1", fetch=True)
+        return {"status": "ok", "database": "connected"}
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error))
+
+
+@app.get("/api/me")
+def api_me(telegram_id: int):
+    user = get_user(telegram_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+def init_db():
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(SCHEMA)
+
+            cur.executemany(
+                """
+                INSERT INTO companies (category, name, price, daily_income, sqm)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT DO NOTHING
+                """,
+                DEFAULT_COMPANIES,
+            )
+
+            for name, base, minimum, maximum in DEFAULT_EXCHANGE:
+                cur.execute(
+                    """
+                    INSERT INTO exchange_items
+                    (name, base_price, min_price, max_price, current_price)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (name) DO NOTHING
+                    """,
+                    (name, base, minimum, maximum, base),
+                )
+
+            cur.execute(
+                """
+                INSERT INTO admins (telegram_id, is_main)
+                VALUES (%s, TRUE)
+                ON CONFLICT (telegram_id) DO UPDATE SET is_main = TRUE
+                """,
+                (MAIN_ADMIN_ID,),
+            )
+
+        conn.commit()
+
+
+async def daily_income_task(application: Application):
+    while True:
+        now = datetime.now()
+        next_run = now.replace(
+            hour=DAILY_INCOME_HOUR, minute=0, second=0, microsecond=0
+        )
+
+        if next_run <= now:
+            next_run += timedelta(days=1)
+
+        await asyncio.sleep((next_run - now).total_seconds())
+
+        try:
+            db_execute(
+                """
+                UPDATE users u
+                SET balance = balance + COALESCE(income.total, 0) - (u.sqm * %s)
+                FROM (
+                    SELECT uc.user_id, SUM(c.daily_income) AS total
+                    FROM user_companies uc
+                    JOIN companies c ON c.id = uc.company_id
+                    GROUP BY uc.user_id
+                ) income
+                WHERE u.telegram_id = income.user_id
+                """,
+                (SQM_TAX,),
+            )
+        except Exception:
+            pass
+
+
+async def on_startup(application: Application):
+    init_db()
+    application.create_task(daily_income_task(application))
+
+
+def main():
+    application = Application.builder().token(BOT_TOKEN).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("перевод", transfer_command))
+    application.add_handler(CommandHandler("кредит", loan_command))
+    application.add_handler(CommandHandler("друг", friend_command))
+    application.add_handler(CommandHandler("карта", card_command))
+    application.add_handler(CommandHandler("картинка", card_image_command))
+    application.add_handler(CommandHandler("админ", add_admin_command))
+    application.add_handler(CommandHandler("снятьадмин", remove_admin_command))
+    application.add_handler(CommandHandler("выдать", give_money_command))
+    application.add_handler(CommandHandler("добавитьбизнес", add_company_command))
+    application.add_handler(CommandHandler("сообщение", admin_message_command))
+
+    application.add_handler(CallbackQueryHandler(profile_callback, pattern="^profile$"))
+    application.add_handler(CallbackQueryHandler(bank_callback, pattern="^bank$"))
+    application.add_handler(CallbackQueryHandler(bank_action, pattern="^bank_"))
+    application.add_handler(CallbackQueryHandler(companies_callback, pattern="^companies$"))
+    application.add_handler(CallbackQueryHandler(buy_company_callback, pattern="^buy_company$"))
+    application.add_handler(CallbackQueryHandler(company_buy_action, pattern="^company_buy_"))
+    application.add_handler(CallbackQueryHandler(exchange_callback, pattern="^exchange$"))
+    application.add_handler(CallbackQueryHandler(exchange_trade_callback, pattern="^exchange_(buy|sell)$"))
+    application.add_handler(CallbackQueryHandler(exchange_action, pattern="^exchange_(buy|sell)_"))
+    application.add_handler(CallbackQueryHandler(transfer_callback, pattern="^transfer$"))
+    application.add_handler(CallbackQueryHandler(players_callback, pattern="^players$"))
+    application.add_handler(CallbackQueryHandler(chats_callback, pattern="^chats$"))
+    application.add_handler(CallbackQueryHandler(loans_callback, pattern="^loans$"))
+    application.add_handler(CallbackQueryHandler(friends_callback, pattern="^friends$"))
+    application.add_handler(CallbackQueryHandler(settings_callback, pattern="^settings$"))
+    application.add_handler(CallbackQueryHandler(admin_callback, pattern="^admin$"))
+    application.add_handler(CallbackQueryHandler(menu_callback, pattern="^menu$"))
+    application.add_handler(CallbackQueryHandler(unknown_callback))
+
+    application.post_init = on_startup
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+
+if __name__ == "__main__":
+    main()
