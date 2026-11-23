@@ -8,7 +8,10 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 MAIN_ADMIN_ID = int(os.getenv("MAIN_ADMIN_ID", "5634302903"))
+WEBAPP_URL = os.getenv("WEBAPP_URL", "")
+
 SQM_TAX = 100
 LOAN_LIMIT = 1_000_000
 LOAN_RATE = 0.10
