@@ -16,10 +16,10 @@ from pydantic import BaseModel
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
-DATABASE_URL = os.getenv("postgresql://postgres:CZG0GfgQr9cqA64Y@db.zmfepxqnxcvkvdjonzhp.supabase.co:5432/postgres")
-BOT_TOKEN = os.getenv("9014323969:AAEDRFi0RdbDv9SFivz9Pvho-Hp4AjqM-uw")
+DATABASE_URL = os.getenv("DATABASE_URL")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 MAIN_ADMIN_ID = int(os.getenv("MAIN_ADMIN_ID", "5634302903"))
-WEBAPP_URL = os.getenv("https://mmiji.de1.netrun.io", "")
+WEBAPP_URL = os.getenv("WEBAPP_URL", "")
 SQM_TAX = 10_000
 LOAN_LIMIT = 1_000_000
 
