@@ -8,7 +8,6 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-BOT_TOKEN=9014323969:AAEDRFi0RdbDv9SFivz9Pvho-Hp4AjqM-uw
 MAIN_ADMIN_ID = int(os.getenv("MAIN_ADMIN_ID", "5634302903"))
 SQM_TAX = 100
 LOAN_LIMIT = 1_000_000
