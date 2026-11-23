@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -6,6 +7,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -16,8 +24,8 @@ SQM_TAX = 100
 LOAN_LIMIT = 1_000_000
 LOAN_RATE = 0.10
 
-if not DATABASE_URL:
-    raise RuntimeError("Заполни DATABASE_URL в переменных окружения.")
+if not DATABASE_URL or not BOT_TOKEN:
+    raise RuntimeError("Заполни DATABASE_URL и BOT_TOKEN в переменных окружения.")
 
 app = FastAPI(title="NEON CITY")
 
@@ -176,16 +184,17 @@ def get_user_by_nickname(nickname):
     return rows[0] if rows else None
 
 
-def ensure_user(telegram_id, nickname, first_name="Игрок"):
-    nickname = nickname.strip()
+def ensure_user(user, nickname=None):
+    telegram_id = user.id
+    first_name = user.first_name or "Игрок"
 
     if not nickname:
-        raise HTTPException(status_code=400, detail="Введите никнейм")
+        nickname = user.username or f"player{telegram_id}"
 
     existing = get_user_by_nickname(nickname)
 
     if existing and existing["telegram_id"] != telegram_id:
-        raise HTTPException(status_code=400, detail="Этот никнейм уже занят")
+        nickname = f"player{telegram_id}"
 
     db_execute(
         """
@@ -214,6 +223,750 @@ def is_admin(telegram_id):
 
 def money(value):
     return f"{float(value):,.2f}".replace(",", " ")
+
+
+def main_keyboard(telegram_id):
+    if WEBAPP_URL:
+        site_button = [
+            InlineKeyboardButton(
+                "🌐 Открыть NEON CITY",
+                web_app=WebAppInfo(url=WEBAPP_URL),
+            )
+        ]
+    else:
+        site_button = [
+            InlineKeyboardButton(
+                "🌐 Сайт недоступен",
+                callback_data="no_site",
+            )
+        ]
+
+    buttons = [
+        site_button,
+        [InlineKeyboardButton("👤 Профиль", callback_data="profile")],
+        [InlineKeyboardButton("🏆 Лидеры", callback_data="leaderboard")],
+        [InlineKeyboardButton("🏦 Банк", callback_data="bank")],
+        [InlineKeyboardButton("📈 Биржа", callback_data="exchange")],
+        [InlineKeyboardButton("🏢 Бизнес", callback_data="companies")],
+        [InlineKeyboardButton("💸 Перевод", callback_data="transfer")],
+        [InlineKeyboardButton("👥 Игроки", callback_data="players")],
+        [InlineKeyboardButton("💬 Сообщения", callback_data="messages")],
+        [InlineKeyboardButton("💳 Кредит", callback_data="loans")],
+        [InlineKeyboardButton("🤝 Друзья", callback_data="friends")],
+    ]
+
+    if is_admin(telegram_id):
+        buttons.append(
+            [InlineKeyboardButton("🛡 Админ-панель", callback_data="admin")]
+        )
+
+    return InlineKeyboardMarkup(buttons)
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = ensure_user(update.effective_user)
+
+    text = (
+        f"🌆 <b>NEON CITY</b>\n\n"
+        f"Привет, <b>{user['nickname']}</b>!\n\n"
+        f"💰 Баланс: <b>{money(user['balance'])} BYN</b>\n"
+        f"🏦 Банк: <b>{money(user['bank'])} BYN</b>\n"
+        f"🌍 Земля: <b>{user['sqm']} км²</b>"
+    )
+
+    await update.message.reply_text(
+        text,
+        reply_markup=main_keyboard(user["telegram_id"]),
+        parse_mode="HTML",
+    )
+
+
+async def profile_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user = get_user(query.from_user.id)
+
+    if not user:
+        await query.edit_message_text("Сначала нажми /start.")
+        return
+
+    text = (
+        f"👤 <b>Профиль</b>\n\n"
+        f"Ник: <b>{user['nickname']}</b>\n"
+        f"Telegram ID: <code>{user['telegram_id']}</code>\n\n"
+        f"💰 Наличные: <b>{money(user['balance'])} BYN</b>\n"
+        f"🏦 Банк: <b>{money(user['bank'])} BYN</b>\n"
+        f"💳 Кредит: <b>{money(user['credit'])} BYN</b>\n"
+        f"🌍 Земля: <b>{user['sqm']} км²</b>"
+    )
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_keyboard(user["telegram_id"]),
+        parse_mode="HTML",
+    )
+
+
+async def leaderboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    players = db_execute(
+        """
+        SELECT nickname, balance, sqm
+        FROM users
+        ORDER BY balance DESC, sqm DESC
+        LIMIT 10
+        """,
+        fetch=True,
+    )
+
+    text = "🏆 <b>Таблица лидеров</b>\n\n"
+
+    if not players:
+        text += "Игроков пока нет."
+    else:
+        for index, player in enumerate(players, start=1):
+            text += (
+                f"{index}. <b>{player['nickname']}</b>\n"
+                f"💰 {money(player['balance'])} BYN\n"
+                f"🌍 {player['sqm']} км²\n\n"
+            )
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_keyboard(query.from_user.id),
+        parse_mode="HTML",
+    )
+
+
+async def bank_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user = get_user(query.from_user.id)
+
+    if not user:
+        await query.edit_message_text("Сначала нажми /start.")
+        return
+
+    text = (
+        f"🏦 <b>NEON BANK</b>\n\n"
+        f"💰 Наличные: <b>{money(user['balance'])} BYN</b>\n"
+        f"💳 На карте: <b>{money(user['bank'])} BYN</b>\n\n"
+        f"Команды:\n"
+        f"<code>/положить СУММА</code>\n"
+        f"<code>/снять СУММА</code>"
+    )
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_keyboard(user["telegram_id"]),
+        parse_mode="HTML",
+    )
+
+
+async def deposit_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text(
+            "Формат: <code>/положить СУММА</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    try:
+        amount = float(context.args[0].replace(",", "."))
+    except ValueError:
+        await update.message.reply_text("Сумма должна быть числом.")
+        return
+
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT balance, bank FROM users WHERE telegram_id = %s FOR UPDATE",
+                (update.effective_user.id,),
+            )
+            user = cur.fetchone()
+
+            if not user or float(user["balance"]) < amount:
+                await update.message.reply_text("Недостаточно наличных.")
+                return
+
+            cur.execute(
+                """
+                UPDATE users
+                SET balance = balance - %s, bank = bank + %s
+                WHERE telegram_id = %s
+                """,
+                (amount, amount, update.effective_user.id),
+            )
+
+        conn.commit()
+
+    await update.message.reply_text(f"✅ Положено в банк: {money(amount)} BYN")
+
+
+async def withdraw_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text(
+            "Формат: <code>/снять СУММА</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    try:
+        amount = float(context.args[0].replace(",", "."))
+    except ValueError:
+        await update.message.reply_text("Сумма должна быть числом.")
+        return
+
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT balance, bank FROM users WHERE telegram_id = %s FOR UPDATE",
+                (update.effective_user.id,),
+            )
+            user = cur.fetchone()
+
+            if not user or float(user["bank"]) < amount:
+                await update.message.reply_text("Недостаточно денег на карте.")
+                return
+
+            cur.execute(
+                """
+                UPDATE users
+                SET bank = bank - %s, balance = balance + %s
+                WHERE telegram_id = %s
+                """,
+                (amount, amount, update.effective_user.id),
+            )
+
+        conn.commit()
+
+    await update.message.reply_text(f"✅ Снято с карты: {money(amount)} BYN")
+
+
+async def exchange_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    items = db_execute(
+        "SELECT * FROM exchange_items ORDER BY base_price ASC",
+        fetch=True,
+    )
+
+    text = "📈 <b>NEON EXCHANGE</b>\n\n"
+
+    for item in items:
+        text += (
+            f"<b>{item['name']}</b>\n"
+            f"Цена: {money(item['current_price'])} BYN\n\n"
+        )
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_keyboard(query.from_user.id),
+        parse_mode="HTML",
+    )
+
+
+async def companies_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    companies = db_execute(
+        """
+        SELECT c.*,
+               EXISTS (
+                   SELECT 1 FROM user_companies uc
+                   WHERE uc.user_id = %s AND uc.company_id = c.id
+               ) AS owned
+        FROM companies c
+        ORDER BY c.price ASC
+        """,
+        (query.from_user.id,),
+        fetch=True,
+    )
+
+    text = "🏢 <b>Бизнес и недвижимость</b>\n\n"
+
+    for company in companies:
+        status = "✅ Куплено" if company["owned"] else "🛒 Доступно"
+        text += (
+            f"{status} <b>{company['name']}</b>\n"
+            f"ID: {company['id']}\n"
+            f"Цена: {money(company['price'])} BYN\n"
+            f"Доход: {money(company['daily_income'])} BYN/день\n\n"
+        )
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_keyboard(query.from_user.id),
+        parse_mode="HTML",
+    )
+
+
+async def transfer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    await query.edit_message_text(
+        "💸 <b>Перевод игроку</b>\n\n"
+        "Команда:\n"
+        "<code>/перевод НИК СУММА</code>\n\n"
+        "Пример:\n"
+        "<code>/перевод Owner 1000</code>",
+        reply_markup=main_keyboard(query.from_user.id),
+        parse_mode="HTML",
+    )
+
+
+async def transfer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) != 2:
+        await update.message.reply_text(
+            "Формат: <code>/перевод НИК СУММА</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    receiver = get_user_by_nickname(context.args[0])
+
+    if not receiver:
+        await update.message.reply_text("Игрок с таким ником не найден.")
+        return
+
+    try:
+        amount = float(context.args[1].replace(",", "."))
+    except ValueError:
+        await update.message.reply_text("Сумма должна быть числом.")
+        return
+
+    sender_id = update.effective_user.id
+
+    if sender_id == receiver["telegram_id"]:
+        await update.message.reply_text("Нельзя перевести самому себе.")
+        return
+
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT balance FROM users WHERE telegram_id = %s FOR UPDATE",
+                (sender_id,),
+            )
+            sender = cur.fetchone()
+
+            if not sender or float(sender["balance"]) < amount:
+                await update.message.reply_text("Недостаточно денег.")
+                return
+
+            cur.execute(
+                "UPDATE users SET balance = balance - %s WHERE telegram_id = %s",
+                (amount, sender_id),
+            )
+            cur.execute(
+                "UPDATE users SET balance = balance + %s WHERE telegram_id = %s",
+                (amount, receiver["telegram_id"]),
+            )
+            cur.execute(
+                """
+                INSERT INTO transfers (sender_id, receiver_id, amount)
+                VALUES (%s, %s, %s)
+                """,
+                (sender_id, receiver["telegram_id"], amount),
+            )
+
+        conn.commit()
+
+    await update.message.reply_text(
+        f"✅ Переведено {money(amount)} BYN игроку {receiver['nickname']}."
+    )
+
+
+async def players_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    players = db_execute(
+        """
+        SELECT nickname, balance, is_admin
+        FROM users
+        ORDER BY balance DESC
+        LIMIT 20
+        """,
+        fetch=True,
+    )
+
+    text = "👥 <b>Игроки NEON CITY</b>\n\n"
+
+    for player in players:
+        status = "🛡 Админ" if player["is_admin"] else "Игрок"
+        text += (
+            f"<b>{player['nickname']}</b> — "
+            f"{money(player['balance'])} BYN — {status}\n"
+        )
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_keyboard(query.from_user.id),
+        parse_mode="HTML",
+    )
+
+
+async def messages_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    messages = db_execute(
+        """
+        SELECT m.*, u.nickname AS sender_name
+        FROM messages m
+        JOIN users u ON u.telegram_id = m.sender_id
+        WHERE m.receiver_id = %s
+        ORDER BY m.created_at DESC
+        LIMIT 10
+        """,
+        (query.from_user.id,),
+        fetch=True,
+    )
+
+    text = "💬 <b>Сообщения</b>\n\n"
+
+    if not messages:
+        text += "Сообщений нет."
+    else:
+        for message in messages:
+            text += f"<b>{message['sender_name']}</b>: {message['text']}\n\n"
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_keyboard(query.from_user.id),
+        parse_mode="HTML",
+    )
+
+
+async def message_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) < 2:
+        await update.message.reply_text(
+            "Формат: <code>/сообщение НИК ТЕКСТ</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    receiver = get_user_by_nickname(context.args[0])
+
+    if not receiver:
+        await update.message.reply_text("Игрок с таким ником не найден.")
+        return
+
+    text = " ".join(context.args[1:])
+
+    db_execute(
+        """
+        INSERT INTO messages (sender_id, receiver_id, text)
+        VALUES (%s, %s, %s)
+        """,
+        (update.effective_user.id, receiver["telegram_id"], text),
+    )
+
+    await update.message.reply_text(
+        f"✅ Сообщение отправлено игроку {receiver['nickname']}."
+    )
+
+
+async def loans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user = get_user(query.from_user.id)
+
+    if not user:
+        await query.edit_message_text("Сначала нажми /start.")
+        return
+
+    await query.edit_message_text(
+        f"💳 <b>Кредит</b>\n\n"
+        f"Лимит: {money(LOAN_LIMIT)} BYN\n"
+        f"Ставка: {int(LOAN_RATE * 100)}%\n"
+        f"Долг: {money(user['credit'])} BYN\n\n"
+        f"Команда:\n<code>/кредит СУММА</code>",
+        reply_markup=main_keyboard(user["telegram_id"]),
+        parse_mode="HTML",
+    )
+
+
+async def loan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text(
+            "Формат: <code>/кредит СУММА</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    try:
+        amount = float(context.args[0].replace(",", "."))
+    except ValueError:
+        await update.message.reply_text("Сумма должна быть числом.")
+        return
+
+    if amount <= 0 or amount > LOAN_LIMIT:
+        await update.message.reply_text(
+            f"Кредит должен быть от 1 до {money(LOAN_LIMIT)} BYN."
+        )
+        return
+
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT credit FROM users WHERE telegram_id = %s FOR UPDATE",
+                (update.effective_user.id,),
+            )
+            user = cur.fetchone()
+
+            if not user:
+                await update.message.reply_text("Сначала нажми /start.")
+                return
+
+            if float(user["credit"]) + amount > LOAN_LIMIT:
+                await update.message.reply_text("Превышен кредитный лимит.")
+                return
+
+            total = amount * (1 + LOAN_RATE)
+
+            cur.execute(
+                """
+                UPDATE users
+                SET balance = balance + %s, credit = credit + %s
+                WHERE telegram_id = %s
+                """,
+                (amount, total, update.effective_user.id),
+            )
+            cur.execute(
+                """
+                INSERT INTO loans (user_id, amount, status)
+                VALUES (%s, %s, 'approved')
+                """,
+                (update.effective_user.id, amount),
+            )
+
+        conn.commit()
+
+    await update.message.reply_text(
+        f"✅ Кредит выдан: {money(amount)} BYN.\nК возврату: {money(total)} BYN."
+    )
+
+
+async def friends_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    friends = db_execute(
+        """
+        SELECT u.nickname
+        FROM friends f
+        JOIN users u ON u.telegram_id = f.friend_id
+        WHERE f.owner_id = %s
+        ORDER BY u.nickname
+        """,
+        (query.from_user.id,),
+        fetch=True,
+    )
+
+    text = "🤝 <b>Друзья</b>\n\n"
+
+    if not friends:
+        text += "Друзей нет.\n\nДобавить: <code>/друг НИК</code>"
+    else:
+        for friend in friends:
+            text += f"<b>{friend['nickname']}</b>\n"
+
+    await query.edit_message_text(
+        text,
+        reply_markup=main_keyboard(query.from_user.id),
+        parse_mode="HTML",
+    )
+
+
+async def friend_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text(
+            "Формат: <code>/друг НИК</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    friend = get_user_by_nickname(context.args[0])
+
+    if not friend:
+        await update.message.reply_text("Игрок с таким ником не найден.")
+        return
+
+    if update.effective_user.id == friend["telegram_id"]:
+        await update.message.reply_text("Нельзя добавить себя.")
+        return
+
+    db_execute(
+        """
+        INSERT INTO friends (owner_id, friend_id)
+        VALUES (%s, %s)
+        ON CONFLICT DO NOTHING
+        """,
+        (update.effective_user.id, friend["telegram_id"]),
+    )
+
+    await update.message.reply_text(
+        f"✅ {friend['nickname']} добавлен в друзья."
+    )
+
+
+async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if not is_admin(query.from_user.id):
+        await query.edit_message_text("Доступ только у администраторов.")
+        return
+
+    await query.edit_message_text(
+        "🛡 <b>Админ-панель</b>\n\n"
+        "<code>/админ НИК</code> — назначить админа\n"
+        "<code>/снятьадмин НИК</code> — снять админа\n"
+        "<code>/выдать НИК СУММА</code> — выдать деньги\n"
+        "<code>/добавитьбизнес Категория|Название|Цена|Доход|Площадь</code>",
+        reply_markup=main_keyboard(query.from_user.id),
+        parse_mode="HTML",
+    )
+
+
+async def add_admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        return
+
+    if not context.args:
+        await update.message.reply_text(
+            "Формат: <code>/админ НИК</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    target = get_user_by_nickname(context.args[0])
+
+    if not target:
+        await update.message.reply_text("Игрок не найден.")
+        return
+
+    db_execute(
+        "UPDATE users SET is_admin = TRUE WHERE telegram_id = %s",
+        (target["telegram_id"],),
+    )
+
+    await update.message.reply_text(
+        f"✅ {target['nickname']} назначен администратором."
+    )
+
+
+async def remove_admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        return
+
+    if not context.args:
+        await update.message.reply_text(
+            "Формат: <code>/снятьадмин НИК</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    target = get_user_by_nickname(context.args[0])
+
+    if not target:
+        await update.message.reply_text("Игрок не найден.")
+        return
+
+    if target["telegram_id"] == MAIN_ADMIN_ID:
+        await update.message.reply_text("Главного администратора нельзя снять.")
+        return
+
+    db_execute(
+        "UPDATE users SET is_admin = FALSE WHERE telegram_id = %s",
+        (target["telegram_id"],),
+    )
+
+    await update.message.reply_text(
+        f"✅ {target['nickname']} снят с должности."
+    )
+
+
+async def give_money_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        return
+
+    if len(context.args) != 2:
+        await update.message.reply_text(
+            "Формат: <code>/выдать НИК СУММА</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    target = get_user_by_nickname(context.args[0])
+
+    if not target:
+        await update.message.reply_text("Игрок не найден.")
+        return
+
+    try:
+        amount = float(context.args[1].replace(",", "."))
+    except ValueError:
+        await update.message.reply_text("Сумма должна быть числом.")
+        return
+
+    db_execute(
+        "UPDATE users SET balance = balance + %s WHERE telegram_id = %s",
+        (amount, target["telegram_id"]),
+    )
+
+    await update.message.reply_text(
+        f"✅ Выдано {money(amount)} BYN игроку {target['nickname']}."
+    )
+
+
+async def add_company_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        return
+
+    if len(context.args) != 1:
+        await update.message.reply_text(
+            "Формат:\n"
+            "<code>/добавитьбизнес Категория|Название|Цена|Доход|Площадь</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    try:
+        category, name, price, income, sqm = context.args[0].split("|")
+
+        db_execute(
+            """
+            INSERT INTO companies (category, name, price, daily_income, sqm)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (
+                category.strip(),
+                name.strip(),
+                float(price.replace(",", ".")),
+                float(income.replace(",", ".")),
+                int(sqm),
+            ),
+        )
+    except Exception:
+        await update.message.reply_text("Проверь формат команды.")
+        return
+
+    await update.message.reply_text("✅ Объект добавлен.")
+
+
+async def no_site_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer(
+        "Добавь WEBAPP_URL в секреты Netrun.",
+        show_alert=True,
+    )
 
 
 class LoginRequest(BaseModel):
@@ -305,14 +1058,25 @@ def health():
 
 @app.post("/api/login")
 def login(data: LoginRequest):
-    return ensure_user(data.telegram_id, data.nickname, data.first_name)
+    class WebUser:
+        def __init__(self, telegram_id, first_name):
+            self.id = telegram_id
+            self.first_name = first_name
+            self.username = ""
+
+    return ensure_user(
+        WebUser(data.telegram_id, data.first_name),
+        data.nickname,
+    )
 
 
 @app.get("/api/profile")
 def profile(telegram_id: int):
     user = get_user(telegram_id)
+
     if not user:
         raise HTTPException(status_code=404, detail="Игрок не найден")
+
     return user
 
 
@@ -725,7 +1489,10 @@ def send_message(data: MessageRequest):
         (data.sender_id, receiver["telegram_id"], data.text),
     )
 
-    return {"status": "ok", "message": f"Сообщение отправлено игроку {receiver['nickname']}"}
+    return {
+        "status": "ok",
+        "message": f"Сообщение отправлено игроку {receiver['nickname']}",
+    }
 
 
 @app.get("/api/messages")
@@ -801,7 +1568,10 @@ def give_money(data: GiveMoneyRequest):
         (data.amount, target["telegram_id"]),
     )
 
-    return {"status": "ok", "message": f"Выдано {money(data.amount)} BYN игроку {target['nickname']}"}
+    return {
+        "status": "ok",
+        "message": f"Выдано {money(data.amount)} BYN игроку {target['nickname']}",
+    }
 
 
 @app.post("/api/admin/company")
@@ -855,9 +1625,52 @@ def init_db():
         conn.commit()
 
 
-@app.on_event("startup")
-def startup():
+telegram_application = Application.builder().token(BOT_TOKEN).build()
+
+telegram_application.add_handler(CommandHandler("start", start))
+telegram_application.add_handler(CommandHandler("положить", deposit_command))
+telegram_application.add_handler(CommandHandler("снять", withdraw_command))
+telegram_application.add_handler(CommandHandler("перевод", transfer_command))
+telegram_application.add_handler(CommandHandler("кредит", loan_command))
+telegram_application.add_handler(CommandHandler("друг", friend_command))
+telegram_application.add_handler(CommandHandler("сообщение", message_command))
+telegram_application.add_handler(CommandHandler("админ", add_admin_command))
+telegram_application.add_handler(CommandHandler("снятьадмин", remove_admin_command))
+telegram_application.add_handler(CommandHandler("выдать", give_money_command))
+telegram_application.add_handler(CommandHandler("добавитьбизнес", add_company_command))
+
+telegram_application.add_handler(CallbackQueryHandler(profile_callback, pattern="^profile$"))
+telegram_application.add_handler(CallbackQueryHandler(leaderboard_callback, pattern="^leaderboard$"))
+telegram_application.add_handler(CallbackQueryHandler(bank_callback, pattern="^bank$"))
+telegram_application.add_handler(CallbackQueryHandler(exchange_callback, pattern="^exchange$"))
+telegram_application.add_handler(CallbackQueryHandler(companies_callback, pattern="^companies$"))
+telegram_application.add_handler(CallbackQueryHandler(transfer_callback, pattern="^transfer$"))
+telegram_application.add_handler(CallbackQueryHandler(players_callback, pattern="^players$"))
+telegram_application.add_handler(CallbackQueryHandler(messages_callback, pattern="^messages$"))
+telegram_application.add_handler(CallbackQueryHandler(loans_callback, pattern="^loans$"))
+telegram_application.add_handler(CallbackQueryHandler(friends_callback, pattern="^friends$"))
+telegram_application.add_handler(CallbackQueryHandler(admin_callback, pattern="^admin$"))
+telegram_application.add_handler(CallbackQueryHandler(no_site_callback, pattern="^no_site$"))
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
     init_db()
+
+    await telegram_application.initialize()
+    await telegram_application.start()
+    await telegram_application.updater.start_polling(
+        allowed_updates=Update.ALL_TYPES
+    )
+
+    yield
+
+    await telegram_application.updater.stop()
+    await telegram_application.stop()
+    await telegram_application.shutdown()
+
+
+app.router.lifespan_context = lifespan
 
 
 if __name__ == "__main__":
