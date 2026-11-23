@@ -18,7 +18,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 
 DATABASE_URL = os.getenv("postgresql://postgres:CZG0GfgQr9cqA64Y@db.zmfepxqnxcvkvdjonzhp.supabase.co:5432/postgres")
 BOT_TOKEN = os.getenv("9014323969:AAEDRFi0RdbDv9SFivz9Pvho-Hp4AjqM-uw")
-MAIN_ADMIN_ID = int(os.getenv("5634302903"))
+MAIN_ADMIN_ID = int(os.getenv("MAIN_ADMIN_ID", "5634302903"))
 WEBAPP_URL = os.getenv("https://mmiji.de1.netrun.io", "")
 SQM_TAX = 10_000
 LOAN_LIMIT = 1_000_000
