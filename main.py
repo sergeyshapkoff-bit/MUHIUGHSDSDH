@@ -5,7 +5,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import (
@@ -224,6 +224,483 @@ def money(value):
     return f"{float(value):,.2f}".replace(",", " ")
 
 
+PAGE = """<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEON CITY</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:Arial,sans-serif;color:#e5e7eb;background:radial-gradient(circle at 15% 15%,#1e1b4b,transparent 55%),radial-gradient(circle at 85% 10%,#312e81,transparent 50%),#05060f}
+.wrap{max-width:1000px;margin:0 auto;padding:24px 16px 70px}
+.title{font-size:44px;font-weight:900;text-align:center;color:#fff;text-shadow:0 0 20px #7c3aed,0 0 40px #06b6d4}
+.card{background:rgba(15,23,42,.85);border:1px solid rgba(124,58,237,.45);border-radius:22px;padding:22px;margin-bottom:18px}
+input,textarea,button{width:100%;padding:13px;border-radius:12px;border:1px solid #334155;background:#0f172a;color:#fff;font-size:15px;margin-bottom:10px}
+button{background:linear-gradient(90deg,#7c3aed,#06b6d4);border:none;font-weight:700;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.result{white-space:pre-wrap;margin-top:12px;color:#a5f3fc;font-size:14px}
+h2{margin-top:0;color:#c4b5fd}
+.hidden{display:none}
+.nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:9px;border-bottom:1px solid #1e293b;text-align:left}
+th{color:#a78bfa}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="title">NEON CITY</div>
+
+<div id="auth" class="card">
+<h2>Вход</h2>
+<button onclick="login()">Войти через Telegram</button>
+<div id="auth_result" class="result"></div>
+</div>
+
+<div id="game" class="hidden">
+<div class="nav">
+<button onclick="show('profile')">Профиль</button>
+<button onclick="show('leaderboard')">Лидеры</button>
+<button onclick="show('bank')">Банк</button>
+<button onclick="show('exchange')">Биржа</button>
+<button onclick="show('companies')">Бизнес</button>
+<button onclick="show('transfer')">Перевод</button>
+<button onclick="show('players')">Игроки</button>
+<button onclick="show('chats')">Чаты</button>
+<button onclick="show('loans')">Кредит</button>
+<button onclick="show('friends')">Друзья</button>
+<button onclick="show('settings')">Карта</button>
+<button id="admin_button" class="hidden" onclick="show('admin')">Админка</button>
+</div>
+
+<div id="profile" class="card"><h2>Профиль</h2><div id="profile_info"></div></div>
+<div id="leaderboard" class="card hidden"><h2>Таблица лидеров</h2><button onclick="loadLeaderboard()">Обновить</button><div id="leaderboard_info"></div></div>
+
+<div id="bank" class="card hidden">
+<h2>NEON BANK</h2><div id="bank_info"></div>
+<input id="bank_amount" placeholder="Сумма">
+<div class="grid">
+<button onclick="bank('deposit')">Положить</button>
+<button onclick="bank('withdraw')">Снять</button>
+</div>
+<div id="bank_result" class="result"></div>
+</div>
+
+<div id="exchange" class="card hidden">
+<h2>Биржа</h2><button onclick="loadExchange()">Обновить</button><div id="exchange_info"></div>
+<input id="exchange_item" placeholder="Название актива">
+<input id="exchange_quantity" placeholder="Количество" value="1">
+<div class="grid">
+<button onclick="trade('buy')">Купить</button>
+<button onclick="trade('sell')">Продать</button>
+</div>
+<div id="exchange_result" class="result"></div>
+</div>
+
+<div id="companies" class="card hidden">
+<h2>Бизнес и недвижимость</h2><button onclick="loadCompanies()">Показать</button>
+<input id="company_id" placeholder="ID объекта">
+<button onclick="buyCompany()">Купить</button>
+<div id="companies_info" class="result"></div>
+</div>
+
+<div id="transfer" class="card hidden">
+<h2>Перевод</h2>
+<input id="receiver_nick" placeholder="Ник получателя">
+<input id="transfer_amount" placeholder="Сумма">
+<button onclick="transfer()">Перевести</button>
+<div id="transfer_result" class="result"></div>
+</div>
+
+<div id="players" class="card hidden"><h2>Игроки</h2><button onclick="loadPlayers()">Обновить</button><div id="players_info"></div></div>
+
+<div id="chats" class="card hidden">
+<h2>Сообщения</h2>
+<input id="message_nick" placeholder="Ник получателя">
+<textarea id="message_text" placeholder="Текст"></textarea>
+<button onclick="sendMessage()">Отправить</button>
+<button onclick="loadMessages()">Обновить</button>
+<div id="messages_info" class="result"></div>
+</div>
+
+<div id="loans" class="card hidden">
+<h2>Кредит</h2><div id="loan_info"></div>
+<input id="loan_amount" placeholder="Сумма">
+<button onclick="takeLoan()">Оформить</button>
+<div id="loan_result" class="result"></div>
+</div>
+
+<div id="friends" class="card hidden">
+<h2>Друзья</h2>
+<input id="friend_nick" placeholder="Ник друга">
+<button onclick="addFriend()">Добавить</button>
+<button onclick="loadFriends()">Показать</button>
+<div id="friends_info" class="result"></div>
+</div>
+
+<div id="settings" class="card hidden">
+<h2>Карта</h2>
+<input id="card_color" placeholder="Цвет карты">
+<input id="card_background" placeholder="Фон карты">
+<input id="card_image" placeholder="Ссылка на изображение">
+<button onclick="saveCard()">Сохранить</button>
+<div id="card_result" class="result"></div>
+</div>
+
+<div id="admin" class="card hidden">
+<h2>Админ-панель</h2>
+<input id="admin_nick" placeholder="Ник игрока">
+<div class="grid">
+<button onclick="makeAdmin()">Назначить админом</button>
+<button onclick="removeAdmin()">Снять админа</button>
+</div>
+<input id="give_amount" placeholder="Сумма">
+<button onclick="giveMoney()">Выдать деньги</button>
+<input id="company_category" placeholder="Категория">
+<input id="company_name" placeholder="Название">
+<input id="company_price" placeholder="Цена">
+<input id="company_income" placeholder="Доход в день">
+<input id="company_sqm" placeholder="Площадь км²">
+<button onclick="addCompany()">Добавить бизнес</button>
+<div id="admin_result" class="result"></div>
+</div>
+</div>
+</div>
+
+<script>
+let currentId = null;
+
+async function api(url, data) {
+  const response = await fetch(url, {
+    method: data ? 'POST' : 'GET',
+    headers: {'Content-Type': 'application/json'},
+    body: data ? JSON.stringify(data) : undefined
+  });
+
+  const text = await response.text();
+  let result;
+
+  try {
+    result = JSON.parse(text);
+  } catch (error) {
+    throw new Error('Сервер вернул HTML вместо JSON');
+  }
+
+  if (!response.ok) throw new Error(result.detail || 'Ошибка');
+  return result;
+}
+
+function show(section) {
+  document.querySelectorAll('.card').forEach(card => card.classList.add('hidden'));
+  document.getElementById(section).classList.remove('hidden');
+
+  if (section === 'profile') loadProfile();
+  if (section === 'leaderboard') loadLeaderboard();
+  if (section === 'bank') loadBank();
+  if (section === 'exchange') loadExchange();
+  if (section === 'companies') loadCompanies();
+  if (section === 'players') loadPlayers();
+  if (section === 'chats') loadMessages();
+  if (section === 'loans') loadLoan();
+  if (section === 'friends') loadFriends();
+}
+
+async function login() {
+  const tg = window.Telegram && window.Telegram.WebApp;
+
+  if (!tg || !tg.initDataUnsafe || !tg.initDataUnsafe.user) {
+    document.getElementById('auth_result').textContent = 'Открой сайт через кнопку в Telegram-боте.';
+    return;
+  }
+
+  const user = tg.initDataUnsafe.user;
+  const telegram_id = user.id;
+  const first_name = user.first_name || 'Игрок';
+  const nickname = user.username || ('player' + telegram_id);
+
+  try {
+    const data = await api('/api/login', {
+      telegram_id,
+      nickname,
+      first_name
+    });
+
+    currentId = data.telegram_id;
+    document.getElementById('auth').classList.add('hidden');
+    document.getElementById('game').classList.remove('hidden');
+
+    if (data.is_admin) {
+      document.getElementById('admin_button').classList.remove('hidden');
+    }
+
+    show('profile');
+  } catch (error) {
+    document.getElementById('auth_result').textContent = error.message;
+  }
+}
+
+async function loadProfile() {
+  const user = await api('/api/profile?telegram_id=' + currentId);
+  document.getElementById('profile_info').innerHTML =
+    '<p><b>Ник:</b> ' + user.nickname + '</p>' +
+    '<p><b>Telegram ID:</b> ' + user.telegram_id + '</p>' +
+    '<p><b>Наличные:</b> ' + user.balance + ' BYN</p>' +
+    '<p><b>Банк:</b> ' + user.bank + ' BYN</p>' +
+    '<p><b>Кредит:</b> ' + user.credit + ' BYN</p>' +
+    '<p><b>Земля:</b> ' + user.sqm + ' км²</p>';
+}
+
+async function loadLeaderboard() {
+  const players = await api('/api/leaderboard');
+  let html = '<table><tr><th>Место</th><th>Ник</th><th>Баланс</th><th>Земля</th></tr>';
+
+  players.forEach((player, index) => {
+    html += '<tr><td>' + (index + 1) + '</td><td>' + player.nickname + '</td><td>' + player.balance + ' BYN</td><td>' + player.sqm + ' км²</td></tr>';
+  });
+
+  document.getElementById('leaderboard_info').innerHTML = html + '</table>';
+}
+
+async function loadBank() {
+  const user = await api('/api/profile?telegram_id=' + currentId);
+  document.getElementById('bank_info').innerHTML =
+    '<p><b>Наличные:</b> ' + user.balance + ' BYN</p>' +
+    '<p><b>На карте:</b> ' + user.bank + ' BYN</p>';
+}
+
+async function bank(action) {
+  try {
+    const data = await api('/api/bank', {
+      telegram_id: currentId,
+      amount: Number(document.getElementById('bank_amount').value),
+      action
+    });
+    document.getElementById('bank_result').textContent = data.message;
+    loadBank();
+  } catch (error) {
+    document.getElementById('bank_result').textContent = error.message;
+  }
+}
+
+async function loadExchange() {
+  const items = await api('/api/exchange');
+  let html = '<table><tr><th>Актив</th><th>Цена</th><th>Минимум</th><th>Максимум</th></tr>';
+
+  items.forEach(item => {
+    html += '<tr><td>' + item.name + '</td><td>' + item.current_price + ' BYN</td><td>' + item.min_price + '</td><td>' + item.max_price + '</td></tr>';
+  });
+
+  document.getElementById('exchange_info').innerHTML = html + '</table>';
+}
+
+async function trade(action) {
+  try {
+    const items = await api('/api/exchange');
+    const name = document.getElementById('exchange_item').value;
+    const item = items.find(i => i.name.toLowerCase() === name.toLowerCase());
+
+    if (!item) throw new Error('Актив не найден');
+
+    const data = await api('/api/exchange/trade', {
+      telegram_id: currentId,
+      item_id: item.id,
+      quantity: Number(document.getElementById('exchange_quantity').value),
+      action
+    });
+
+    document.getElementById('exchange_result').textContent = data.message;
+  } catch (error) {
+    document.getElementById('exchange_result').textContent = error.message;
+  }
+}
+
+async function loadCompanies() {
+  const companies = await api('/api/companies?telegram_id=' + currentId);
+  let html = '<table><tr><th>ID</th><th>Название</th><th>Цена</th><th>Доход</th><th>Статус</th></tr>';
+
+  companies.forEach(company => {
+    html += '<tr><td>' + company.id + '</td><td>' + company.name + '</td><td>' + company.price + ' BYN</td><td>' + company.daily_income + ' BYN</td><td>' + (company.owned ? 'Куплено' : 'Доступно') + '</td></tr>';
+  });
+
+  document.getElementById('companies_info').innerHTML = html + '</table>';
+}
+
+async function buyCompany() {
+  try {
+    const data = await api('/api/companies/buy', {
+      telegram_id: currentId,
+      company_id: Number(document.getElementById('company_id').value)
+    });
+    document.getElementById('companies_info').textContent = data.message;
+    loadCompanies();
+  } catch (error) {
+    document.getElementById('companies_info').textContent = error.message;
+  }
+}
+
+async function transfer() {
+  try {
+    const data = await api('/api/transfer', {
+      sender_id: currentId,
+      receiver_nickname: document.getElementById('receiver_nick').value,
+      amount: Number(document.getElementById('transfer_amount').value)
+    });
+    document.getElementById('transfer_result').textContent = data.message;
+  } catch (error) {
+    document.getElementById('transfer_result').textContent = error.message;
+  }
+}
+
+async function loadPlayers() {
+  const players = await api('/api/players');
+  let html = '<table><tr><th>Ник</th><th>Баланс</th><th>Статус</th></tr>';
+
+  players.forEach(player => {
+    html += '<tr><td>' + player.nickname + '</td><td>' + player.balance + ' BYN</td><td>' + (player.is_admin ? 'Админ' : 'Игрок') + '</td></tr>';
+  });
+
+  document.getElementById('players_info').innerHTML = html + '</table>';
+}
+
+async function sendMessage() {
+  try {
+    const data = await api('/api/messages', {
+      sender_id: currentId,
+      receiver_nickname: document.getElementById('message_nick').value,
+      text: document.getElementById('message_text').value
+    });
+    document.getElementById('messages_info').textContent = data.message;
+  } catch (error) {
+    document.getElementById('messages_info').textContent = error.message;
+  }
+}
+
+async function loadMessages() {
+  const messages = await api('/api/messages?telegram_id=' + currentId);
+  let html = '';
+
+  messages.forEach(message => {
+    html += '<p><b>' + message.sender_name + ':</b> ' + message.text + '</p>';
+  });
+
+  document.getElementById('messages_info').innerHTML = html || 'Сообщений нет';
+}
+
+async function loadLoan() {
+  const user = await api('/api/profile?telegram_id=' + currentId);
+  document.getElementById('loan_info').innerHTML = '<p><b>Долг:</b> ' + user.credit + ' BYN</p>';
+}
+
+async function takeLoan() {
+  try {
+    const data = await api('/api/loan', {
+      telegram_id: currentId,
+      amount: Number(document.getElementById('loan_amount').value)
+    });
+    document.getElementById('loan_result').textContent = data.message;
+    loadLoan();
+  } catch (error) {
+    document.getElementById('loan_result').textContent = error.message;
+  }
+}
+
+async function addFriend() {
+  try {
+    const data = await api('/api/friends', {
+      telegram_id: currentId,
+      friend_nickname: document.getElementById('friend_nick').value
+    });
+    document.getElementById('friends_info').textContent = data.message;
+  } catch (error) {
+    document.getElementById('friends_info').textContent = error.message;
+  }
+}
+
+async function loadFriends() {
+  const friends = await api('/api/friends?telegram_id=' + currentId);
+  let html = '';
+
+  friends.forEach(friend => {
+    html += '<p><b>' + friend.nickname + '</b></p>';
+  });
+
+  document.getElementById('friends_info').innerHTML = html || 'Друзей нет';
+}
+
+async function saveCard() {
+  try {
+    const data = await api('/api/card-settings', {
+      telegram_id: currentId,
+      card_color: document.getElementById('card_color').value,
+      card_background: document.getElementById('card_background').value,
+      card_image: document.getElementById('card_image').value
+    });
+    document.getElementById('card_result').textContent = data.message;
+  } catch (error) {
+    document.getElementById('card_result').textContent = error.message;
+  }
+}
+
+async function makeAdmin() {
+  await adminAction('/api/admin/add');
+}
+
+async function removeAdmin() {
+  await adminAction('/api/admin/remove');
+}
+
+async function adminAction(url) {
+  try {
+    const data = await api(url, {
+      admin_id: currentId,
+      target_nickname: document.getElementById('admin_nick').value
+    });
+    document.getElementById('admin_result').textContent = data.message;
+  } catch (error) {
+    document.getElementById('admin_result').textContent = error.message;
+  }
+}
+
+async function giveMoney() {
+  try {
+    const data = await api('/api/admin/give-money', {
+      admin_id: currentId,
+      target_nickname: document.getElementById('admin_nick').value,
+      amount: Number(document.getElementById('give_amount').value)
+    });
+    document.getElementById('admin_result').textContent = data.message;
+  } catch (error) {
+    document.getElementById('admin_result').textContent = error.message;
+  }
+}
+
+async function addCompany() {
+  try {
+    const data = await api('/api/admin/company', {
+      admin_id: currentId,
+      category: document.getElementById('company_category').value,
+      name: document.getElementById('company_name').value,
+      price: Number(document.getElementById('company_price').value),
+      daily_income: Number(document.getElementById('company_income').value),
+      sqm: Number(document.getElementById('company_sqm').value)
+    });
+    document.getElementById('admin_result').textContent = data.message;
+  } catch (error) {
+    document.getElementById('admin_result').textContent = error.message;
+  }
+}
+
+if (window.Telegram && window.Telegram.WebApp) {
+  window.Telegram.WebApp.ready();
+  window.Telegram.WebApp.expand();
+}
+</script>
+</body>
+</html>"""
+
+
 def main_keyboard(telegram_id):
     if WEBAPP_URL:
         site_button = [
@@ -352,17 +829,13 @@ async def bank_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Сначала нажми /start.")
         return
 
-    text = (
+    await query.edit_message_text(
         f"🏦 <b>NEON BANK</b>\n\n"
         f"💰 Наличные: <b>{money(user['balance'])} BYN</b>\n"
         f"💳 На карте: <b>{money(user['bank'])} BYN</b>\n\n"
         f"Команды:\n"
         f"<code>/deposit СУММА</code>\n"
-        f"<code>/withdraw СУММА</code>"
-    )
-
-    await query.edit_message_text(
-        text,
+        f"<code>/withdraw СУММА</code>",
         reply_markup=main_keyboard(user["telegram_id"]),
         parse_mode="HTML",
     )
@@ -1045,9 +1518,9 @@ class AddCompanyRequest(BaseModel):
     sqm: int
 
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 def home():
-    return FileResponse("index.html")
+    return PAGE
 
 
 @app.get("/health")
