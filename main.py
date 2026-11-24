@@ -233,25 +233,76 @@ PAGE = """<!doctype html>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;font-family:Arial,sans-serif;color:#e5e7eb;background:radial-gradient(circle at 15% 15%,#1e1b4b,transparent 55%),radial-gradient(circle at 85% 10%,#312e81,transparent 50%),#05060f}
+body{
+margin:0;
+min-height:100vh;
+font-family:Arial,sans-serif;
+color:#e5e7eb;
+background:
+radial-gradient(circle at 15% 15%,#1e1b4b,transparent 55%),
+radial-gradient(circle at 85% 10%,#312e81,transparent 50%),
+#05060f
+}
 .wrap{max-width:1000px;margin:0 auto;padding:24px 16px 70px}
-.title{font-size:44px;font-weight:900;text-align:center;color:#fff;text-shadow:0 0 20px #7c3aed,0 0 40px #06b6d4}
-.card{background:rgba(15,23,42,.85);border:1px solid rgba(124,58,237,.45);border-radius:22px;padding:22px;margin-bottom:18px}
-input,textarea,button{width:100%;padding:13px;border-radius:12px;border:1px solid #334155;background:#0f172a;color:#fff;font-size:15px;margin-bottom:10px}
-button{background:linear-gradient(90deg,#7c3aed,#06b6d4);border:none;font-weight:700;cursor:pointer}
+.title{
+font-size:46px;
+font-weight:900;
+text-align:center;
+color:#fff;
+text-shadow:0 0 20px #7c3aed,0 0 40px #06b6d4
+}
+.subtitle{text-align:center;color:#94a3b8;margin-bottom:28px}
+.card{
+background:rgba(15,23,42,.85);
+border:1px solid rgba(124,58,237,.45);
+border-radius:22px;
+padding:22px;
+margin-bottom:18px;
+box-shadow:0 0 30px rgba(124,58,237,.18)
+}
+input,textarea,button{
+width:100%;
+padding:13px;
+border-radius:12px;
+border:1px solid #334155;
+background:#0f172a;
+color:#fff;
+font-size:15px;
+margin-bottom:10px
+}
+button{
+background:linear-gradient(90deg,#7c3aed,#06b6d4);
+border:none;
+font-weight:700;
+cursor:pointer
+}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .result{white-space:pre-wrap;margin-top:12px;color:#a5f3fc;font-size:14px}
 h2{margin-top:0;color:#c4b5fd}
 .hidden{display:none}
-.nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px}
+.nav{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+gap:10px;
+margin-bottom:20px
+}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{padding:9px;border-bottom:1px solid #1e293b;text-align:left}
 th{color:#a78bfa}
+.badge{
+display:inline-block;
+padding:3px 9px;
+border-radius:999px;
+background:#7c3aed;
+color:#fff;
+font-size:12px
+}
 </style>
 </head>
 <body>
 <div class="wrap">
 <div class="title">NEON CITY</div>
+<div class="subtitle">Игровая экономика, бизнес и биржа</div>
 
 <div id="auth" class="card">
 <h2>Вход</h2>
@@ -261,109 +312,126 @@ th{color:#a78bfa}
 
 <div id="game" class="hidden">
 <div class="nav">
-<button onclick="show('profile')">Профиль</button>
-<button onclick="show('leaderboard')">Лидеры</button>
-<button onclick="show('bank')">Банк</button>
-<button onclick="show('exchange')">Биржа</button>
-<button onclick="show('companies')">Бизнес</button>
-<button onclick="show('transfer')">Перевод</button>
-<button onclick="show('players')">Игроки</button>
-<button onclick="show('chats')">Чаты</button>
-<button onclick="show('loans')">Кредит</button>
-<button onclick="show('friends')">Друзья</button>
-<button onclick="show('settings')">Карта</button>
-<button id="admin_button" class="hidden" onclick="show('admin')">Админка</button>
+<button onclick="show('profile')">👤 Профиль</button>
+<button onclick="show('leaderboard')">🏆 Лидеры</button>
+<button onclick="show('bank')">🏦 Банк</button>
+<button onclick="show('exchange')">📈 Биржа</button>
+<button onclick="show('companies')">🏢 Бизнес</button>
+<button onclick="show('transfer')">💸 Перевод</button>
+<button onclick="show('players')">👥 Игроки</button>
+<button onclick="show('chats')">💬 Чаты</button>
+<button onclick="show('loans')">💳 Кредит</button>
+<button onclick="show('friends')">🤝 Друзья</button>
+<button onclick="show('settings')">⚙️ Карта</button>
+<button id="admin_button" class="hidden" onclick="show('admin')">🛡 Админка</button>
 </div>
 
-<div id="profile" class="card"><h2>Профиль</h2><div id="profile_info"></div></div>
-<div id="leaderboard" class="card hidden"><h2>Таблица лидеров</h2><button onclick="loadLeaderboard()">Обновить</button><div id="leaderboard_info"></div></div>
+<div id="profile" class="card">
+<h2>Профиль</h2>
+<div id="profile_info"></div>
+</div>
+
+<div id="leaderboard" class="card hidden">
+<h2>Таблица лидеров</h2>
+<button onclick="loadLeaderboard()">Обновить</button>
+<div id="leaderboard_info"></div>
+</div>
 
 <div id="bank" class="card hidden">
-<h2>NEON BANK</h2><div id="bank_info"></div>
+<h2>NEON BANK</h2>
+<div id="bank_info"></div>
 <input id="bank_amount" placeholder="Сумма">
 <div class="grid">
-<button onclick="bank('deposit')">Положить</button>
-<button onclick="bank('withdraw')">Снять</button>
+<button onclick="bank('deposit')">📥 Положить</button>
+<button onclick="bank('withdraw')">📤 Снять</button>
 </div>
 <div id="bank_result" class="result"></div>
 </div>
 
 <div id="exchange" class="card hidden">
-<h2>Биржа</h2><button onclick="loadExchange()">Обновить</button><div id="exchange_info"></div>
+<h2>Биржа</h2>
+<button onclick="loadExchange()">Обновить цены</button>
+<div id="exchange_info"></div>
 <input id="exchange_item" placeholder="Название актива">
 <input id="exchange_quantity" placeholder="Количество" value="1">
 <div class="grid">
-<button onclick="trade('buy')">Купить</button>
-<button onclick="trade('sell')">Продать</button>
+<button onclick="trade('buy')">🛒 Купить</button>
+<button onclick="trade('sell')">📤 Продать</button>
 </div>
 <div id="exchange_result" class="result"></div>
 </div>
 
 <div id="companies" class="card hidden">
-<h2>Бизнес и недвижимость</h2><button onclick="loadCompanies()">Показать</button>
-<input id="company_id" placeholder="ID объекта">
-<button onclick="buyCompany()">Купить</button>
+<h2>Бизнес и недвижимость</h2>
+<button onclick="loadCompanies()">Показать объекты</button>
+<input id="company_id" placeholder="ID объекта для покупки">
+<button onclick="buyCompany()">🛒 Купить объект</button>
 <div id="companies_info" class="result"></div>
 </div>
 
 <div id="transfer" class="card hidden">
-<h2>Перевод</h2>
-<input id="receiver_nick" placeholder="Ник получателя">
+<h2>Перевод игроку</h2>
+<input id="receiver_nick" placeholder="Никнейм получателя">
 <input id="transfer_amount" placeholder="Сумма">
-<button onclick="transfer()">Перевести</button>
+<button onclick="transfer()">💸 Перевести</button>
 <div id="transfer_result" class="result"></div>
 </div>
 
-<div id="players" class="card hidden"><h2>Игроки</h2><button onclick="loadPlayers()">Обновить</button><div id="players_info"></div></div>
+<div id="players" class="card hidden">
+<h2>Игроки</h2>
+<button onclick="loadPlayers()">Обновить список</button>
+<div id="players_info"></div>
+</div>
 
 <div id="chats" class="card hidden">
 <h2>Сообщения</h2>
-<input id="message_nick" placeholder="Ник получателя">
-<textarea id="message_text" placeholder="Текст"></textarea>
-<button onclick="sendMessage()">Отправить</button>
-<button onclick="loadMessages()">Обновить</button>
+<input id="message_nick" placeholder="Никнейм получателя">
+<textarea id="message_text" placeholder="Текст сообщения"></textarea>
+<button onclick="sendMessage()">📩 Отправить</button>
+<button onclick="loadMessages()">🔄 Обновить</button>
 <div id="messages_info" class="result"></div>
 </div>
 
 <div id="loans" class="card hidden">
-<h2>Кредит</h2><div id="loan_info"></div>
-<input id="loan_amount" placeholder="Сумма">
-<button onclick="takeLoan()">Оформить</button>
+<h2>Кредит</h2>
+<div id="loan_info"></div>
+<input id="loan_amount" placeholder="Сумма кредита">
+<button onclick="takeLoan()">💳 Оформить кредит</button>
 <div id="loan_result" class="result"></div>
 </div>
 
 <div id="friends" class="card hidden">
 <h2>Друзья</h2>
-<input id="friend_nick" placeholder="Ник друга">
-<button onclick="addFriend()">Добавить</button>
-<button onclick="loadFriends()">Показать</button>
+<input id="friend_nick" placeholder="Никнейм друга">
+<button onclick="addFriend()">➕ Добавить друга</button>
+<button onclick="loadFriends()">👥 Показать друзей</button>
 <div id="friends_info" class="result"></div>
 </div>
 
 <div id="settings" class="card hidden">
-<h2>Карта</h2>
-<input id="card_color" placeholder="Цвет карты">
-<input id="card_background" placeholder="Фон карты">
-<input id="card_image" placeholder="Ссылка на изображение">
-<button onclick="saveCard()">Сохранить</button>
+<h2>Настройки карты</h2>
+<input id="card_color" placeholder="Цвет карты, например #7c3aed">
+<input id="card_background" placeholder="Фон карты, например #111827">
+<input id="card_image" placeholder="Ссылка на изображение карты">
+<button onclick="saveCard()">💾 Сохранить</button>
 <div id="card_result" class="result"></div>
 </div>
 
 <div id="admin" class="card hidden">
 <h2>Админ-панель</h2>
-<input id="admin_nick" placeholder="Ник игрока">
+<input id="admin_nick" placeholder="Никнейм игрока">
 <div class="grid">
-<button onclick="makeAdmin()">Назначить админом</button>
-<button onclick="removeAdmin()">Снять админа</button>
+<button onclick="makeAdmin()">🛡 Назначить админом</button>
+<button onclick="removeAdmin()">❌ Снять админа</button>
 </div>
-<input id="give_amount" placeholder="Сумма">
-<button onclick="giveMoney()">Выдать деньги</button>
-<input id="company_category" placeholder="Категория">
-<input id="company_name" placeholder="Название">
+<input id="give_amount" placeholder="Сумма для выдачи">
+<button onclick="giveMoney()">💰 Выдать деньги</button>
+<input id="company_category" placeholder="Категория бизнеса">
+<input id="company_name" placeholder="Название бизнеса">
 <input id="company_price" placeholder="Цена">
 <input id="company_income" placeholder="Доход в день">
-<input id="company_sqm" placeholder="Площадь км²">
-<button onclick="addCompany()">Добавить бизнес</button>
+<input id="company_sqm" placeholder="Площадь в км²">
+<button onclick="addCompany()">🏢 Добавить бизнес</button>
 <div id="admin_result" class="result"></div>
 </div>
 </div>
@@ -388,7 +456,10 @@ async function api(url, data) {
     throw new Error('Сервер вернул HTML вместо JSON');
   }
 
-  if (!response.ok) throw new Error(result.detail || 'Ошибка');
+  if (!response.ok) {
+    throw new Error(result.detail || 'Ошибка');
+  }
+
   return result;
 }
 
@@ -411,7 +482,8 @@ async function login() {
   const tg = window.Telegram && window.Telegram.WebApp;
 
   if (!tg || !tg.initDataUnsafe || !tg.initDataUnsafe.user) {
-    document.getElementById('auth_result').textContent = 'Открой сайт через кнопку в Telegram-боте.';
+    document.getElementById('auth_result').textContent =
+      'Открой сайт через кнопку в Telegram-боте.';
     return;
   }
 
@@ -443,13 +515,15 @@ async function login() {
 
 async function loadProfile() {
   const user = await api('/api/profile?telegram_id=' + currentId);
+
   document.getElementById('profile_info').innerHTML =
     '<p><b>Ник:</b> ' + user.nickname + '</p>' +
     '<p><b>Telegram ID:</b> ' + user.telegram_id + '</p>' +
     '<p><b>Наличные:</b> ' + user.balance + ' BYN</p>' +
     '<p><b>Банк:</b> ' + user.bank + ' BYN</p>' +
     '<p><b>Кредит:</b> ' + user.credit + ' BYN</p>' +
-    '<p><b>Земля:</b> ' + user.sqm + ' км²</p>';
+    '<p><b>Земля:</b> ' + user.sqm + ' км²</p>' +
+    '<p><span class="badge">' + (user.is_admin ? 'Администратор' : 'Игрок') + '</span></p>';
 }
 
 async function loadLeaderboard() {
@@ -465,6 +539,7 @@ async function loadLeaderboard() {
 
 async function loadBank() {
   const user = await api('/api/profile?telegram_id=' + currentId);
+
   document.getElementById('bank_info').innerHTML =
     '<p><b>Наличные:</b> ' + user.balance + ' BYN</p>' +
     '<p><b>На карте:</b> ' + user.bank + ' BYN</p>';
@@ -477,6 +552,7 @@ async function bank(action) {
       amount: Number(document.getElementById('bank_amount').value),
       action
     });
+
     document.getElementById('bank_result').textContent = data.message;
     loadBank();
   } catch (error) {
@@ -518,10 +594,10 @@ async function trade(action) {
 
 async function loadCompanies() {
   const companies = await api('/api/companies?telegram_id=' + currentId);
-  let html = '<table><tr><th>ID</th><th>Название</th><th>Цена</th><th>Доход</th><th>Статус</th></tr>';
+  let html = '<table><tr><th>ID</th><th>Название</th><th>Категория</th><th>Цена</th><th>Доход</th><th>Статус</th></tr>';
 
   companies.forEach(company => {
-    html += '<tr><td>' + company.id + '</td><td>' + company.name + '</td><td>' + company.price + ' BYN</td><td>' + company.daily_income + ' BYN</td><td>' + (company.owned ? 'Куплено' : 'Доступно') + '</td></tr>';
+    html += '<tr><td>' + company.id + '</td><td>' + company.name + '</td><td>' + company.category + '</td><td>' + company.price + ' BYN</td><td>' + company.daily_income + ' BYN</td><td>' + (company.owned ? 'Куплено' : 'Доступно') + '</td></tr>';
   });
 
   document.getElementById('companies_info').innerHTML = html + '</table>';
@@ -533,6 +609,7 @@ async function buyCompany() {
       telegram_id: currentId,
       company_id: Number(document.getElementById('company_id').value)
     });
+
     document.getElementById('companies_info').textContent = data.message;
     loadCompanies();
   } catch (error) {
@@ -547,6 +624,7 @@ async function transfer() {
       receiver_nickname: document.getElementById('receiver_nick').value,
       amount: Number(document.getElementById('transfer_amount').value)
     });
+
     document.getElementById('transfer_result').textContent = data.message;
   } catch (error) {
     document.getElementById('transfer_result').textContent = error.message;
@@ -571,6 +649,7 @@ async function sendMessage() {
       receiver_nickname: document.getElementById('message_nick').value,
       text: document.getElementById('message_text').value
     });
+
     document.getElementById('messages_info').textContent = data.message;
   } catch (error) {
     document.getElementById('messages_info').textContent = error.message;
@@ -590,7 +669,8 @@ async function loadMessages() {
 
 async function loadLoan() {
   const user = await api('/api/profile?telegram_id=' + currentId);
-  document.getElementById('loan_info').innerHTML = '<p><b>Долг:</b> ' + user.credit + ' BYN</p>';
+  document.getElementById('loan_info').innerHTML =
+    '<p><b>Текущий долг:</b> ' + user.credit + ' BYN</p>';
 }
 
 async function takeLoan() {
@@ -599,6 +679,7 @@ async function takeLoan() {
       telegram_id: currentId,
       amount: Number(document.getElementById('loan_amount').value)
     });
+
     document.getElementById('loan_result').textContent = data.message;
     loadLoan();
   } catch (error) {
@@ -612,6 +693,7 @@ async function addFriend() {
       telegram_id: currentId,
       friend_nickname: document.getElementById('friend_nick').value
     });
+
     document.getElementById('friends_info').textContent = data.message;
   } catch (error) {
     document.getElementById('friends_info').textContent = error.message;
@@ -637,6 +719,7 @@ async function saveCard() {
       card_background: document.getElementById('card_background').value,
       card_image: document.getElementById('card_image').value
     });
+
     document.getElementById('card_result').textContent = data.message;
   } catch (error) {
     document.getElementById('card_result').textContent = error.message;
@@ -657,6 +740,7 @@ async function adminAction(url) {
       admin_id: currentId,
       target_nickname: document.getElementById('admin_nick').value
     });
+
     document.getElementById('admin_result').textContent = data.message;
   } catch (error) {
     document.getElementById('admin_result').textContent = error.message;
@@ -670,6 +754,7 @@ async function giveMoney() {
       target_nickname: document.getElementById('admin_nick').value,
       amount: Number(document.getElementById('give_amount').value)
     });
+
     document.getElementById('admin_result').textContent = data.message;
   } catch (error) {
     document.getElementById('admin_result').textContent = error.message;
@@ -686,6 +771,7 @@ async function addCompany() {
       daily_income: Number(document.getElementById('company_income').value),
       sqm: Number(document.getElementById('company_sqm').value)
     });
+
     document.getElementById('admin_result').textContent = data.message;
   } catch (error) {
     document.getElementById('admin_result').textContent = error.message;
