@@ -233,6 +233,7 @@ PAGE = """<!doctype html>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 *{box-sizing:border-box}
+
 body{
 margin:0;
 min-height:100vh;
@@ -241,61 +242,220 @@ color:#e5e7eb;
 background:
 radial-gradient(circle at 15% 15%,#1e1b4b,transparent 55%),
 radial-gradient(circle at 85% 10%,#312e81,transparent 50%),
-#05060f
+#05060f;
+padding-bottom:calc(24px + env(safe-area-inset-bottom));
 }
-.wrap{max-width:1000px;margin:0 auto;padding:24px 16px 70px}
+
+.wrap{
+max-width:1200px;
+margin:0 auto;
+padding:16px 12px 24px;
+}
+
 .title{
-font-size:46px;
+font-size:30px;
 font-weight:900;
 text-align:center;
 color:#fff;
-text-shadow:0 0 20px #7c3aed,0 0 40px #06b6d4
+text-shadow:0 0 16px #7c3aed,0 0 32px #06b6d4;
+margin-bottom:4px;
 }
-.subtitle{text-align:center;color:#94a3b8;margin-bottom:28px}
+
+.subtitle{
+text-align:center;
+color:#94a3b8;
+font-size:13px;
+margin-bottom:16px;
+}
+
+.layout{
+display:grid;
+grid-template-columns:1fr;
+gap:14px;
+align-items:start;
+}
+
+.sidebar{
+background:rgba(15,23,42,.85);
+border:1px solid rgba(124,58,237,.45);
+border-radius:18px;
+padding:12px;
+box-shadow:0 0 24px rgba(124,58,237,.18);
+}
+
+.menu{
+display:flex;
+gap:8px;
+overflow-x:auto;
+padding-bottom:4px;
+}
+
+.menu::-webkit-scrollbar{
+height:4px;
+}
+
+.menu::-webkit-scrollbar-thumb{
+background:#7c3aed;
+border-radius:999px;
+}
+
+.menu button{
+min-width:118px;
+white-space:nowrap;
+margin:0;
+padding:11px 12px;
+font-size:13px;
+}
+
+.content{
+background:rgba(15,23,42,.85);
+border:1px solid rgba(124,58,237,.45);
+border-radius:18px;
+padding:18px 14px;
+box-shadow:0 0 24px rgba(124,58,237,.18);
+min-height:420px;
+}
+
 .card{
 background:rgba(15,23,42,.85);
 border:1px solid rgba(124,58,237,.45);
-border-radius:22px;
-padding:22px;
-margin-bottom:18px;
-box-shadow:0 0 30px rgba(124,58,237,.18)
+border-radius:18px;
+padding:18px 14px;
+margin-bottom:14px;
+box-shadow:0 0 24px rgba(124,58,237,.18);
 }
+
+h2{
+margin:0 0 14px;
+color:#c4b5fd;
+font-size:20px;
+}
+
+h3{
+margin:18px 0 10px;
+color:#67e8f9;
+font-size:16px;
+}
+
+p{
+margin:6px 0;
+font-size:14px;
+line-height:1.45;
+}
+
 input,textarea,button{
 width:100%;
-padding:13px;
+padding:12px;
 border-radius:12px;
 border:1px solid #334155;
 background:#0f172a;
 color:#fff;
 font-size:15px;
-margin-bottom:10px
+margin-bottom:10px;
 }
+
+textarea{
+min-height:80px;
+resize:vertical;
+}
+
 button{
 background:linear-gradient(90deg,#7c3aed,#06b6d4);
 border:none;
 font-weight:700;
-cursor:pointer
+cursor:pointer;
 }
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
-.result{white-space:pre-wrap;margin-top:12px;color:#a5f3fc;font-size:14px}
-h2{margin-top:0;color:#c4b5fd}
-.hidden{display:none}
-.nav{
+
+button:active{
+opacity:.85;
+}
+
+.grid{
 display:grid;
-grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+grid-template-columns:1fr;
 gap:10px;
-margin-bottom:20px
 }
-table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{padding:9px;border-bottom:1px solid #1e293b;text-align:left}
+
+.result{
+white-space:pre-wrap;
+margin-top:12px;
+color:#a5f3fc;
+font-size:14px;
+}
+
+.hidden{display:none}
+
+table{
+width:100%;
+border-collapse:collapse;
+font-size:13px;
+display:block;
+overflow-x:auto;
+}
+
+th,td{
+padding:8px;
+border-bottom:1px solid #1e293b;
+text-align:left;
+white-space:nowrap;
+}
+
 th{color:#a78bfa}
+
 .badge{
 display:inline-block;
 padding:3px 9px;
 border-radius:999px;
 background:#7c3aed;
 color:#fff;
-font-size:12px
+font-size:12px;
+}
+
+@media (min-width:768px){
+.wrap{
+padding:24px 20px 40px;
+}
+
+.title{
+font-size:46px;
+}
+
+.subtitle{
+font-size:15px;
+margin-bottom:24px;
+}
+
+.layout{
+grid-template-columns:250px 1fr;
+gap:20px;
+}
+
+.sidebar{
+position:sticky;
+top:16px;
+}
+
+.menu{
+display:grid;
+gap:8px;
+overflow:visible;
+}
+
+.menu button{
+min-width:0;
+white-space:normal;
+text-align:left;
+padding:12px;
+}
+
+.content{
+padding:24px;
+min-height:520px;
+}
+
+.grid{
+grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+}
 }
 </style>
 </head>
@@ -311,7 +471,10 @@ font-size:12px
 </div>
 
 <div id="game" class="hidden">
-<div class="nav">
+<div class="layout">
+
+<div class="sidebar">
+<div class="menu">
 <button onclick="show('profile')">👤 Профиль</button>
 <button onclick="show('leaderboard')">🏆 Лидеры</button>
 <button onclick="show('bank')">🏦 Банк</button>
@@ -320,11 +483,13 @@ font-size:12px
 <button onclick="show('transfer')">💸 Перевод</button>
 <button onclick="show('players')">👥 Игроки</button>
 <button onclick="show('chats')">💬 Чаты</button>
-<button onclick="show('loans')">💳 Кредит</button>
 <button onclick="show('friends')">🤝 Друзья</button>
 <button onclick="show('settings')">⚙️ Карта</button>
 <button id="admin_button" class="hidden" onclick="show('admin')">🛡 Админка</button>
 </div>
+</div>
+
+<div class="content">
 
 <div id="profile" class="card">
 <h2>Профиль</h2>
@@ -339,13 +504,19 @@ font-size:12px
 
 <div id="bank" class="card hidden">
 <h2>NEON BANK</h2>
+
 <div id="bank_info"></div>
-<input id="bank_amount" placeholder="Сумма">
-<div class="grid">
-<button onclick="bank('deposit')">📥 Положить</button>
-<button onclick="bank('withdraw')">📤 Снять</button>
-</div>
+
+<h3>Пополнить карту</h3>
+<input id="bank_amount" placeholder="Сумма пополнения">
+<button onclick="bank('deposit')">📥 Положить на карту</button>
 <div id="bank_result" class="result"></div>
+
+<h3>Кредит</h3>
+<div id="bank_loan_info"></div>
+<input id="bank_loan_amount" placeholder="Сумма кредита">
+<button onclick="takeLoanFromBank()">💳 Оформить кредит</button>
+<div id="bank_loan_result" class="result"></div>
 </div>
 
 <div id="exchange" class="card hidden">
@@ -392,14 +563,6 @@ font-size:12px
 <div id="messages_info" class="result"></div>
 </div>
 
-<div id="loans" class="card hidden">
-<h2>Кредит</h2>
-<div id="loan_info"></div>
-<input id="loan_amount" placeholder="Сумма кредита">
-<button onclick="takeLoan()">💳 Оформить кредит</button>
-<div id="loan_result" class="result"></div>
-</div>
-
 <div id="friends" class="card hidden">
 <h2>Друзья</h2>
 <input id="friend_nick" placeholder="Никнейм друга">
@@ -434,6 +597,10 @@ font-size:12px
 <button onclick="addCompany()">🏢 Добавить бизнес</button>
 <div id="admin_result" class="result"></div>
 </div>
+
+</div>
+
+</div>
 </div>
 </div>
 
@@ -464,7 +631,7 @@ async function api(url, data) {
 }
 
 function show(section) {
-  document.querySelectorAll('.card').forEach(card => card.classList.add('hidden'));
+  document.querySelectorAll('.content .card').forEach(card => card.classList.add('hidden'));
   document.getElementById(section).classList.remove('hidden');
 
   if (section === 'profile') loadProfile();
@@ -474,7 +641,6 @@ function show(section) {
   if (section === 'companies') loadCompanies();
   if (section === 'players') loadPlayers();
   if (section === 'chats') loadMessages();
-  if (section === 'loans') loadLoan();
   if (section === 'friends') loadFriends();
 }
 
@@ -542,7 +708,13 @@ async function loadBank() {
 
   document.getElementById('bank_info').innerHTML =
     '<p><b>Наличные:</b> ' + user.balance + ' BYN</p>' +
-    '<p><b>На карте:</b> ' + user.bank + ' BYN</p>';
+    '<p><b>На карте:</b> ' + user.bank + ' BYN</p>' +
+    '<p><b>Кредитный долг:</b> ' + user.credit + ' BYN</p>';
+
+  document.getElementById('bank_loan_info').innerHTML =
+    '<p><b>Лимит кредита:</b> 1 000 000 BYN</p>' +
+    '<p><b>Ставка:</b> 10%</p>' +
+    '<p><b>Текущий долг:</b> ' + user.credit + ' BYN</p>';
 }
 
 async function bank(action) {
@@ -557,6 +729,20 @@ async function bank(action) {
     loadBank();
   } catch (error) {
     document.getElementById('bank_result').textContent = error.message;
+  }
+}
+
+async function takeLoanFromBank() {
+  try {
+    const data = await api('/api/loan', {
+      telegram_id: currentId,
+      amount: Number(document.getElementById('bank_loan_amount').value)
+    });
+
+    document.getElementById('bank_loan_result').textContent = data.message;
+    loadBank();
+  } catch (error) {
+    document.getElementById('bank_loan_result').textContent = error.message;
   }
 }
 
@@ -665,26 +851,6 @@ async function loadMessages() {
   });
 
   document.getElementById('messages_info').innerHTML = html || 'Сообщений нет';
-}
-
-async function loadLoan() {
-  const user = await api('/api/profile?telegram_id=' + currentId);
-  document.getElementById('loan_info').innerHTML =
-    '<p><b>Текущий долг:</b> ' + user.credit + ' BYN</p>';
-}
-
-async function takeLoan() {
-  try {
-    const data = await api('/api/loan', {
-      telegram_id: currentId,
-      amount: Number(document.getElementById('loan_amount').value)
-    });
-
-    document.getElementById('loan_result').textContent = data.message;
-    loadLoan();
-  } catch (error) {
-    document.getElementById('loan_result').textContent = error.message;
-  }
 }
 
 async function addFriend() {
@@ -813,7 +979,6 @@ def main_keyboard(telegram_id):
         [InlineKeyboardButton("💸 Перевод", callback_data="transfer")],
         [InlineKeyboardButton("👥 Игроки", callback_data="players")],
         [InlineKeyboardButton("💬 Сообщения", callback_data="messages")],
-        [InlineKeyboardButton("💳 Кредит", callback_data="loans")],
         [InlineKeyboardButton("🤝 Друзья", callback_data="friends")],
     ]
 
@@ -918,10 +1083,11 @@ async def bank_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(
         f"🏦 <b>NEON BANK</b>\n\n"
         f"💰 Наличные: <b>{money(user['balance'])} BYN</b>\n"
-        f"💳 На карте: <b>{money(user['bank'])} BYN</b>\n\n"
+        f"💳 На карте: <b>{money(user['bank'])} BYN</b>\n"
+        f"💳 Кредитный долг: <b>{money(user['credit'])} BYN</b>\n\n"
         f"Команды:\n"
-        f"<code>/deposit СУММА</code>\n"
-        f"<code>/withdraw СУММА</code>",
+        f"<code>/deposit СУММА</code> — пополнить карту\n"
+        f"<code>/loan СУММА</code> — оформить кредит",
         reply_markup=main_keyboard(user["telegram_id"]),
         parse_mode="HTML",
     )
@@ -964,47 +1130,7 @@ async def deposit_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         conn.commit()
 
-    await update.message.reply_text(f"✅ Положено в банк: {money(amount)} BYN")
-
-
-async def withdraw_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.message.reply_text(
-            "Формат: <code>/withdraw СУММА</code>",
-            parse_mode="HTML",
-        )
-        return
-
-    try:
-        amount = float(context.args[0].replace(",", "."))
-    except ValueError:
-        await update.message.reply_text("Сумма должна быть числом.")
-        return
-
-    with get_db() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                "SELECT balance, bank FROM users WHERE telegram_id = %s FOR UPDATE",
-                (update.effective_user.id,),
-            )
-            user = cur.fetchone()
-
-            if not user or float(user["bank"]) < amount:
-                await update.message.reply_text("Недостаточно денег на карте.")
-                return
-
-            cur.execute(
-                """
-                UPDATE users
-                SET bank = bank - %s, balance = balance + %s
-                WHERE telegram_id = %s
-                """,
-                (amount, amount, update.effective_user.id),
-            )
-
-        conn.commit()
-
-    await update.message.reply_text(f"✅ Снято с карты: {money(amount)} BYN")
+    await update.message.reply_text(f"✅ Положено на карту: {money(amount)} BYN")
 
 
 async def exchange_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1231,26 +1357,6 @@ async def message_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         f"✅ Сообщение отправлено игроку {receiver['nickname']}."
-    )
-
-
-async def loans_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    user = get_user(query.from_user.id)
-
-    if not user:
-        await query.edit_message_text("Сначала нажми /start.")
-        return
-
-    await query.edit_message_text(
-        f"💳 <b>Кредит</b>\n\n"
-        f"Лимит: {money(LOAN_LIMIT)} BYN\n"
-        f"Ставка: {int(LOAN_RATE * 100)}%\n"
-        f"Долг: {money(user['credit'])} BYN\n\n"
-        f"Команда:\n<code>/loan СУММА</code>",
-        reply_markup=main_keyboard(user["telegram_id"]),
-        parse_mode="HTML",
     )
 
 
@@ -1655,6 +1761,9 @@ def bank(data: BankRequest):
     if data.amount <= 0:
         raise HTTPException(status_code=400, detail="Сумма должна быть больше нуля")
 
+    if data.action != "deposit":
+        raise HTTPException(status_code=400, detail="Снятие денег отключено")
+
     with get_db() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -1666,40 +1775,24 @@ def bank(data: BankRequest):
             if not user:
                 raise HTTPException(status_code=404, detail="Игрок не найден")
 
-            if data.action == "deposit":
-                if float(user["balance"]) < data.amount:
-                    raise HTTPException(status_code=400, detail="Недостаточно наличных")
+            if float(user["balance"]) < data.amount:
+                raise HTTPException(status_code=400, detail="Недостаточно наличных")
 
-                cur.execute(
-                    """
-                    UPDATE users
-                    SET balance = balance - %s, bank = bank + %s
-                    WHERE telegram_id = %s
-                    """,
-                    (data.amount, data.amount, data.telegram_id),
-                )
-                message = f"Положено в банк: {money(data.amount)} BYN"
-
-            elif data.action == "withdraw":
-                if float(user["bank"]) < data.amount:
-                    raise HTTPException(status_code=400, detail="Недостаточно денег на карте")
-
-                cur.execute(
-                    """
-                    UPDATE users
-                    SET bank = bank - %s, balance = balance + %s
-                    WHERE telegram_id = %s
-                    """,
-                    (data.amount, data.amount, data.telegram_id),
-                )
-                message = f"Снято с карты: {money(data.amount)} BYN"
-
-            else:
-                raise HTTPException(status_code=400, detail="Неверное действие")
+            cur.execute(
+                """
+                UPDATE users
+                SET balance = balance - %s, bank = bank + %s
+                WHERE telegram_id = %s
+                """,
+                (data.amount, data.amount, data.telegram_id),
+            )
 
         conn.commit()
 
-    return {"status": "ok", "message": message}
+    return {
+        "status": "ok",
+        "message": f"Положено на карту: {money(data.amount)} BYN",
+    }
 
 
 @app.post("/api/transfer")
@@ -2186,7 +2279,6 @@ telegram_application = Application.builder().token(BOT_TOKEN).build()
 
 telegram_application.add_handler(CommandHandler("start", start))
 telegram_application.add_handler(CommandHandler("deposit", deposit_command))
-telegram_application.add_handler(CommandHandler("withdraw", withdraw_command))
 telegram_application.add_handler(CommandHandler("transfer", transfer_command))
 telegram_application.add_handler(CommandHandler("loan", loan_command))
 telegram_application.add_handler(CommandHandler("friend", friend_command))
@@ -2204,7 +2296,6 @@ telegram_application.add_handler(CallbackQueryHandler(companies_callback, patter
 telegram_application.add_handler(CallbackQueryHandler(transfer_callback, pattern="^transfer$"))
 telegram_application.add_handler(CallbackQueryHandler(players_callback, pattern="^players$"))
 telegram_application.add_handler(CallbackQueryHandler(messages_callback, pattern="^messages$"))
-telegram_application.add_handler(CallbackQueryHandler(loans_callback, pattern="^loans$"))
 telegram_application.add_handler(CallbackQueryHandler(friends_callback, pattern="^friends$"))
 telegram_application.add_handler(CallbackQueryHandler(admin_callback, pattern="^admin$"))
 telegram_application.add_handler(CallbackQueryHandler(no_site_callback, pattern="^no_site$"))
