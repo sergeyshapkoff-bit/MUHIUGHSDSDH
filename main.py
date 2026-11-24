@@ -20,7 +20,6 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 MAIN_ADMIN_ID = int(os.getenv("MAIN_ADMIN_ID", "5634302903"))
 WEBAPP_URL = os.getenv("WEBAPP_URL", "")
 
-SQM_TAX = 100
 LOAN_LIMIT = 1_000_000
 LOAN_RATE = 0.10
 
@@ -290,12 +289,12 @@ gap:6px;
 
 .menu button{
 margin:0;
-padding:9px 4px;
-font-size:10px;
-border-radius:10px;
+padding:8px 3px;
+font-size:9px;
+border-radius:9px;
 white-space:normal;
 text-align:center;
-line-height:1.2;
+line-height:1.15;
 }
 
 .content{
@@ -451,9 +450,9 @@ gap:8px;
 }
 
 .menu button{
-padding:12px;
-font-size:14px;
-border-radius:12px;
+padding:10px;
+font-size:13px;
+border-radius:11px;
 text-align:left;
 }
 
@@ -509,13 +508,13 @@ font-size:14px;
 <div class="sidebar">
 <div class="menu">
 <button onclick="show('profile')">👤 Профиль</button>
-<button onclick="show('leaderboard')">🏆 Лидеры</button>
 <button onclick="show('bank')">🏦 Банк</button>
 <button onclick="show('exchange')">📈 Биржа</button>
 <button onclick="show('companies')">🏢 Бизнес</button>
+<button onclick="show('properties')">🏠 Моя недвижимость</button>
 <button onclick="show('transfer')">💸 Перевод</button>
 <button onclick="show('players')">👥 Игроки</button>
-<button onclick="show('chats')">💬 Чаты</button>
+<button onclick="show('all_chats')">💬 Все чаты</button>
 <button onclick="show('friends')">🤝 Друзья</button>
 <button onclick="show('settings')">⚙️ Карта</button>
 <button id="admin_button" class="hidden" onclick="show('admin')">🛡 Админка</button>
@@ -527,12 +526,6 @@ font-size:14px;
 <div id="profile" class="card">
 <h2>Профиль</h2>
 <div id="profile_info"></div>
-</div>
-
-<div id="leaderboard" class="card hidden">
-<h2>Таблица лидеров</h2>
-<button onclick="loadLeaderboard()">Обновить</button>
-<div id="leaderboard_info"></div>
 </div>
 
 <div id="bank" class="card hidden">
@@ -571,6 +564,12 @@ font-size:14px;
 <div id="companies_info" class="result"></div>
 </div>
 
+<div id="properties" class="card hidden">
+<h2>🏠 Моя недвижимость</h2>
+<button onclick="loadProperties()">Обновить</button>
+<div id="properties_info" class="result"></div>
+</div>
+
 <div id="transfer" class="card hidden">
 <h2>Перевод игроку</h2>
 <input id="receiver_nick" placeholder="Никнейм получателя">
@@ -585,12 +584,15 @@ font-size:14px;
 <div id="players_info"></div>
 </div>
 
-<div id="chats" class="card hidden">
-<h2>Сообщения</h2>
+<div id="all_chats" class="card hidden">
+<h2>💬 Все чаты</h2>
+<button onclick="loadAllChats()">Обновить</button>
+<div id="all_chats_info" class="result"></div>
+
+<h3>Написать сообщение</h3>
 <input id="message_nick" placeholder="Никнейм получателя">
 <textarea id="message_text" placeholder="Текст сообщения"></textarea>
 <button onclick="sendMessage()">📩 Отправить</button>
-<button onclick="loadMessages()">🔄 Обновить</button>
 <div id="messages_info" class="result"></div>
 </div>
 
@@ -671,12 +673,12 @@ function show(section) {
   document.getElementById(section).classList.remove('hidden');
 
   if (section === 'profile') loadProfile();
-  if (section === 'leaderboard') loadLeaderboard();
   if (section === 'bank') loadBank();
   if (section === 'exchange') loadExchange();
   if (section === 'companies') loadCompanies();
+  if (section === 'properties') loadProperties();
   if (section === 'players') loadPlayers();
-  if (section === 'chats') loadMessages();
+  if (section === 'all_chats') loadAllChats();
   if (section === 'friends') loadFriends();
 }
 
@@ -725,17 +727,6 @@ async function loadProfile() {
     '<p><b>Кредит:</b> ' + user.credit + ' BYN</p>' +
     '<p><b>Земля:</b> ' + user.sqm + ' км²</p>' +
     '<p><span class="badge">' + (user.is_admin ? 'Администратор' : 'Игрок') + '</span></p>';
-}
-
-async function loadLeaderboard() {
-  const players = await api('/api/leaderboard');
-  let html = '<table><tr><th>Место</th><th>Ник</th><th>Карта</th><th>Земля</th></tr>';
-
-  players.forEach((player, index) => {
-    html += '<tr><td>' + (index + 1) + '</td><td>' + player.nickname + '</td><td>' + player.bank + ' BYN</td><td>' + player.sqm + ' км²</td></tr>';
-  });
-
-  document.getElementById('leaderboard_info').innerHTML = html + '</table>';
 }
 
 async function loadBank() {
@@ -849,6 +840,24 @@ async function buyCompany(companyId) {
   }
 }
 
+async function loadProperties() {
+  const properties = await api('/api/properties?telegram_id=' + currentId);
+  let html = '';
+
+  properties.forEach(property => {
+    html += '<div class="company">';
+    html += '<p><b>' + property.name + '</b></p>';
+    html += '<p>Категория: ' + property.category + '</p>';
+    html += '<p>Доход: ' + property.daily_income + ' BYN/день</p>';
+    html += '<p>Площадь: ' + property.sqm + ' км²</p>';
+    html += '<p>Куплено: ' + property.purchased_at + '</p>';
+    html += '</div>';
+  });
+
+  document.getElementById('properties_info').innerHTML =
+    html || 'У тебя пока нет недвижимости. Купи её в разделе «Бизнес».';
+}
+
 async function transfer() {
   try {
     const data = await api('/api/transfer', {
@@ -874,6 +883,24 @@ async function loadPlayers() {
   document.getElementById('players_info').innerHTML = html + '</table>';
 }
 
+async function loadAllChats() {
+  const messages = await api('/api/all-chats?telegram_id=' + currentId);
+  let html = '';
+
+  messages.forEach(message => {
+    const isMine = message.sender_id === currentId;
+
+    html += '<div class="company">';
+    html += '<p><b>' + (isMine ? 'Ты' : message.sender_name) + ' → ' + message.receiver_name + '</b></p>';
+    html += '<p>' + message.text + '</p>';
+    html += '<p><span class="badge">' + message.created_at + '</span></p>';
+    html += '</div>';
+  });
+
+  document.getElementById('all_chats_info').innerHTML =
+    html || 'Сообщений пока нет';
+}
+
 async function sendMessage() {
   try {
     const data = await api('/api/messages', {
@@ -886,17 +913,6 @@ async function sendMessage() {
   } catch (error) {
     document.getElementById('messages_info').textContent = error.message;
   }
-}
-
-async function loadMessages() {
-  const messages = await api('/api/messages?telegram_id=' + currentId);
-  let html = '';
-
-  messages.forEach(message => {
-    html += '<p><b>' + message.sender_name + ':</b> ' + message.text + '</p>';
-  });
-
-  document.getElementById('messages_info').innerHTML = html || 'Сообщений нет';
 }
 
 async function addFriend() {
@@ -1018,13 +1034,13 @@ def main_keyboard(telegram_id):
     buttons = [
         site_button,
         [InlineKeyboardButton("👤 Профиль", callback_data="profile")],
-        [InlineKeyboardButton("🏆 Лидеры", callback_data="leaderboard")],
         [InlineKeyboardButton("🏦 Банк", callback_data="bank")],
         [InlineKeyboardButton("📈 Биржа", callback_data="exchange")],
         [InlineKeyboardButton("🏢 Бизнес", callback_data="companies")],
+        [InlineKeyboardButton("🏠 Недвижимость", callback_data="properties")],
         [InlineKeyboardButton("💸 Перевод", callback_data="transfer")],
         [InlineKeyboardButton("👥 Игроки", callback_data="players")],
-        [InlineKeyboardButton("💬 Сообщения", callback_data="messages")],
+        [InlineKeyboardButton("💬 Все чаты", callback_data="all_chats")],
         [InlineKeyboardButton("🤝 Друзья", callback_data="friends")],
     ]
 
@@ -1078,39 +1094,6 @@ async def profile_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(
         text,
         reply_markup=main_keyboard(user["telegram_id"]),
-        parse_mode="HTML",
-    )
-
-
-async def leaderboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    players = db_execute(
-        """
-        SELECT nickname, bank, sqm
-        FROM users
-        ORDER BY bank DESC, sqm DESC
-        LIMIT 10
-        """,
-        fetch=True,
-    )
-
-    text = "🏆 <b>Таблица лидеров</b>\n\n"
-
-    if not players:
-        text += "Игроков пока нет."
-    else:
-        for index, player in enumerate(players, start=1):
-            text += (
-                f"{index}. <b>{player['nickname']}</b>\n"
-                f"💳 {money(player['bank'])} BYN\n"
-                f"🌍 {player['sqm']} км²\n\n"
-            )
-
-    await query.edit_message_text(
-        text,
-        reply_markup=main_keyboard(query.from_user.id),
         parse_mode="HTML",
     )
 
@@ -1341,30 +1324,40 @@ async def players_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def messages_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def all_chats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     messages = db_execute(
         """
-        SELECT m.*, u.nickname AS sender_name
+        SELECT
+            m.*,
+            s.nickname AS sender_name,
+            r.nickname AS receiver_name
         FROM messages m
-        JOIN users u ON u.telegram_id = m.sender_id
-        WHERE m.receiver_id = %s
+        JOIN users s ON s.telegram_id = m.sender_id
+        JOIN users r ON r.telegram_id = m.receiver_id
+        WHERE m.sender_id = %s OR m.receiver_id = %s
         ORDER BY m.created_at DESC
-        LIMIT 10
+        LIMIT 20
         """,
-        (query.from_user.id,),
+        (query.from_user.id, query.from_user.id),
         fetch=True,
     )
 
-    text = "💬 <b>Сообщения</b>\n\n"
+    text = "💬 <b>Все чаты</b>\n\n"
 
     if not messages:
         text += "Сообщений нет."
     else:
         for message in messages:
-            text += f"<b>{message['sender_name']}</b>: {message['text']}\n\n"
+            is_mine = message["sender_id"] == query.from_user.id
+            sender = "Ты" if is_mine else message["sender_name"]
+
+            text += (
+                f"<b>{sender} → {message['receiver_name']}</b>\n"
+                f"{message['text']}\n\n"
+            )
 
     await query.edit_message_text(
         text,
@@ -2061,6 +2054,21 @@ def buy_company(data: CompanyBuyRequest):
     }
 
 
+@app.get("/api/properties")
+def properties(telegram_id: int):
+    return db_execute(
+        """
+        SELECT c.name, c.category, c.daily_income, c.sqm, uc.purchased_at
+        FROM user_companies uc
+        JOIN companies c ON c.id = uc.company_id
+        WHERE uc.user_id = %s
+        ORDER BY uc.purchased_at DESC
+        """,
+        (telegram_id,),
+        fetch=True,
+    )
+
+
 @app.get("/api/exchange")
 def exchange():
     return db_execute(
@@ -2184,18 +2192,22 @@ def send_message(data: MessageRequest):
     }
 
 
-@app.get("/api/messages")
-def messages(telegram_id: int):
+@app.get("/api/all-chats")
+def all_chats(telegram_id: int):
     return db_execute(
         """
-        SELECT m.*, u.nickname AS sender_name
+        SELECT
+            m.*,
+            s.nickname AS sender_name,
+            r.nickname AS receiver_name
         FROM messages m
-        JOIN users u ON u.telegram_id = m.sender_id
-        WHERE m.receiver_id = %s
+        JOIN users s ON s.telegram_id = m.sender_id
+        JOIN users r ON r.telegram_id = m.receiver_id
+        WHERE m.sender_id = %s OR m.receiver_id = %s
         ORDER BY m.created_at DESC
-        LIMIT 50
+        LIMIT 100
         """,
-        (telegram_id,),
+        (telegram_id, telegram_id),
         fetch=True,
     )
 
@@ -2249,122 +2261,4 @@ def give_money(data: GiveMoneyRequest):
     if not target:
         raise HTTPException(status_code=404, detail="Игрок не найден")
 
-    if data.amount <= 0:
-        raise HTTPException(status_code=400, detail="Сумма должна быть больше нуля")
-
-    db_execute(
-        "UPDATE users SET bank = bank + %s WHERE telegram_id = %s",
-        (data.amount, target["telegram_id"]),
-    )
-
-    return {
-        "status": "ok",
-        "message": f"Выдано {money(data.amount)} BYN игроку {target['nickname']}",
-    }
-
-
-@app.post("/api/admin/company")
-def add_company(data: AddCompanyRequest):
-    if not is_admin(data.admin_id):
-        raise HTTPException(status_code=403, detail="Только администраторы")
-
-    db_execute(
-        """
-        INSERT INTO companies (category, name, price, daily_income, sqm)
-        VALUES (%s, %s, %s, %s, %s)
-        """,
-        (
-            data.category,
-            data.name,
-            data.price,
-            data.daily_income,
-            data.sqm,
-        ),
-    )
-
-    return {"status": "ok", "message": "Объект добавлен"}
-
-
-def init_db():
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute(SCHEMA)
-
-            cur.executemany(
-                """
-                INSERT INTO companies
-                (category, name, price, daily_income, sqm)
-                VALUES (%s, %s, %s, %s, %s)
-                ON CONFLICT DO NOTHING
-                """,
-                DEFAULT_COMPANIES,
-            )
-
-            for name, base, minimum, maximum in DEFAULT_EXCHANGE:
-                cur.execute(
-                    """
-                    INSERT INTO exchange_items
-                    (name, base_price, min_price, max_price, current_price)
-                    VALUES (%s, %s, %s, %s, %s)
-                    ON CONFLICT (name) DO NOTHING
-                    """,
-                    (name, base, minimum, maximum, base),
-                )
-
-        conn.commit()
-
-
-telegram_application = Application.builder().token(BOT_TOKEN).build()
-
-telegram_application.add_handler(CommandHandler("start", start))
-telegram_application.add_handler(CommandHandler("deposit", deposit_command))
-telegram_application.add_handler(CommandHandler("transfer", transfer_command))
-telegram_application.add_handler(CommandHandler("loan", loan_command))
-telegram_application.add_handler(CommandHandler("friend", friend_command))
-telegram_application.add_handler(CommandHandler("message", message_command))
-telegram_application.add_handler(CommandHandler("admin", add_admin_command))
-telegram_application.add_handler(CommandHandler("unadmin", remove_admin_command))
-telegram_application.add_handler(CommandHandler("give", give_money_command))
-telegram_application.add_handler(CommandHandler("addcompany", add_company_command))
-
-telegram_application.add_handler(CallbackQueryHandler(profile_callback, pattern="^profile$"))
-telegram_application.add_handler(CallbackQueryHandler(leaderboard_callback, pattern="^leaderboard$"))
-telegram_application.add_handler(CallbackQueryHandler(bank_callback, pattern="^bank$"))
-telegram_application.add_handler(CallbackQueryHandler(exchange_callback, pattern="^exchange$"))
-telegram_application.add_handler(CallbackQueryHandler(companies_callback, pattern="^companies$"))
-telegram_application.add_handler(CallbackQueryHandler(transfer_callback, pattern="^transfer$"))
-telegram_application.add_handler(CallbackQueryHandler(players_callback, pattern="^players$"))
-telegram_application.add_handler(CallbackQueryHandler(messages_callback, pattern="^messages$"))
-telegram_application.add_handler(CallbackQueryHandler(friends_callback, pattern="^friends$"))
-telegram_application.add_handler(CallbackQueryHandler(admin_callback, pattern="^admin$"))
-telegram_application.add_handler(CallbackQueryHandler(no_site_callback, pattern="^no_site$"))
-
-
-@asynccontextmanager
-async def lifespan(application: FastAPI):
-    init_db()
-
-    await telegram_application.initialize()
-    await telegram_application.start()
-    await telegram_application.updater.start_polling(
-        allowed_updates=Update.ALL_TYPES
-    )
-
-    yield
-
-    await telegram_application.updater.stop()
-    await telegram_application.stop()
-    await telegram_application.shutdown()
-
-
-app.router.lifespan_context = lifespan
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=int(os.getenv("PORT", 8000)),
-    )
+    if data.amount
