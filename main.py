@@ -42,7 +42,6 @@ CREATE TABLE IF NOT EXISTS users (
     telegram_id BIGINT PRIMARY KEY,
     nickname TEXT UNIQUE NOT NULL,
     first_name TEXT,
-    balance NUMERIC(18,2) NOT NULL DEFAULT 0,
     bank NUMERIC(18,2) NOT NULL DEFAULT 0,
     credit NUMERIC(18,2) NOT NULL DEFAULT 0,
     sqm INTEGER NOT NULL DEFAULT 0,
@@ -121,8 +120,8 @@ CREATE TABLE IF NOT EXISTS messages (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_balance
-ON users(balance DESC);
+CREATE INDEX IF NOT EXISTS idx_users_bank
+ON users(bank DESC);
 
 CREATE INDEX IF NOT EXISTS idx_messages_receiver
 ON messages(receiver_id, created_at DESC);
@@ -243,119 +242,111 @@ background:
 radial-gradient(circle at 15% 15%,#1e1b4b,transparent 55%),
 radial-gradient(circle at 85% 10%,#312e81,transparent 50%),
 #05060f;
-padding-bottom:calc(24px + env(safe-area-inset-bottom));
+padding-bottom:calc(20px + env(safe-area-inset-bottom));
 }
 
 .wrap{
 max-width:1200px;
 margin:0 auto;
-padding:16px 12px 24px;
+padding:12px 8px 20px;
 }
 
 .title{
-font-size:30px;
+font-size:24px;
 font-weight:900;
 text-align:center;
 color:#fff;
-text-shadow:0 0 16px #7c3aed,0 0 32px #06b6d4;
-margin-bottom:4px;
+text-shadow:0 0 14px #7c3aed,0 0 28px #06b6d4;
+margin-bottom:2px;
 }
 
 .subtitle{
 text-align:center;
 color:#94a3b8;
-font-size:13px;
-margin-bottom:16px;
+font-size:12px;
+margin-bottom:12px;
 }
 
 .layout{
 display:grid;
-grid-template-columns:1fr;
-gap:14px;
+grid-template-columns:86px 1fr;
+gap:8px;
 align-items:start;
 }
 
 .sidebar{
-background:rgba(15,23,42,.85);
+background:rgba(15,23,42,.9);
 border:1px solid rgba(124,58,237,.45);
-border-radius:18px;
-padding:12px;
-box-shadow:0 0 24px rgba(124,58,237,.18);
+border-radius:14px;
+padding:8px 6px;
+box-shadow:0 0 18px rgba(124,58,237,.18);
 }
 
 .menu{
 display:flex;
-gap:8px;
-overflow-x:auto;
-padding-bottom:4px;
-}
-
-.menu::-webkit-scrollbar{
-height:4px;
-}
-
-.menu::-webkit-scrollbar-thumb{
-background:#7c3aed;
-border-radius:999px;
+flex-direction:column;
+gap:6px;
 }
 
 .menu button{
-min-width:118px;
-white-space:nowrap;
 margin:0;
-padding:11px 12px;
-font-size:13px;
+padding:9px 4px;
+font-size:10px;
+border-radius:10px;
+white-space:normal;
+text-align:center;
+line-height:1.2;
 }
 
 .content{
-background:rgba(15,23,42,.85);
+background:rgba(15,23,42,.9);
 border:1px solid rgba(124,58,237,.45);
-border-radius:18px;
-padding:18px 14px;
-box-shadow:0 0 24px rgba(124,58,237,.18);
-min-height:420px;
+border-radius:14px;
+padding:12px 10px;
+box-shadow:0 0 18px rgba(124,58,237,.18);
+min-height:70vh;
 }
 
 .card{
 background:rgba(15,23,42,.85);
 border:1px solid rgba(124,58,237,.45);
-border-radius:18px;
-padding:18px 14px;
-margin-bottom:14px;
-box-shadow:0 0 24px rgba(124,58,237,.18);
+border-radius:14px;
+padding:14px 10px;
+margin-bottom:12px;
+box-shadow:0 0 18px rgba(124,58,237,.18);
 }
 
 h2{
-margin:0 0 14px;
+margin:0 0 10px;
 color:#c4b5fd;
-font-size:20px;
+font-size:17px;
 }
 
 h3{
-margin:18px 0 10px;
+margin:14px 0 8px;
 color:#67e8f9;
-font-size:16px;
+font-size:14px;
 }
 
 p{
-margin:6px 0;
-font-size:14px;
-line-height:1.45;
+margin:5px 0;
+font-size:13px;
+line-height:1.4;
 }
 
 input,textarea,button{
 width:100%;
-padding:12px;
-border-radius:12px;
+padding:10px;
+border-radius:10px;
 border:1px solid #334155;
 background:#0f172a;
 color:#fff;
-font-size:15px;
-margin-bottom:10px;
+font-size:14px;
+margin-bottom:8px;
 }
 
 textarea{
-min-height:80px;
+min-height:70px;
 resize:vertical;
 }
 
@@ -373,14 +364,14 @@ opacity:.85;
 .grid{
 display:grid;
 grid-template-columns:1fr;
-gap:10px;
+gap:8px;
 }
 
 .result{
 white-space:pre-wrap;
-margin-top:12px;
+margin-top:10px;
 color:#a5f3fc;
-font-size:14px;
+font-size:13px;
 }
 
 .hidden{display:none}
@@ -388,13 +379,13 @@ font-size:14px;
 table{
 width:100%;
 border-collapse:collapse;
-font-size:13px;
+font-size:12px;
 display:block;
 overflow-x:auto;
 }
 
 th,td{
-padding:8px;
+padding:7px;
 border-bottom:1px solid #1e293b;
 text-align:left;
 white-space:nowrap;
@@ -404,57 +395,99 @@ th{color:#a78bfa}
 
 .badge{
 display:inline-block;
-padding:3px 9px;
+padding:3px 8px;
 border-radius:999px;
 background:#7c3aed;
 color:#fff;
-font-size:12px;
+font-size:11px;
 }
 
-@media (min-width:768px){
+.company{
+background:#0f172a;
+border:1px solid #334155;
+border-radius:12px;
+padding:12px;
+margin-bottom:10px;
+}
+
+label{
+display:block;
+font-size:12px;
+color:#94a3b8;
+margin-bottom:4px;
+}
+
+input[type="color"]{
+height:44px;
+padding:4px;
+}
+
+@media (min-width:700px){
 .wrap{
 padding:24px 20px 40px;
 }
 
 .title{
-font-size:46px;
+font-size:44px;
 }
 
 .subtitle{
 font-size:15px;
-margin-bottom:24px;
+margin-bottom:22px;
 }
 
 .layout{
-grid-template-columns:250px 1fr;
-gap:20px;
+grid-template-columns:230px 1fr;
+gap:18px;
 }
 
 .sidebar{
-position:sticky;
-top:16px;
+padding:14px;
+border-radius:18px;
 }
 
 .menu{
-display:grid;
 gap:8px;
-overflow:visible;
 }
 
 .menu button{
-min-width:0;
-white-space:normal;
-text-align:left;
 padding:12px;
+font-size:14px;
+border-radius:12px;
+text-align:left;
 }
 
 .content{
-padding:24px;
+padding:22px;
+border-radius:18px;
 min-height:520px;
+}
+
+.card{
+padding:20px;
+border-radius:16px;
+}
+
+h2{
+font-size:22px;
+}
+
+p{
+font-size:15px;
+}
+
+input,textarea,button{
+padding:13px;
+font-size:15px;
+border-radius:12px;
 }
 
 .grid{
 grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+}
+
+table{
+font-size:14px;
 }
 }
 </style>
@@ -509,7 +542,7 @@ grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
 
 <h3>Пополнить карту</h3>
 <input id="bank_amount" placeholder="Сумма пополнения">
-<button onclick="bank('deposit')">📥 Положить на карту</button>
+<button onclick="bank('deposit')">📥 Пополнить карту</button>
 <div id="bank_result" class="result"></div>
 
 <h3>Кредит</h3>
@@ -535,8 +568,6 @@ grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
 <div id="companies" class="card hidden">
 <h2>Бизнес и недвижимость</h2>
 <button onclick="loadCompanies()">Показать объекты</button>
-<input id="company_id" placeholder="ID объекта для покупки">
-<button onclick="buyCompany()">🛒 Купить объект</button>
 <div id="companies_info" class="result"></div>
 </div>
 
@@ -573,8 +604,13 @@ grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
 
 <div id="settings" class="card hidden">
 <h2>Настройки карты</h2>
-<input id="card_color" placeholder="Цвет карты, например #7c3aed">
-<input id="card_background" placeholder="Фон карты, например #111827">
+
+<label for="card_color">Цвет карты</label>
+<input id="card_color" type="color" value="#7c3aed">
+
+<label for="card_background">Фон карты</label>
+<input id="card_background" type="color" value="#111827">
+
 <input id="card_image" placeholder="Ссылка на изображение карты">
 <button onclick="saveCard()">💾 Сохранить</button>
 <div id="card_result" class="result"></div>
@@ -685,8 +721,7 @@ async function loadProfile() {
   document.getElementById('profile_info').innerHTML =
     '<p><b>Ник:</b> ' + user.nickname + '</p>' +
     '<p><b>Telegram ID:</b> ' + user.telegram_id + '</p>' +
-    '<p><b>Наличные:</b> ' + user.balance + ' BYN</p>' +
-    '<p><b>Банк:</b> ' + user.bank + ' BYN</p>' +
+    '<p><b>Баланс на карте:</b> ' + user.bank + ' BYN</p>' +
     '<p><b>Кредит:</b> ' + user.credit + ' BYN</p>' +
     '<p><b>Земля:</b> ' + user.sqm + ' км²</p>' +
     '<p><span class="badge">' + (user.is_admin ? 'Администратор' : 'Игрок') + '</span></p>';
@@ -694,10 +729,10 @@ async function loadProfile() {
 
 async function loadLeaderboard() {
   const players = await api('/api/leaderboard');
-  let html = '<table><tr><th>Место</th><th>Ник</th><th>Баланс</th><th>Земля</th></tr>';
+  let html = '<table><tr><th>Место</th><th>Ник</th><th>Карта</th><th>Земля</th></tr>';
 
   players.forEach((player, index) => {
-    html += '<tr><td>' + (index + 1) + '</td><td>' + player.nickname + '</td><td>' + player.balance + ' BYN</td><td>' + player.sqm + ' км²</td></tr>';
+    html += '<tr><td>' + (index + 1) + '</td><td>' + player.nickname + '</td><td>' + player.bank + ' BYN</td><td>' + player.sqm + ' км²</td></tr>';
   });
 
   document.getElementById('leaderboard_info').innerHTML = html + '</table>';
@@ -707,8 +742,7 @@ async function loadBank() {
   const user = await api('/api/profile?telegram_id=' + currentId);
 
   document.getElementById('bank_info').innerHTML =
-    '<p><b>Наличные:</b> ' + user.balance + ' BYN</p>' +
-    '<p><b>На карте:</b> ' + user.bank + ' BYN</p>' +
+    '<p><b>Баланс на карте:</b> ' + user.bank + ' BYN</p>' +
     '<p><b>Кредитный долг:</b> ' + user.credit + ' BYN</p>';
 
   document.getElementById('bank_loan_info').innerHTML =
@@ -780,26 +814,38 @@ async function trade(action) {
 
 async function loadCompanies() {
   const companies = await api('/api/companies?telegram_id=' + currentId);
-  let html = '<table><tr><th>ID</th><th>Название</th><th>Категория</th><th>Цена</th><th>Доход</th><th>Статус</th></tr>';
+  let html = '';
 
   companies.forEach(company => {
-    html += '<tr><td>' + company.id + '</td><td>' + company.name + '</td><td>' + company.category + '</td><td>' + company.price + ' BYN</td><td>' + company.daily_income + ' BYN</td><td>' + (company.owned ? 'Куплено' : 'Доступно') + '</td></tr>';
+    html += '<div class="company">';
+    html += '<p><b>' + company.name + '</b></p>';
+    html += '<p>Категория: ' + company.category + '</p>';
+    html += '<p>Цена: ' + company.price + ' BYN</p>';
+    html += '<p>Доход: ' + company.daily_income + ' BYN/день</p>';
+    html += '<p>Площадь: ' + company.sqm + ' км²</p>';
+    html += '<p><span class="badge">' + (company.owned ? 'Куплено' : 'Доступно') + '</span></p>';
+
+    if (!company.owned) {
+      html += '<button onclick="buyCompany(' + company.id + ')">🛒 Купить</button>';
+    }
+
+    html += '</div>';
   });
 
-  document.getElementById('companies_info').innerHTML = html + '</table>';
+  document.getElementById('companies_info').innerHTML = html || 'Объектов пока нет';
 }
 
-async function buyCompany() {
+async function buyCompany(companyId) {
   try {
     const data = await api('/api/companies/buy', {
       telegram_id: currentId,
-      company_id: Number(document.getElementById('company_id').value)
+      company_id: companyId
     });
 
-    document.getElementById('companies_info').textContent = data.message;
+    alert(data.message);
     loadCompanies();
   } catch (error) {
-    document.getElementById('companies_info').textContent = error.message;
+    alert(error.message);
   }
 }
 
@@ -819,10 +865,10 @@ async function transfer() {
 
 async function loadPlayers() {
   const players = await api('/api/players');
-  let html = '<table><tr><th>Ник</th><th>Баланс</th><th>Статус</th></tr>';
+  let html = '<table><tr><th>Ник</th><th>Карта</th><th>Статус</th></tr>';
 
   players.forEach(player => {
-    html += '<tr><td>' + player.nickname + '</td><td>' + player.balance + ' BYN</td><td>' + (player.is_admin ? 'Админ' : 'Игрок') + '</td></tr>';
+    html += '<tr><td>' + player.nickname + '</td><td>' + player.bank + ' BYN</td><td>' + (player.is_admin ? 'Админ' : 'Игрок') + '</td></tr>';
   });
 
   document.getElementById('players_info').innerHTML = html + '</table>';
@@ -1000,8 +1046,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         f"🌆 <b>NEON CITY</b>\n\n"
         f"Привет, <b>{user['nickname']}</b>!\n\n"
-        f"💰 Баланс: <b>{money(user['balance'])} BYN</b>\n"
-        f"🏦 Банк: <b>{money(user['bank'])} BYN</b>\n"
+        f"💳 Баланс на карте: <b>{money(user['bank'])} BYN</b>\n"
         f"🌍 Земля: <b>{user['sqm']} км²</b>"
     )
 
@@ -1025,8 +1070,7 @@ async def profile_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"👤 <b>Профиль</b>\n\n"
         f"Ник: <b>{user['nickname']}</b>\n"
         f"Telegram ID: <code>{user['telegram_id']}</code>\n\n"
-        f"💰 Наличные: <b>{money(user['balance'])} BYN</b>\n"
-        f"🏦 Банк: <b>{money(user['bank'])} BYN</b>\n"
+        f"💳 Баланс на карте: <b>{money(user['bank'])} BYN</b>\n"
         f"💳 Кредит: <b>{money(user['credit'])} BYN</b>\n"
         f"🌍 Земля: <b>{user['sqm']} км²</b>"
     )
@@ -1044,9 +1088,9 @@ async def leaderboard_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
     players = db_execute(
         """
-        SELECT nickname, balance, sqm
+        SELECT nickname, bank, sqm
         FROM users
-        ORDER BY balance DESC, sqm DESC
+        ORDER BY bank DESC, sqm DESC
         LIMIT 10
         """,
         fetch=True,
@@ -1060,7 +1104,7 @@ async def leaderboard_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         for index, player in enumerate(players, start=1):
             text += (
                 f"{index}. <b>{player['nickname']}</b>\n"
-                f"💰 {money(player['balance'])} BYN\n"
+                f"💳 {money(player['bank'])} BYN\n"
                 f"🌍 {player['sqm']} км²\n\n"
             )
 
@@ -1082,8 +1126,7 @@ async def bank_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await query.edit_message_text(
         f"🏦 <b>NEON BANK</b>\n\n"
-        f"💰 Наличные: <b>{money(user['balance'])} BYN</b>\n"
-        f"💳 На карте: <b>{money(user['bank'])} BYN</b>\n"
+        f"💳 Баланс на карте: <b>{money(user['bank'])} BYN</b>\n"
         f"💳 Кредитный долг: <b>{money(user['credit'])} BYN</b>\n\n"
         f"Команды:\n"
         f"<code>/deposit СУММА</code> — пополнить карту\n"
@@ -1110,27 +1153,27 @@ async def deposit_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     with get_db() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                "SELECT balance, bank FROM users WHERE telegram_id = %s FOR UPDATE",
+                "SELECT bank FROM users WHERE telegram_id = %s FOR UPDATE",
                 (update.effective_user.id,),
             )
             user = cur.fetchone()
 
-            if not user or float(user["balance"]) < amount:
-                await update.message.reply_text("Недостаточно наличных.")
+            if not user:
+                await update.message.reply_text("Сначала нажми /start.")
                 return
 
             cur.execute(
                 """
                 UPDATE users
-                SET balance = balance - %s, bank = bank + %s
+                SET bank = bank + %s
                 WHERE telegram_id = %s
                 """,
-                (amount, amount, update.effective_user.id),
+                (amount, update.effective_user.id),
             )
 
         conn.commit()
 
-    await update.message.reply_text(f"✅ Положено на карту: {money(amount)} BYN")
+    await update.message.reply_text(f"✅ Карта пополнена: {money(amount)} BYN")
 
 
 async def exchange_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1181,7 +1224,6 @@ async def companies_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         status = "✅ Куплено" if company["owned"] else "🛒 Доступно"
         text += (
             f"{status} <b>{company['name']}</b>\n"
-            f"ID: {company['id']}\n"
             f"Цена: {money(company['price'])} BYN\n"
             f"Доход: {money(company['daily_income'])} BYN/день\n\n"
         )
@@ -1237,21 +1279,21 @@ async def transfer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     with get_db() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                "SELECT balance FROM users WHERE telegram_id = %s FOR UPDATE",
+                "SELECT bank FROM users WHERE telegram_id = %s FOR UPDATE",
                 (sender_id,),
             )
             sender = cur.fetchone()
 
-            if not sender or float(sender["balance"]) < amount:
-                await update.message.reply_text("Недостаточно денег.")
+            if not sender or float(sender["bank"]) < amount:
+                await update.message.reply_text("Недостаточно денег на карте.")
                 return
 
             cur.execute(
-                "UPDATE users SET balance = balance - %s WHERE telegram_id = %s",
+                "UPDATE users SET bank = bank - %s WHERE telegram_id = %s",
                 (amount, sender_id),
             )
             cur.execute(
-                "UPDATE users SET balance = balance + %s WHERE telegram_id = %s",
+                "UPDATE users SET bank = bank + %s WHERE telegram_id = %s",
                 (amount, receiver["telegram_id"]),
             )
             cur.execute(
@@ -1275,9 +1317,9 @@ async def players_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     players = db_execute(
         """
-        SELECT nickname, balance, is_admin
+        SELECT nickname, bank, is_admin
         FROM users
-        ORDER BY balance DESC
+        ORDER BY bank DESC
         LIMIT 20
         """,
         fetch=True,
@@ -1289,7 +1331,7 @@ async def players_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         status = "🛡 Админ" if player["is_admin"] else "Игрок"
         text += (
             f"<b>{player['nickname']}</b> — "
-            f"{money(player['balance'])} BYN — {status}\n"
+            f"{money(player['bank'])} BYN — {status}\n"
         )
 
     await query.edit_message_text(
@@ -1401,7 +1443,7 @@ async def loan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cur.execute(
                 """
                 UPDATE users
-                SET balance = balance + %s, credit = credit + %s
+                SET bank = bank + %s, credit = credit + %s
                 WHERE telegram_id = %s
                 """,
                 (amount, total, update.effective_user.id),
@@ -1585,7 +1627,7 @@ async def give_money_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
 
     db_execute(
-        "UPDATE users SET balance = balance + %s WHERE telegram_id = %s",
+        "UPDATE users SET bank = bank + %s WHERE telegram_id = %s",
         (amount, target["telegram_id"]),
     )
 
@@ -1747,9 +1789,9 @@ def profile(telegram_id: int):
 def leaderboard():
     return db_execute(
         """
-        SELECT nickname, balance, sqm
+        SELECT nickname, bank, sqm
         FROM users
-        ORDER BY balance DESC, sqm DESC
+        ORDER BY bank DESC, sqm DESC
         LIMIT 50
         """,
         fetch=True,
@@ -1767,7 +1809,7 @@ def bank(data: BankRequest):
     with get_db() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                "SELECT balance, bank FROM users WHERE telegram_id = %s FOR UPDATE",
+                "SELECT bank FROM users WHERE telegram_id = %s FOR UPDATE",
                 (data.telegram_id,),
             )
             user = cur.fetchone()
@@ -1775,23 +1817,20 @@ def bank(data: BankRequest):
             if not user:
                 raise HTTPException(status_code=404, detail="Игрок не найден")
 
-            if float(user["balance"]) < data.amount:
-                raise HTTPException(status_code=400, detail="Недостаточно наличных")
-
             cur.execute(
                 """
                 UPDATE users
-                SET balance = balance - %s, bank = bank + %s
+                SET bank = bank + %s
                 WHERE telegram_id = %s
                 """,
-                (data.amount, data.amount, data.telegram_id),
+                (data.amount, data.telegram_id),
             )
 
         conn.commit()
 
     return {
         "status": "ok",
-        "message": f"Положено на карту: {money(data.amount)} BYN",
+        "message": f"Карта пополнена: {money(data.amount)} BYN",
     }
 
 
@@ -1811,20 +1850,20 @@ def transfer(data: TransferRequest):
     with get_db() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                "SELECT balance FROM users WHERE telegram_id = %s FOR UPDATE",
+                "SELECT bank FROM users WHERE telegram_id = %s FOR UPDATE",
                 (data.sender_id,),
             )
             sender = cur.fetchone()
 
-            if not sender or float(sender["balance"]) < data.amount:
-                raise HTTPException(status_code=400, detail="Недостаточно денег")
+            if not sender or float(sender["bank"]) < data.amount:
+                raise HTTPException(status_code=400, detail="Недостаточно денег на карте")
 
             cur.execute(
-                "UPDATE users SET balance = balance - %s WHERE telegram_id = %s",
+                "UPDATE users SET bank = bank - %s WHERE telegram_id = %s",
                 (data.amount, data.sender_id),
             )
             cur.execute(
-                "UPDATE users SET balance = balance + %s WHERE telegram_id = %s",
+                "UPDATE users SET bank = bank + %s WHERE telegram_id = %s",
                 (data.amount, receiver["telegram_id"]),
             )
             cur.execute(
@@ -1870,7 +1909,7 @@ def loan(data: LoanRequest):
             cur.execute(
                 """
                 UPDATE users
-                SET balance = balance + %s, credit = credit + %s
+                SET bank = bank + %s, credit = credit + %s
                 WHERE telegram_id = %s
                 """,
                 (data.amount, total, data.telegram_id),
@@ -1989,18 +2028,18 @@ def buy_company(data: CompanyBuyRequest):
                 raise HTTPException(status_code=400, detail="Объект уже куплен")
 
             cur.execute(
-                "SELECT balance FROM users WHERE telegram_id = %s FOR UPDATE",
+                "SELECT bank FROM users WHERE telegram_id = %s FOR UPDATE",
                 (data.telegram_id,),
             )
             user = cur.fetchone()
 
-            if not user or float(user["balance"]) < float(company["price"]):
-                raise HTTPException(status_code=400, detail="Недостаточно денег")
+            if not user or float(user["bank"]) < float(company["price"]):
+                raise HTTPException(status_code=400, detail="Недостаточно денег на карте")
 
             cur.execute(
                 """
                 UPDATE users
-                SET balance = balance - %s, sqm = sqm + %s
+                SET bank = bank - %s, sqm = sqm + %s
                 WHERE telegram_id = %s
                 """,
                 (company["price"], company["sqm"], data.telegram_id),
@@ -2049,7 +2088,7 @@ def exchange_trade(data: ExchangeTradeRequest):
             price = float(item["current_price"]) * data.quantity
 
             cur.execute(
-                "SELECT balance FROM users WHERE telegram_id = %s FOR UPDATE",
+                "SELECT bank FROM users WHERE telegram_id = %s FOR UPDATE",
                 (data.telegram_id,),
             )
             user = cur.fetchone()
@@ -2058,11 +2097,11 @@ def exchange_trade(data: ExchangeTradeRequest):
                 raise HTTPException(status_code=404, detail="Игрок не найден")
 
             if data.action == "buy":
-                if float(user["balance"]) < price:
-                    raise HTTPException(status_code=400, detail="Недостаточно денег")
+                if float(user["bank"]) < price:
+                    raise HTTPException(status_code=400, detail="Недостаточно денег на карте")
 
                 cur.execute(
-                    "UPDATE users SET balance = balance - %s WHERE telegram_id = %s",
+                    "UPDATE users SET bank = bank - %s WHERE telegram_id = %s",
                     (price, data.telegram_id),
                 )
                 cur.execute(
@@ -2098,7 +2137,7 @@ def exchange_trade(data: ExchangeTradeRequest):
                     (data.quantity, data.telegram_id, data.item_id),
                 )
                 cur.execute(
-                    "UPDATE users SET balance = balance + %s WHERE telegram_id = %s",
+                    "UPDATE users SET bank = bank + %s WHERE telegram_id = %s",
                     (price, data.telegram_id),
                 )
                 message = f"Продано: {item['name']} за {money(price)} BYN"
@@ -2115,9 +2154,9 @@ def exchange_trade(data: ExchangeTradeRequest):
 def players():
     return db_execute(
         """
-        SELECT telegram_id, nickname, balance, is_admin
+        SELECT telegram_id, nickname, bank, is_admin
         FROM users
-        ORDER BY balance DESC
+        ORDER BY bank DESC
         LIMIT 100
         """,
         fetch=True,
@@ -2214,7 +2253,7 @@ def give_money(data: GiveMoneyRequest):
         raise HTTPException(status_code=400, detail="Сумма должна быть больше нуля")
 
     db_execute(
-        "UPDATE users SET balance = balance + %s WHERE telegram_id = %s",
+        "UPDATE users SET bank = bank + %s WHERE telegram_id = %s",
         (data.amount, target["telegram_id"]),
     )
 
